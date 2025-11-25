@@ -7,12 +7,12 @@ export const codeExecutionRouter = Router();
 
 // Execute code endpoint
 codeExecutionRouter.post('/run', validateCode, async (req, res) => {
-  const { code, language = 'python' } = req.body;
+  const { code, language = 'python', input } = req.body;
 
   try {
-    logger.info(`Executing ${language} code`);
+    logger.info(`Executing ${language} code${input ? ' with input' : ''}`);
     
-    const result = await executeCode(code, language);
+    const result = await executeCode(code, language, input);
     
     res.json({
       success: true,

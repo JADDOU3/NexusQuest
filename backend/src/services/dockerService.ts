@@ -25,7 +25,7 @@ export async function checkDockerStatus(): Promise<{ available: boolean; message
   }
 }
 
-export async function executeCode(code: string, language: string): Promise<ExecutionResult> {
+export async function executeCode(code: string, language: string, input?: string): Promise<ExecutionResult> {
   const startTime = Date.now();
   
   try {
@@ -35,10 +35,10 @@ export async function executeCode(code: string, language: string): Promise<Execu
     let result;
     switch (language.toLowerCase()) {
       case 'python':
-        result = await executePythonCode(code);
+        result = await executePythonCode(code, input);
         break;
       case 'java':
-        result = await executeJavaCode(code);
+        result = await executeJavaCode(code, input);
         break;
       default:
         throw new Error(`Language ${language} is not supported yet`);
@@ -70,15 +70,37 @@ export async function executeCode(code: string, language: string): Promise<Execu
   }
 }
 
-async function executePythonCode(code: string): Promise<{ output: string; error: string }> {
+async function executePythonCode(code: string, input?: string): Promise<{ output: string; error: string }> {
   const containerName = `nexusquest-python-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
+    // Wrap code to handle input
+    let wrappedCode = code;
+    if (input) {
+      const inputs = input.split(',').map(i => i.trim());
+      wrappedCode = `
+import sys
+_inputs = ${JSON.stringify(inputs)}
+_input_index = 0
+
+def input(prompt=''):
+    global _input_index
+    if _input_index < len(_inputs):
+        value = _inputs[_input_index]
+        _input_index += 1
+        print(prompt + value)
+        return value
+    return ''
+
+${code}
+`;
+    }
+    
     // Create and start container
     const container = await docker.createContainer({
       Image: 'python:3.10-slim',
       name: containerName,
-      Cmd: ['python', '-c', code],
+      Cmd: ['python', '-c', wrappedCode],
       WorkingDir: '/app',
       HostConfig: {
         Memory: 128 * 1024 * 1024, // 128MB memory limit
@@ -166,21 +188,29 @@ async function executePythonCode(code: string): Promise<{ output: string; error:
   }
 }
 
-async function executeJavaCode(code: string): Promise<{ output: string; error: string }> {
+async function executeJavaCode(code: string, input?: string): Promise<{ output: string; error: string }> {
   const containerName = `nexusquest-java-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
+    // Inject input handling for Scanner if input is provided
+    let wrappedCode = code;
+    if (input && code.includes('Scanner')) {
+      const inputs = input.split(',').map(i => i.trim());
+      const inputsStr = inputs.join('\\n');
+      wrappedCode = code.replace(/new\s+Scanner\(System\.in\)/, `new Scanner("${inputsStr}")`);
+    }
+    
     // Extract class name from code
-    const classMatch = code.match(/public\s+class\s+(\w+)/);
+    const classMatch = wrappedCode.match(/public\s+class\s+(\w+)/);
     const className = classMatch ? classMatch[1] : 'Main';
     
     // If no public class is found, wrap code in a Main class
-    let javaCode = code;
+    let javaCode = wrappedCode;
     if (!classMatch) {
       javaCode = `
 public class Main {
     public static void main(String[] args) {
-${code.split('\n').map(line => '        ' + line).join('\n')}
+${wrappedCode.split('\n').map(line => '        ' + line).join('\n')}
     }
 }`;
     }

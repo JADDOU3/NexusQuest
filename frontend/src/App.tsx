@@ -27,27 +27,26 @@ print(f"The sum of {x} and {y} is {result}")
 
 const defaultJavaCode = `// Welcome to NexusQuest IDE!
 // Write your Java code here and click Run
-// NOTE: Scanner/user input is not supported in this environment
+// TIP: Use the Input field above to provide values for Scanner
+
+import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
-        // Example: Greeting
-        String name = "Developer";
-        System.out.println("Hello, " + name + "! Welcome to the IDE.");
+        Scanner scanner = new Scanner(System.in);
         
-        // Example: Basic calculations
-        int x = 10;
-        int y = 20;
-        int result = x + y;
-        System.out.println("The sum of " + x + " and " + y + " is " + result);
+        // Example: Read input
+        // Input field: 10, 20
+        System.out.print("Enter first number: ");
+        int num1 = scanner.nextInt();
         
-        // Example: Arrays and loops
-        int[] numbers = {1, 2, 3, 4, 5};
-        int sum = 0;
-        for (int num : numbers) {
-            sum += num;
-        }
-        System.out.println("Sum of array: " + sum);
+        System.out.print("Enter second number: ");
+        int num2 = scanner.nextInt();
+        
+        int sum = num1 + num2;
+        System.out.println("The sum is: " + sum);
+        
+        scanner.close();
     }
 }
 `;
@@ -158,6 +157,7 @@ function App() {
   const [isRunning, setIsRunning] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [language, setLanguage] = useState<'python' | 'java'>('python');
+  const [inputData, setInputData] = useState<string>('');
 
   // Initialize suggestions on mount
   useEffect(() => {
@@ -202,7 +202,8 @@ function App() {
         },
         body: JSON.stringify({ 
           code: code.trim(),
-          language: language
+          language: language,
+          input: inputData
         }),
       });
 
@@ -299,6 +300,13 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={inputData}
+                onChange={(e) => setInputData(e.target.value)}
+                placeholder="Input (comma-separated for multiple values)"
+                className="px-3 py-2 rounded-lg bg-gray-800/50 border border-gray-600 text-gray-300 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+              />
               <Button 
                 onClick={runCode} 
                 disabled={isRunning}
