@@ -1,0 +1,64 @@
+const API_BASE_URL = 'http://localhost:9876';
+
+export interface AiCompletionRequest {
+  code: string;
+  cursorPosition: { line: number; column: number };
+  language?: string;
+}
+
+export interface AiCompletionResponse {
+  success: boolean;
+  suggestions: string[];
+  isAiGenerated: boolean;
+}
+
+/**
+ * Get AI-powered code completions from backend
+ */
+export async function getAiCompletions(request: AiCompletionRequest): Promise<string[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      console.warn('AI completion request failed:', response.statusText);
+      return [];
+    }
+
+    const data: AiCompletionResponse = await response.json();
+    return data.suggestions || [];
+  } catch (error) {
+    console.error('Error fetching AI completions:', error);
+    return [];
+  }
+}
+
+/**
+ * Get inline AI suggestion
+ */
+export async function getInlineSuggestion(code: string, cursorLine: number): Promise<string> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai/inline`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code, cursorLine }),
+    });
+
+    if (!response.ok) {
+      return '';
+    }
+
+    const data = await response.json();
+    return data.suggestion || '';
+  } catch (error) {
+    console.error('Error fetching inline suggestion:', error);
+    return '';
+  }
+}

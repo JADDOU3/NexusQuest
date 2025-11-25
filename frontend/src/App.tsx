@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CodeEditor } from './components/CodeEditor';
 import { Console } from './components/Console';
 import { Button } from './components/ui/button';
@@ -25,10 +25,114 @@ result = x + y
 print(f"The sum of {x} and {y} is {result}")
 `;
 
+// Code suggestions based on patterns
+const getCodeSuggestions = (code: string): string[] => {
+  const suggestions: string[] = [];
+  const lines = code.split('\n');
+  const lineCount = lines.length;
+  
+  // Performance suggestions
+  if (code.includes('for ') && code.includes('range(len(')) {
+    suggestions.push('⚡ Performance Tip: Use enumerate() instead of range(len()) - More pythonic and efficient');
+  }
+  
+  if (code.match(/\blist\(\[.*\]\)/) || code.match(/\bdict\(\{.*\}\)/)) {
+    suggestions.push('⚡ Optimization: Remove redundant list() or dict() wrappers around literals');
+  }
+  
+  // Code quality suggestions
+  if (!code.includes('def ') && lineCount > 10) {
+    suggestions.push('💡 Best Practice: Break code into reusable functions for better organization');
+  }
+  
+  if (!code.includes('#') && lineCount > 15) {
+    suggestions.push('📝 Readability: Add docstrings and comments to explain your code logic');
+  }
+  
+  if (code.includes('== True') || code.includes('== False')) {
+    suggestions.push('⚡ Pythonic: Use "if condition:" instead of "if condition == True:"');
+  }
+  
+  // String formatting suggestions
+  if (code.match(/\"\s*\+\s*.*\s*\+\s*\"/)) {
+    suggestions.push('✨ Modern Python: Replace string concatenation (+) with f-strings for clarity');
+  }
+  
+  if (code.includes('%') && code.includes('(')) {
+    suggestions.push('✨ Upgrade: Consider using f-strings instead of % formatting');
+  }
+  
+  if (code.includes('.format(') && !code.includes('f"')) {
+    suggestions.push('✨ Tip: f-strings are faster and more readable than .format()');
+  }
+  
+  // Error handling suggestions
+  if (code.includes('try:') && !code.includes('except')) {
+    suggestions.push('⚠️ Safety: Add except clause to handle potential errors gracefully');
+  }
+  
+  if (code.includes('except:') && !code.includes('except ')) {
+    suggestions.push('⚠️ Best Practice: Catch specific exceptions instead of bare except');
+  }
+  
+  // Code structure suggestions
+  if (lineCount > 20 && !code.includes('\n\n')) {
+    suggestions.push('📐 Structure: Add blank lines between logical sections per PEP 8');
+  }
+  
+  if (code.includes('lambda') && code.split('lambda').length > 3) {
+    suggestions.push('💡 Clarity: Consider using named functions instead of complex lambdas');
+  }
+  
+  // Variable naming suggestions
+  if (code.match(/\b[a-z]\b/g) && lineCount > 5) {
+    suggestions.push('📝 Naming: Use descriptive variable names instead of single letters');
+  }
+  
+  // List comprehension suggestions
+  if (code.includes('for ') && code.includes('.append(')) {
+    suggestions.push('✨ Pythonic: Consider using list comprehension instead of append in loop');
+  }
+  
+  // Positive feedback
+  if (code.includes('def ') && code.includes('return ')) {
+    suggestions.push('✅ Excellent: Good use of functions with return statements!');
+  }
+  
+  if (code.includes('#') || code.includes('"""')) {
+    suggestions.push('✅ Great: Well-documented code is maintainable code!');
+  }
+  
+  if (code.includes('f"') || code.includes("f'")) {
+    suggestions.push('✅ Modern: Using f-strings - the best way to format strings in Python!');
+  }
+  
+  if (code.includes('with ')) {
+    suggestions.push('✅ Professional: Using context managers for resource management!');
+  }
+  
+  if (code.includes('if __name__ == "__main__"')) {
+    suggestions.push('✅ Best Practice: Proper main guard usage - excellent structure!');
+  }
+  
+  // Learning suggestions for beginners
+  if (code.length < 30 && lineCount < 5) {
+    suggestions.push('💡 Try: Experiment with functions, loops, and list comprehensions!');
+  }
+  
+  return suggestions.slice(0, 4); // Limit to 4 suggestions
+};
+
 function App() {
   const [code, setCode] = useState(defaultCode);
   const [output, setOutput] = useState<ConsoleOutput[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // Initialize suggestions on mount
+  useEffect(() => {
+    setSuggestions(getCodeSuggestions(defaultCode));
+  }, []);
 
   const runCode = async () => {
     if (!code.trim()) {
@@ -94,6 +198,14 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleCodeChange = (value: string | undefined) => {
+    const newCode = value || '';
+    setCode(newCode);
+    // Update suggestions when code changes
+    const newSuggestions = getCodeSuggestions(newCode);
+    setSuggestions(newSuggestions);
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Header */}
@@ -122,16 +234,14 @@ function App() {
               </Button>
               <Button 
                 onClick={clearConsole} 
-                variant="outline"
-                className="flex items-center gap-2 border-gray-600 hover:bg-gray-800 hover:border-gray-500 text-gray-300"
+                className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:scale-105"
               >
                 <Square className="w-4 h-4" />
                 Clear
               </Button>
               <Button 
                 onClick={downloadCode} 
-                variant="outline"
-                className="flex items-center gap-2 border-gray-600 hover:bg-gray-800 hover:border-gray-500 text-gray-300"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-200 hover:scale-105"
               >
                 <Download className="w-4 h-4" />
                 Download
@@ -158,11 +268,31 @@ function App() {
           <div className="flex-1 rounded-xl overflow-hidden border border-gray-700 shadow-2xl bg-gray-900/50 backdrop-blur-sm">
             <CodeEditor
               value={code}
-              onChange={(value) => setCode(value || '')}
+              onChange={handleCodeChange}
               language="python"
               height="100%"
             />
           </div>
+
+          {/* Code Suggestions */}
+          {suggestions.length > 0 && (
+            <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/>
+                </svg>
+                <span className="text-xs font-semibold text-blue-300">Code Suggestions</span>
+              </div>
+              <div className="space-y-1">
+                {suggestions.map((suggestion, index) => (
+                  <div key={index} className="text-xs text-gray-300 flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>{suggestion}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Vertical Divider */}

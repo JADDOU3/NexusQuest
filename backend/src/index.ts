@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { codeExecutionRouter } from './routes/execution.js';
+import aiRouter from './routes/ai.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
 
@@ -41,6 +42,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api', codeExecutionRouter);
+app.use('/api/ai', aiRouter);
 
 // Error handling
 app.use(errorHandler);

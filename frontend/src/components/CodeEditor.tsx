@@ -1,4 +1,5 @@
 import Editor, { OnMount } from '@monaco-editor/react';
+import { getAiCompletions } from '../services/aiService';
 
 interface CodeEditorProps {
   value: string;
@@ -18,9 +19,44 @@ export function CodeEditor({
   };
 
   const handleEditorDidMount: OnMount = (_editor, monaco) => {
-    // Register Python autocomplete provider
+    // Configure autocomplete like Visual Studio IntelliSense
+    _editor.updateOptions({
+      quickSuggestions: {
+        other: 'on',  // Show suggestions while typing
+        comments: false,
+        strings: false
+      },
+      suggestOnTriggerCharacters: true,
+      acceptSuggestionOnCommitCharacter: true,
+      acceptSuggestionOnEnter: 'on',
+      wordBasedSuggestions: 'matchingDocuments',
+      tabCompletion: 'on',
+      quickSuggestionsDelay: 100,  // Show suggestions faster
+      suggest: {
+        showWords: true,
+        showSnippets: true,
+        showFunctions: true,
+        showKeywords: true,
+        preview: false,  // Disable inline preview
+        showInlineDetails: true,
+      },
+      // DISABLE inline suggestions (ghost text)
+      inlineSuggest: {
+        enabled: false,  // No inline ghost text!
+      },
+    });
+
+    // Register Python autocomplete provider with AI-powered suggestions
     monaco.languages.registerCompletionItemProvider('python', {
-      provideCompletionItems: (model, position) => {
+      triggerCharacters: ['.', ' ', '(', '\n'],
+      provideCompletionItems: async (model, position) => {
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+
         const word = model.getWordUntilPosition(position);
         const range = {
           startLineNumber: position.lineNumber,
@@ -29,10 +65,92 @@ export function CodeEditor({
           endColumn: word.endColumn,
         };
 
-        // Python built-in functions and keywords
-        const suggestions = [
+        // Context-aware suggestions based on what user is typing
+        const suggestions: any[] = [];
+
+        // Get AI-powered suggestions
+        try {
+          const code = model.getValue();
+          const aiSuggestions = await getAiCompletions({
+            code,
+            cursorPosition: { line: position.lineNumber - 1, column: position.column },
+            language: 'python',
+          });
+
+          // Add AI suggestions with special icon
+          aiSuggestions.forEach((suggestion, index) => {
+            suggestions.push({
+              label: `🤖 AI: ${suggestion.split('\n')[0].substring(0, 50)}...`,
+              kind: monaco.languages.CompletionItemKind.Text,
+              insertText: suggestion,
+              documentation: 'AI-generated suggestion',
+              detail: 'AI Completion',
+              sortText: `0${index}`, // Show AI suggestions first
+              preselect: index === 0, // Preselect first AI suggestion
+              range,
+            });
+          });
+        } catch (error) {
+          console.warn('AI completions unavailable:', error);
+        }
+
+        // If user types "for", suggest complete for loop
+        if (textUntilPosition.trim().endsWith('for')) {
+          suggestions.push({
+            label: 'for loop with range',
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: ' ${1:i} in range(${2:10}):\n    ${3:print(i)}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'Complete for loop with range',
+            preselect: true,
+            range: range,
+          });
+        }
+
+        // If user types "def", suggest function template
+        if (textUntilPosition.trim().endsWith('def')) {
+          suggestions.push({
+            label: 'function definition',
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: ' ${1:function_name}(${2:params}):\n    """${3:Description}"""\n    ${4:return None}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'Complete function with docstring',
+            preselect: true,
+            range: range,
+          });
+        }
+
+        // If user types "if", suggest if statement
+        if (textUntilPosition.trim().endsWith('if')) {
+          suggestions.push({
+            label: 'if statement',
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: ' ${1:condition}:\n    ${2:pass}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'Complete if statement',
+            preselect: true,
+            range: range,
+          });
+        }
+
+        // If user types "print", suggest print with f-string
+        if (word.word === 'print' || textUntilPosition.trim().endsWith('print')) {
+          suggestions.push({
+            label: 'print with f-string',
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: 'print(f"${1:text}: {${2:variable}}")',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'Print with formatted string',
+            preselect: true,
+            sortText: '0',
+            range: range,
+          });
+        }
+
+        // Add standard Python built-in functions and keywords
+        suggestions.push(
           // Built-in functions
-          { label: 'print', kind: monaco.languages.CompletionItemKind.Function, insertText: 'print(${1:value})', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Print to console' },
+          { label: 'print', kind: monaco.languages.CompletionItemKind.Function, insertText: 'print(${1:value})', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Print to console', range },
           { label: 'len', kind: monaco.languages.CompletionItemKind.Function, insertText: 'len(${1:sequence})', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Return the length of a sequence' },
           { label: 'range', kind: monaco.languages.CompletionItemKind.Function, insertText: 'range(${1:stop})', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Create a range of numbers' },
           { label: 'str', kind: monaco.languages.CompletionItemKind.Function, insertText: 'str(${1:object})', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Convert to string' },
@@ -78,14 +196,9 @@ export function CodeEditor({
           { label: 'listcomp', kind: monaco.languages.CompletionItemKind.Snippet, insertText: '[${1:x} for ${1:x} in ${2:iterable}]', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'List comprehension' },
           { label: 'dictcomp', kind: monaco.languages.CompletionItemKind.Snippet, insertText: '{${1:k}: ${2:v} for ${1:k}, ${2:v} in ${3:iterable}}', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Dictionary comprehension' },
           { label: 'ifmain', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'if __name__ == "__main__":\n    ${1:main()}', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Main guard' },
-        ];
+        );
 
-        return {
-          suggestions: suggestions.map(s => ({
-            ...s,
-            range: range,
-          })),
-        };
+        return { suggestions };
       },
     });
 
@@ -131,12 +244,6 @@ export function CodeEditor({
           wordWrap: 'on',
           automaticLayout: true,
           scrollBeyondLastLine: false,
-          suggestOnTriggerCharacters: true,
-          quickSuggestions: {
-            other: true,
-            comments: true,
-            strings: true,
-          },
           fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
           fontLigatures: true,
           cursorBlinking: 'smooth',
