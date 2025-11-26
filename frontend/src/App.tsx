@@ -136,17 +136,14 @@ function App({ user, onLogout }: AppProps) {
   });
 
   // Project state
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [projects, setProjects] = useState<Project[]>([]); // Used for session restoration
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [currentFile, setCurrentFile] = useState<ProjectFile | null>(null);
-  const [showNewProjectInput, setShowNewProjectInput] = useState(false);
   const [showNewFileInput, setShowNewFileInput] = useState<string | null>(null);
-  const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectLanguage, setNewProjectLanguage] = useState<'python' | 'java' | 'javascript' | 'cpp'>('python');
   const [newFileName, setNewFileName] = useState('');
   const [newFileLanguage, setNewFileLanguage] = useState<'python' | 'java' | 'javascript' | 'cpp'>('python');
   const [isSaving, setIsSaving] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [lastSavedCode, setLastSavedCode] = useState<string>('');
 
@@ -181,7 +178,6 @@ function App({ user, onLogout }: AppProps) {
           const project = projectsData.find((p: Project) => p._id === targetProjectId);
           if (project) {
             setCurrentProject(project);
-            setExpandedProjects(new Set([project._id]));
 
             // Find the last file or default to first file
             if (lastFileId && !urlProjectId) {
@@ -913,326 +909,268 @@ function App({ user, onLogout }: AppProps) {
             </div>
             {isProjectPanelOpen && (
               <div className="flex-1 overflow-auto text-[11px] py-1">
-                {/* Header with New Project button */}
+                {/* Header with All Projects button */}
                 <div className="px-2 pb-1 flex items-center justify-between">
                   <span className="font-semibold text-gray-400 uppercase tracking-wide text-[10px]">
-                    Projects
+                    {currentProject ? 'Current Project' : 'Project'}
                   </span>
                   {user && (
                     <button
-                      onClick={() => setShowNewProjectInput(true)}
+                      onClick={() => navigate('/projects')}
                       className="p-0.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-gray-200"
-                      title="New Project"
+                      title="All Projects"
                     >
                       <FolderPlus className="w-3 h-3" />
                     </button>
                   )}
                 </div>
 
-                {/* New Project Input */}
-                {showNewProjectInput && (
-                  <div className="px-2 py-1">
-                    <form
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        if (newProjectName.trim()) {
-                          try {
-                            const result = await projectService.createProject(newProjectName.trim(), '', newProjectLanguage);
-                            console.log('Project created:', result);
-                            setNewProjectName('');
-                            setNewProjectLanguage('python');
-                            setShowNewProjectInput(false);
-                            loadProjects();
-                          } catch (err: unknown) {
-                            const error = err as Error;
-                            console.error('Failed to create project:', error);
-                            alert('Failed to create project: ' + error.message);
-                          }
-                        }
-                      }}
-                      className="space-y-1"
-                    >
-                      <input
-                        type="text"
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        placeholder="Project name..."
-                        className={`w-full px-2 py-1 text-[11px] rounded border ${
-                          theme === 'dark'
-                            ? 'bg-gray-800 border-gray-600 text-white'
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape') {
-                            setNewProjectName('');
-                            setNewProjectLanguage('python');
-                            setShowNewProjectInput(false);
-                          }
-                        }}
-                      />
-                      <select
-                        value={newProjectLanguage}
-                        onChange={(e) => setNewProjectLanguage(e.target.value as 'python' | 'java' | 'javascript' | 'cpp')}
-                        className={`w-full px-2 py-1 text-[11px] rounded border ${
-                          theme === 'dark'
-                            ? 'bg-gray-800 border-gray-600 text-white'
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      >
-                        <option value="python">Python 🐍</option>
-                        <option value="javascript">JavaScript 📜</option>
-                        <option value="java">Java ☕</option>
-                        <option value="cpp">C++ ⚡</option>
-                      </select>
-                      <button
-                        type="submit"
-                        className={`w-full px-2 py-1 text-[11px] rounded ${
-                          theme === 'dark'
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                            : 'bg-blue-500 hover:bg-blue-600 text-white'
-                        }`}
-                      >
-                        Create Project
-                      </button>
-                    </form>
-                  </div>
-                )}
-
-                {/* Projects List */}
+                {/* Current Project Files */}
                 <div className="space-y-0.5 px-1">
                   {!user ? (
                     <div className={`px-2 py-4 text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                       <p>Login to see your projects</p>
                     </div>
-                  ) : projects.length === 0 ? (
+                  ) : !currentProject ? (
                     <div className={`px-2 py-4 text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                      <p>No projects yet</p>
-                      <p className="text-[10px] mt-1">Click + to create one</p>
+                      <p>No project open</p>
+                      <button
+                        onClick={() => navigate('/projects')}
+                        className={`mt-2 text-[11px] px-3 py-1 rounded ${
+                          theme === 'dark'
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
+                        }`}
+                      >
+                        Open Project
+                      </button>
                     </div>
                   ) : (
-                    projects.map((project) => (
-                      <div key={project._id}>
-                        {/* Project Header */}
-                        <div
-                          className={`flex items-center gap-1 px-1 py-0.5 rounded cursor-pointer group ${
-                            currentProject?._id === project._id
-                              ? theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
-                              : 'hover:bg-blue-500/10'
-                          }`}
-                        >
+                    <div className="relative">
+                      {/* Current Project Header */}
+                      <div
+                        className={`flex items-center gap-1 px-1 py-0.5 rounded group cursor-pointer ${
+                          theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
+                        }`}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenu({ x: e.clientX, y: e.clientY });
+                        }}
+                      >
+                        <ChevronDown className="w-3 h-3 text-gray-500" />
+                        <FolderOpen className="w-3 h-3 text-yellow-500" />
+                        <span className={`flex-1 truncate font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                          {currentProject.name}
+                        </span>
+                        {/* Project Actions */}
+                        <div className="flex items-center gap-0.5">
                           <button
                             onClick={() => {
-                              setExpandedProjects(prev => {
-                                const next = new Set(prev);
-                                if (next.has(project._id)) {
-                                  next.delete(project._id);
-                                } else {
-                                  next.add(project._id);
-                                }
-                                return next;
-                              });
+                              setShowNewFileInput(currentProject._id);
                             }}
-                            className="p-0.5"
+                            className="p-0.5 rounded hover:bg-gray-600/50 text-gray-400"
+                            title="New File"
                           >
-                            {expandedProjects.has(project._id) ? (
-                              <ChevronDown className="w-3 h-3 text-gray-500" />
-                            ) : (
-                              <ChevronRight className="w-3 h-3 text-gray-500" />
-                            )}
+                            <FilePlus className="w-3 h-3" />
                           </button>
-                          <FolderOpen className="w-3 h-3 text-yellow-500" />
-                          <span
-                            className={`flex-1 truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}
-                            onClick={() => {
-                              setCurrentProject(project);
-                              navigate(`/project/${project._id}`);
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Delete project "${currentProject.name}"?`)) {
+                                try {
+                                  await projectService.deleteProject(currentProject._id);
+                                  setCurrentProject(null);
+                                  setCurrentFile(null);
+                                  navigate('/');
+                                  loadProjects();
+                                } catch (err) {
+                                  console.error('Failed to delete project:', err);
+                                }
+                              }
                             }}
+                            className="p-0.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400"
+                            title="Delete Project"
                           >
-                            {project.name}
-                          </span>
-                          {/* Project Actions */}
-                          <div className="hidden group-hover:flex items-center gap-0.5">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Context Menu */}
+                      {contextMenu && (
+                        <>
+                          {/* Backdrop to close menu */}
+                          <div
+                            className="fixed inset-0 z-50"
+                            onClick={() => setContextMenu(null)}
+                          />
+                          {/* Menu */}
+                          <div
+                            className={`fixed z-50 py-1 rounded-md shadow-lg border min-w-[120px] ${
+                              theme === 'dark'
+                                ? 'bg-gray-800 border-gray-700'
+                                : 'bg-white border-gray-200'
+                            }`}
+                            style={{ left: contextMenu.x, top: contextMenu.y }}
+                          >
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowNewFileInput(project._id);
-                                setExpandedProjects(prev => new Set(prev).add(project._id));
+                              onClick={() => {
+                                setCurrentProject(null);
+                                setCurrentFile(null);
+                                setCode(defaultPythonCode);
+                                setLanguage('python');
+                                localStorage.removeItem('nexusquest-last-project');
+                                localStorage.removeItem('nexusquest-last-file');
+                                navigate('/');
+                                setContextMenu(null);
                               }}
-                              className="p-0.5 rounded hover:bg-gray-600/50 text-gray-400"
-                              title="New File"
+                              className={`w-full px-3 py-1.5 text-left text-[11px] flex items-center gap-2 ${
+                                theme === 'dark'
+                                  ? 'hover:bg-gray-700 text-gray-300'
+                                  : 'hover:bg-gray-100 text-gray-700'
+                              }`}
                             >
-                              <FilePlus className="w-3 h-3" />
+                              <X className="w-3 h-3" />
+                              Close Project
                             </button>
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (confirm(`Delete project "${project.name}"?`)) {
+                          </div>
+                        </>
+                      )}
+
+                      {/* Files List */}
+                      <div className="ml-4 space-y-0.5 mt-0.5">
+                        {/* New File Input */}
+                        {showNewFileInput === currentProject._id && (
+                          <div className="py-0.5">
+                            <form
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                if (newFileName.trim()) {
                                   try {
-                                    await projectService.deleteProject(project._id);
-                                    if (currentProject?._id === project._id) {
-                                      setCurrentProject(null);
-                                      setCurrentFile(null);
-                                      navigate('/');
+                                    const extensions: Record<string, string> = {
+                                      python: '.py',
+                                      javascript: '.js',
+                                      java: '.java',
+                                      cpp: '.cpp'
+                                    };
+                                    let fileName = newFileName.trim();
+                                    const ext = extensions[newFileLanguage];
+                                    const hasExtension = ['.py', '.js', '.java', '.cpp', '.h', '.hpp'].some(e => fileName.endsWith(e));
+                                    if (!hasExtension && ext) {
+                                      fileName += ext;
                                     }
+                                    await projectService.addFile(currentProject._id, fileName, '', newFileLanguage);
+                                    setNewFileName('');
+                                    setNewFileLanguage('python');
+                                    setShowNewFileInput(null);
                                     loadProjects();
                                   } catch (err) {
-                                    console.error('Failed to delete project:', err);
+                                    console.error('Failed to add file:', err);
+                                    alert('Failed to add file');
                                   }
                                 }
                               }}
-                              className="p-0.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400"
-                              title="Delete Project"
+                              className="space-y-1"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <input
+                                type="text"
+                                value={newFileName}
+                                onChange={(e) => setNewFileName(e.target.value)}
+                                placeholder="filename..."
+                                className={`w-full px-2 py-0.5 text-[11px] rounded border ${
+                                  theme === 'dark'
+                                    ? 'bg-gray-800 border-gray-600 text-white'
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Escape') {
+                                    setNewFileName('');
+                                    setNewFileLanguage('python');
+                                    setShowNewFileInput(null);
+                                  }
+                                }}
+                              />
+                              <select
+                                value={newFileLanguage}
+                                onChange={(e) => setNewFileLanguage(e.target.value as 'python' | 'java' | 'javascript' | 'cpp')}
+                                className={`w-full px-2 py-0.5 text-[11px] rounded border ${
+                                  theme === 'dark'
+                                    ? 'bg-gray-800 border-gray-600 text-white'
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              >
+                                <option value="python">Python 🐍</option>
+                                <option value="javascript">JavaScript 📜</option>
+                                <option value="java">Java ☕</option>
+                                <option value="cpp">C++ ⚡</option>
+                              </select>
+                              <button
+                                type="submit"
+                                className={`w-full px-2 py-0.5 text-[11px] rounded ${
+                                  theme === 'dark'
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                                }`}
+                              >
+                                Add File
+                              </button>
+                            </form>
+                          </div>
+                        )}
+
+                        {/* File Items */}
+                        {currentProject.files.map((file) => (
+                          <div
+                            key={file._id}
+                            className={`flex items-center gap-1 px-1 py-0.5 rounded cursor-pointer group ${
+                              currentFile?._id === file._id
+                                ? theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
+                                : 'hover:bg-blue-500/10'
+                            }`}
+                            onClick={() => {
+                              setCurrentFile(file);
+                              setCode(file.content);
+                              const ext = file.name.split('.').pop()?.toLowerCase();
+                              if (ext === 'py') setLanguage('python');
+                              else if (ext === 'js') setLanguage('javascript');
+                              else if (ext === 'java') setLanguage('java');
+                              else if (ext === 'cpp' || ext === 'cc') setLanguage('cpp');
+                            }}
+                          >
+                            <File className="w-3 h-3 text-blue-400" />
+                            <span className={`flex-1 truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {file.name}
+                            </span>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete file "${file.name}"?`)) {
+                                  try {
+                                    await projectService.deleteFile(currentProject._id, file._id);
+                                    if (currentFile?._id === file._id) {
+                                      setCurrentFile(null);
+                                    }
+                                    loadProjects();
+                                  } catch (err) {
+                                    console.error('Failed to delete file:', err);
+                                  }
+                                }
+                              }}
+                              className="hidden group-hover:block p-0.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400"
+                              title="Delete File"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
                             </button>
                           </div>
-                        </div>
+                        ))}
 
-                        {/* Files List (when expanded) */}
-                        {expandedProjects.has(project._id) && (
-                          <div className="ml-4 space-y-0.5">
-                            {/* New File Input */}
-                            {showNewFileInput === project._id && (
-                              <div className="py-0.5">
-                                <form
-                                  onSubmit={async (e) => {
-                                    e.preventDefault();
-                                    if (newFileName.trim()) {
-                                      try {
-                                        // Add extension based on language if not already present
-                                        const extensions: Record<string, string> = {
-                                          python: '.py',
-                                          javascript: '.js',
-                                          java: '.java',
-                                          cpp: '.cpp'
-                                        };
-                                        let fileName = newFileName.trim();
-                                        const ext = extensions[newFileLanguage];
-                                        // Only add extension if filename doesn't already have a valid extension
-                                        const hasExtension = ['.py', '.js', '.java', '.cpp', '.h', '.hpp'].some(e => fileName.endsWith(e));
-                                        if (!hasExtension && ext) {
-                                          fileName += ext;
-                                        }
-                                        await projectService.addFile(project._id, fileName, '', newFileLanguage);
-                                        setNewFileName('');
-                                        setNewFileLanguage('python');
-                                        setShowNewFileInput(null);
-                                        loadProjects();
-                                      } catch (err) {
-                                        console.error('Failed to add file:', err);
-                                        alert('Failed to add file');
-                                      }
-                                    }
-                                  }}
-                                  className="space-y-1"
-                                >
-                                  <input
-                                    type="text"
-                                    value={newFileName}
-                                    onChange={(e) => setNewFileName(e.target.value)}
-                                    placeholder="filename..."
-                                    className={`w-full px-2 py-0.5 text-[11px] rounded border ${
-                                      theme === 'dark'
-                                        ? 'bg-gray-800 border-gray-600 text-white'
-                                        : 'bg-white border-gray-300 text-gray-900'
-                                    }`}
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Escape') {
-                                        setNewFileName('');
-                                        setNewFileLanguage('python');
-                                        setShowNewFileInput(null);
-                                      }
-                                    }}
-                                  />
-                                  <select
-                                    value={newFileLanguage}
-                                    onChange={(e) => setNewFileLanguage(e.target.value as 'python' | 'java' | 'javascript' | 'cpp')}
-                                    className={`w-full px-2 py-0.5 text-[11px] rounded border ${
-                                      theme === 'dark'
-                                        ? 'bg-gray-800 border-gray-600 text-white'
-                                        : 'bg-white border-gray-300 text-gray-900'
-                                    }`}
-                                  >
-                                    <option value="python">Python 🐍</option>
-                                    <option value="javascript">JavaScript 📜</option>
-                                    <option value="java">Java ☕</option>
-                                    <option value="cpp">C++ ⚡</option>
-                                  </select>
-                                  <button
-                                    type="submit"
-                                    className={`w-full px-2 py-0.5 text-[11px] rounded ${
-                                      theme === 'dark'
-                                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                                    }`}
-                                  >
-                                    Add File
-                                  </button>
-                                </form>
-                              </div>
-                            )}
-
-                            {/* File Items */}
-                            {project.files.map((file) => (
-                              <div
-                                key={file._id}
-                                className={`flex items-center gap-1 px-1 py-0.5 rounded cursor-pointer group ${
-                                  currentFile?._id === file._id
-                                    ? theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
-                                    : 'hover:bg-blue-500/10'
-                                }`}
-                                onClick={() => {
-                                  setCurrentProject(project);
-                                  setCurrentFile(file);
-                                  setCode(file.content);
-                                  // Set language based on file extension
-                                  const ext = file.name.split('.').pop()?.toLowerCase();
-                                  if (ext === 'py') setLanguage('python');
-                                  else if (ext === 'js') setLanguage('javascript');
-                                  else if (ext === 'java') setLanguage('java');
-                                  else if (ext === 'cpp' || ext === 'cc') setLanguage('cpp');
-                                  // Update URL to project page
-                                  navigate(`/project/${project._id}`);
-                                }}
-                              >
-                                <File className="w-3 h-3 text-blue-400" />
-                                <span className={`flex-1 truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                  {file.name}
-                                </span>
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (confirm(`Delete file "${file.name}"?`)) {
-                                      try {
-                                        await projectService.deleteFile(project._id, file._id);
-                                        if (currentFile?._id === file._id) {
-                                          setCurrentFile(null);
-                                        }
-                                        loadProjects();
-                                      } catch (err) {
-                                        console.error('Failed to delete file:', err);
-                                      }
-                                    }
-                                  }}
-                                  className="hidden group-hover:block p-0.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400"
-                                  title="Delete File"
-                                >
-                                  <Trash2 className="w-2.5 h-2.5" />
-                                </button>
-                              </div>
-                            ))}
-
-                            {project.files.length === 0 && !showNewFileInput && (
-                              <div className={`px-2 py-1 text-[10px] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                No files
-                              </div>
-                            )}
+                        {currentProject.files.length === 0 && !showNewFileInput && (
+                          <div className={`px-2 py-1 text-[10px] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                            No files yet
                           </div>
                         )}
                       </div>
-                    ))
+                    </div>
                   )}
                 </div>
               </div>
