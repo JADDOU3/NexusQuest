@@ -42,7 +42,7 @@ export function validateCode(req: Request, res: Response, next: NextFunction) {
   }
 
   // Validate language
-  const supportedLanguages = ['python', 'java'];
+  const supportedLanguages = ['python', 'java', 'javascript', 'js', 'cpp', 'c++', 'go', 'golang'];
   if (language && !supportedLanguages.includes(language.toLowerCase())) {
     return res.status(400).json({
       success: false,

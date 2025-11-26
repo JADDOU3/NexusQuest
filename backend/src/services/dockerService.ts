@@ -254,14 +254,14 @@ ${code.split('\n').map(line => '        ' + line).join('\n')}
     let cmd: string;
     if (inputData) {
       // Use heredoc to provide input via stdin
-      cmd = `cat << 'JAVACODE' > ${className}.java
+      cmd = `cd /tmp && cat << 'JAVACODE' > ${className}.java
 ${javaCode}
 JAVACODE
 javac ${className}.java && cat << 'INPUT' | java ${className}
 ${inputData}
 INPUT`;
     } else {
-      cmd = `echo '${escapedCode}' > ${className}.java && javac ${className}.java && java ${className}`;
+      cmd = `cd /tmp && echo '${escapedCode}' > ${className}.java && javac ${className}.java && java ${className}`;
     }
     
     // Create container with Java
@@ -273,15 +273,15 @@ INPUT`;
         '-c',
         cmd
       ],
-      WorkingDir: '/app',
+      WorkingDir: '/tmp',
       HostConfig: {
         Memory: 256 * 1024 * 1024, // 256MB memory limit for Java
         CpuQuota: 50000, // 50% CPU limit
         NetworkMode: 'none', // No network access
         ReadonlyRootfs: false, // Java needs write access for compilation
         Tmpfs: {
-          '/app': 'rw,noexec,nosuid,size=200m',
-          '/tmp': 'rw,noexec,nosuid,size=100m'
+          '/app': 'rw,exec,nosuid,size=200m',
+          '/tmp': 'rw,exec,nosuid,size=100m'
         }
       },
       AttachStdout: true,
@@ -506,29 +506,29 @@ async function executeCppCode(code: string, input?: string): Promise<{ output: s
     
     let cmd: string;
     if (inputData) {
-      cmd = `cat << 'CPPCODE' > main.cpp
+      cmd = `cd /tmp && cat << 'CPPCODE' > main.cpp
 ${code}
 CPPCODE
 g++ -std=c++20 -O2 main.cpp -o main && cat << 'INPUT' | ./main
 ${inputData}
 INPUT`;
     } else {
-      cmd = `echo '${escapedCode}' > main.cpp && g++ -std=c++20 -O2 main.cpp -o main && ./main`;
+      cmd = `cd /tmp && echo '${escapedCode}' > main.cpp && g++ -std=c++20 -O2 main.cpp -o main && ./main`;
     }
     
     const container = await docker.createContainer({
       Image: languageImages['cpp'],
       name: containerName,
       Cmd: ['sh', '-c', cmd],
-      WorkingDir: '/app',
+      WorkingDir: '/tmp',
       HostConfig: {
         Memory: 256 * 1024 * 1024,
         CpuQuota: 50000,
         NetworkMode: 'none',
         ReadonlyRootfs: false,
         Tmpfs: {
-          '/app': 'rw,noexec,nosuid,size=200m',
-          '/tmp': 'rw,noexec,nosuid,size=100m'
+          '/app': 'rw,exec,nosuid,size=200m',
+          '/tmp': 'rw,exec,nosuid,size=100m'
         }
       },
       AttachStdout: true,
@@ -617,7 +617,7 @@ async function executeGoCode(code: string, input?: string): Promise<{ output: st
     
     let cmd: string;
     if (inputData) {
-      cmd = `cat << 'GOCODE' > main.go
+      cmd = `cd /tmp && cat << 'GOCODE' > main.go
 ${code}
 GOCODE
 cat << 'INPUT' | go run main.go
@@ -625,22 +625,22 @@ ${inputData}
 INPUT`;
     } else {
       const escapedCode = code.replace(/'/g, "'\\''");
-      cmd = `echo '${escapedCode}' > main.go && go run main.go`;
+      cmd = `cd /tmp && echo '${escapedCode}' > main.go && go run main.go`;
     }
     
     const container = await docker.createContainer({
       Image: languageImages['go'],
       name: containerName,
       Cmd: ['sh', '-c', cmd],
-      WorkingDir: '/app',
+      WorkingDir: '/tmp',
       HostConfig: {
         Memory: 256 * 1024 * 1024,
         CpuQuota: 50000,
         NetworkMode: 'none',
         ReadonlyRootfs: false,
         Tmpfs: {
-          '/app': 'rw,noexec,nosuid,size=200m',
-          '/tmp': 'rw,noexec,nosuid,size=100m'
+          '/app': 'rw,exec,nosuid,size=200m',
+          '/tmp': 'rw,exec,nosuid,size=100m'
         }
       },
       AttachStdout: true,
