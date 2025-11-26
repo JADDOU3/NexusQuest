@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { CodeEditor } from './components/CodeEditor';
 import { Console } from './components/Console';
 import { Button } from './components/ui/button';
-import { Play, Square, Download, Upload } from 'lucide-react';
+import { Play, Square, Download, Upload, Moon, Sun, Lightbulb, Sparkles } from 'lucide-react';
+import * as aiService from './services/aiService';
 
 interface ConsoleOutput {
   type: 'output' | 'error' | 'info' | 'input';
@@ -152,18 +153,46 @@ const getCodeSuggestions = (code: string): string[] => {
 };
 
 function App() {
-  const [code, setCode] = useState(defaultCode);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('nexusquest-theme');
+    return (saved as 'dark' | 'light') || 'dark';
+  });
+  const [code, setCode] = useState(() => {
+    const saved = localStorage.getItem('nexusquest-code');
+    return saved || defaultCode;
+  });
   const [output, setOutput] = useState<ConsoleOutput[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [language, setLanguage] = useState<'python' | 'java'>('python');
+  const [language, setLanguage] = useState<'python' | 'java'>(() => {
+    const saved = localStorage.getItem('nexusquest-language');
+    return (saved as 'python' | 'java') || 'python';
+  });
   const [waitingForInput, setWaitingForInput] = useState(false);
   const [inputQueue, setInputQueue] = useState<string[]>([]);
   const [expectedInputCount, setExpectedInputCount] = useState(0);
 
+  // Save theme to localStorage
+  useEffect(() => {
+    localStorage.setItem('nexusquest-theme', theme);
+  }, [theme]);
+
+  // Save code to localStorage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.setItem('nexusquest-code', code);
+    }, 1000); // Debounce 1 second
+    return () => clearTimeout(timer);
+  }, [code]);
+
+  // Save language to localStorage
+  useEffect(() => {
+    localStorage.setItem('nexusquest-language', language);
+  }, [language]);
+
   // Initialize suggestions on mount
   useEffect(() => {
-    setSuggestions(getCodeSuggestions(defaultCode));
+    setSuggestions(getCodeSuggestions(code));
   }, []);
 
   // Change default code when language changes
@@ -235,6 +264,26 @@ function App() {
 
       if (result.error) {
         addToConsole(result.error, 'error');
+        
+        // Get AI error suggestions
+        try {
+          const errorAnalysis = await aiService.getErrorSuggestions(result.error, code, language);
+          if (errorAnalysis.explanation) {
+            addToConsole('', 'output');
+            addToConsole('🤖 AI Error Analysis:', 'info');
+            addToConsole(errorAnalysis.explanation, 'info');
+            
+            if (errorAnalysis.suggestions.length > 0) {
+              addToConsole('', 'output');
+              addToConsole('💡 Suggested Fixes:', 'info');
+              errorAnalysis.suggestions.forEach((suggestion, idx) => {
+                addToConsole(`   ${idx + 1}. ${suggestion}`, 'output');
+              });
+            }
+          }
+        } catch (aiError) {
+          console.error('Failed to get AI error suggestions:', aiError);
+        }
       } else {
         addToConsole(result.output || '✅ Code executed successfully', 'output');
       }
@@ -312,6 +361,28 @@ function App() {
     setSuggestions(newSuggestions);
   };
 
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
+  const explainSelectedCode = async () => {
+    if (!code.trim()) {
+      addToConsole('No code to explain!', 'error');
+      return;
+    }
+
+    addToConsole('🤖 Analyzing code...', 'info');
+    
+    try {
+      const explanation = await aiService.explainCode(code, language);
+      addToConsole('', 'output');
+      addToConsole('💡 Code Explanation:', 'info');
+      addToConsole(explanation, 'output');
+    } catch (error) {
+      addToConsole('Failed to explain code', 'error');
+    }
+  };
+
   const handleConsoleInput = (value: string) => {
     if (!value.trim()) return;
     
@@ -340,9 +411,17 @@ function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className={`h-screen flex flex-col ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
+        : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'
+    }`}>
       {/* Header */}
-      <header className="border-b border-gray-700 bg-gradient-to-r from-blue-900/50 via-purple-900/50 to-blue-900/50 backdrop-blur-sm">
+      <header className={`border-b ${
+        theme === 'dark'
+          ? 'border-gray-700 bg-gradient-to-r from-blue-900/50 via-purple-900/50 to-blue-900/50'
+          : 'border-gray-300 bg-gradient-to-r from-blue-100/50 via-purple-100/50 to-blue-100/50'
+      } backdrop-blur-sm`}>
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -389,11 +468,30 @@ function App() {
                 Clear
               </Button>
               <Button 
+                onClick={explainSelectedCode}
+                className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-200 hover:scale-105"
+                title="Explain code with AI"
+              >
+                <Sparkles className="w-4 h-4" />
+                Explain
+              </Button>
+              <Button 
                 onClick={downloadCode} 
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-200 hover:scale-105"
               >
                 <Download className="w-4 h-4" />
                 Download
+              </Button>
+              <Button 
+                onClick={toggleTheme}
+                className={`flex items-center gap-2 ${
+                  theme === 'dark'
+                    ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700'
+                    : 'bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400'
+                } text-white shadow-lg transition-all duration-200 hover:scale-105`}
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
             </div>
           </div>
