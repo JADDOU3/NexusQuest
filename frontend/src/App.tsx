@@ -159,6 +159,7 @@ function App() {
   const [language, setLanguage] = useState<'python' | 'java'>('python');
   const [waitingForInput, setWaitingForInput] = useState(false);
   const [inputQueue, setInputQueue] = useState<string[]>([]);
+  const [expectedInputCount, setExpectedInputCount] = useState(0);
 
   // Initialize suggestions on mount
   useEffect(() => {
@@ -174,26 +175,37 @@ function App() {
     }
   }, [language]);
 
-  const runCode = async () => {
+  const runCode = async (providedInputs?: string[]) => {
     if (!code.trim()) {
       addToConsole('Please write some code first!', 'error');
       return;
     }
 
+    // Use provided inputs or current queue
+    const inputs = providedInputs || inputQueue;
+
     // Check for interactive input (Scanner/input) and prompt user to provide inputs
     const needsInput = (language === 'java' && (/Scanner/.test(code) && (/nextInt|nextLine|next\(|nextDouble|nextFloat/.test(code) || /BufferedReader/.test(code)))) ||
                        (language === 'python' && /input\s*\(/.test(code));
     
-    if (needsInput && inputQueue.length === 0) {
+    if (needsInput && inputs.length === 0) {
+      // Count how many inputs are needed
+      let inputCount = 0;
+      if (language === 'java') {
+        inputCount = (code.match(/nextInt|nextLine|nextDouble|nextFloat|next\(/g) || []).length;
+      } else if (language === 'python') {
+        inputCount = (code.match(/input\s*\(/g) || []).length;
+      }
+      
+      setExpectedInputCount(inputCount);
       addToConsole('⚠️ Your code requires input!', 'error');
       addToConsole('', 'output');
-      addToConsole('📝 How to provide inputs:', 'info');
-      addToConsole('   1. Type each value in the console input field below', 'output');
-      addToConsole('   2. Press Enter after each value', 'output');
-      addToConsole('   3. Repeat for all inputs your code needs', 'output');
-      addToConsole('   4. Click "Run Code" again to execute', 'output');
+      addToConsole(`📝 Your code needs ${inputCount} input${inputCount > 1 ? 's' : ''}:`, 'info');
+      addToConsole('   • Type each value in the console input field below', 'output');
+      addToConsole('   • Press Enter after each value', 'output');
+      addToConsole(`   • Code will auto-run after ${inputCount} input${inputCount > 1 ? 's' : ''}`, 'output');
       addToConsole('', 'output');
-      addToConsole(`💡 Example: For your code, type "10" and press Enter, then "20" and press Enter`, 'info');
+      addToConsole(`💡 Example: Type "10" and press Enter, then "20" and press Enter`, 'info');
       setWaitingForInput(true);
       return;
     }
@@ -201,8 +213,8 @@ function App() {
     setIsRunning(true);
     setWaitingForInput(false);
     
-    if (inputQueue.length > 0) {
-      addToConsole(`📥 Using inputs: ${inputQueue.join(', ')}`, 'info');
+    if (inputs.length > 0) {
+      addToConsole(`📥 Using inputs: ${inputs.join(', ')}`, 'info');
     }
     addToConsole('⏳ Running code...', 'info');
 
@@ -215,7 +227,7 @@ function App() {
         body: JSON.stringify({ 
           code: code.trim(),
           language: language,
-          input: inputQueue.join(',')
+          input: inputs.join(',')
         }),
       });
 
@@ -245,6 +257,7 @@ function App() {
     setOutput([]);
     setInputQueue([]);
     setWaitingForInput(false);
+    setExpectedInputCount(0);
   };
 
   const addToConsole = (message: string, type: ConsoleOutput['type'] = 'output') => {
@@ -306,11 +319,23 @@ function App() {
     setInputQueue(newQueue);
     addToConsole(`✅ Input #${newQueue.length} added: ${value}`, 'input' as ConsoleOutput['type']);
     
-    // Keep waiting for more inputs unless user is done
-    if (newQueue.length === 1) {
-      addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Need more? Type again. Ready? Click "Run Code".`, 'info');
+    // Check if we have all required inputs
+    if (expectedInputCount > 0 && newQueue.length >= expectedInputCount) {
+      addToConsole(`🎯 All ${expectedInputCount} inputs received! Auto-running code...`, 'info');
+      // Auto-run after a short delay to show the message
+      setTimeout(() => {
+        runCode(newQueue);
+      }, 500);
+    } else if (expectedInputCount > 0) {
+      const remaining = expectedInputCount - newQueue.length;
+      addToConsole(`💬 Input ${newQueue.length}/${expectedInputCount} received. ${remaining} more needed...`, 'info');
     } else {
-      addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Add more or click "Run Code" to execute.`, 'info');
+      // Fallback if count detection failed
+      if (newQueue.length === 1) {
+        addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Need more? Type again. Ready? Click "Run Code".`, 'info');
+      } else {
+        addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Add more or click "Run Code" to execute.`, 'info');
+      }
     }
   };
 
@@ -338,7 +363,7 @@ function App() {
                 </div>
               )}
               <Button 
-                onClick={runCode} 
+                onClick={() => runCode()} 
                 disabled={isRunning}
                 className={`flex items-center gap-2 ${
                   waitingForInput 
