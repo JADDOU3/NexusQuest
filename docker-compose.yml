@@ -48,6 +48,10 @@ services:
     container_name: nexusquest-python
     volumes:
       - python-code:/app
+    # Keep the runner container alive (default image CMD exits immediately)
+    command: tail -f /dev/null
+    restart: unless-stopped
+    tty: true
 
   # JavaScript/Node.js execution container
   javascript-runner:
@@ -58,6 +62,10 @@ services:
     container_name: nexusquest-javascript
     volumes:
       - javascript-code:/app
+    # Keep the runner container alive for on-demand execution
+    command: tail -f /dev/null
+    restart: unless-stopped
+    tty: true
 
   # Java execution container
   java-runner:
@@ -68,6 +76,9 @@ services:
     container_name: nexusquest-java
     volumes:
       - java-code:/app
+    command: tail -f /dev/null
+    restart: unless-stopped
+    tty: true
 
   # C++ execution container
   cpp-runner:
@@ -78,6 +89,9 @@ services:
     container_name: nexusquest-cpp
     volumes:
       - cpp-code:/app
+    command: tail -f /dev/null
+    restart: unless-stopped
+    tty: true
 
   # Go execution container
   go-runner:
@@ -88,6 +102,9 @@ services:
     container_name: nexusquest-go
     volumes:
       - go-code:/app
+    command: tail -f /dev/null
+    restart: unless-stopped
+    tty: true
 
 volumes:
   docker-data:

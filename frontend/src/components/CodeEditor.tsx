@@ -1,5 +1,12 @@
 import Editor, { OnMount } from '@monaco-editor/react';
+import * as MonacoNamespace from 'monaco-editor';
+import { useEffect, useRef } from 'react';
 import { getAiCompletions } from '../services/aiService';
+
+export interface CodeErrorMarker {
+  line: number;
+  message: string;
+}
 
 interface CodeEditorProps {
   value: string;
@@ -7,6 +14,7 @@ interface CodeEditorProps {
   language?: string;
   height?: string;
   theme?: string;
+  errors?: CodeErrorMarker[];
 }
 
 export function CodeEditor({ 
@@ -14,8 +22,11 @@ export function CodeEditor({
   onChange, 
   language = 'python',
   height = '400px',
-  theme = 'vs-dark'
+  theme = 'vs-dark',
+  errors = [],
 }: CodeEditorProps) {
+  const editorRef = useRef<MonacoNamespace.editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof MonacoNamespace | null>(null);
   // Map our language names to Monaco language IDs
   const getMonacoLanguage = (lang: string): string => {
     const languageMap: Record<string, string> = {
@@ -34,6 +45,8 @@ export function CodeEditor({
   };
 
   const handleEditorDidMount: OnMount = (_editor, monaco) => {
+    editorRef.current = _editor as MonacoNamespace.editor.IStandaloneCodeEditor;
+    monacoRef.current = monaco as unknown as typeof MonacoNamespace;
     // Configure autocomplete like Visual Studio IntelliSense
     _editor.updateOptions({
       quickSuggestions: {
@@ -364,6 +377,29 @@ export function CodeEditor({
     });
   };
 
+  // Apply error markers to the editor model
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+    const model = editorRef.current.getModel();
+    if (!model) return;
+
+    const monaco = monacoRef.current;
+
+    const markers =
+      errors?.map((err) => ({
+        startLineNumber: err.line,
+        endLineNumber: err.line,
+        startColumn: 1,
+        endColumn: 1000,
+        message: err.message,
+        severity: monaco.MarkerSeverity.Error,
+      })) ?? [];
+
+    monaco.editor.setModelMarkers(model, 'executionErrors', markers);
+  }, [errors, value, language]);
+
+  const lineCount = value ? value.split('\n').length : 0;
+
   return (
     <div className="h-full w-full relative overflow-hidden">
       <Editor
@@ -397,6 +433,9 @@ export function CodeEditor({
           renderLineHighlight: 'all',
         }}
       />
+      <div className="pointer-events-none absolute bottom-2 left-3 text-[11px] px-2 py-0.5 rounded bg-black/40 text-gray-100 border border-white/10">
+        {lineCount} lines
+      </div>
     </div>
   );
 }

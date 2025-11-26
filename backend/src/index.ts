@@ -8,7 +8,8 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '9876', 10);
+// Use the container-forwarded port by default and bind to 0.0.0.0 so Docker can route traffic
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Security middleware
 app.use(helmet());
@@ -47,8 +48,9 @@ app.use('/api/ai', aiRouter);
 // Error handling
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, 'localhost', () => {
+// Start server and bind to all interfaces so the port mapping in docker-compose works
+// (binding to 'localhost' prevents external connections to the container port)
+app.listen(PORT, '0.0.0.0', () => {
   logger.info(`NexusQuest Backend API running on port ${PORT}`);
   logger.info(`Health check: http://localhost:${PORT}/health`);
 });

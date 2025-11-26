@@ -37,11 +37,11 @@ const languageImages: Record<string, string> = {
 
 export async function executeCode(code: string, language: string, input?: string): Promise<ExecutionResult> {
   const startTime = Date.now();
-  
+
   try {
     // Ensure Docker is available
     await docker.ping();
-    
+
     let result;
     switch (language.toLowerCase()) {
       case 'python':
@@ -65,16 +65,16 @@ export async function executeCode(code: string, language: string, input?: string
       default:
         throw new Error(`Language ${language} is not supported yet`);
     }
-    
+
     const executionTime = Date.now() - startTime;
-    
+
     return {
       ...result,
       executionTime
     };
   } catch (error) {
     logger.error('Docker execution error:', error);
-    
+
     // Check if it's a Docker connection error
     if (error instanceof Error && (error.message.includes('ENOENT') || error.message.includes('docker_engine'))) {
       return {
@@ -83,7 +83,7 @@ export async function executeCode(code: string, language: string, input?: string
         executionTime: Date.now() - startTime
       };
     }
-    
+
     return {
       output: '',
       error: error instanceof Error ? error.message : 'Unknown execution error',
@@ -94,7 +94,7 @@ export async function executeCode(code: string, language: string, input?: string
 
 async function executePythonCode(code: string, input?: string): Promise<{ output: string; error: string }> {
   const containerName = `nexusquest-python-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   try {
     // Wrap code to handle input
     let wrappedCode = code;
@@ -117,7 +117,7 @@ def input(prompt=''):
 ${code}
 `;
     }
-    
+
     // Create and start container
     const container = await docker.createContainer({
       Image: languageImages['python'],
@@ -146,7 +146,7 @@ ${code}
 
     // Wait for container to finish or timeout
     const resultPromise = container.wait();
-    
+
     await Promise.race([resultPromise, timeoutPromise]);
 
     // Get output
@@ -159,7 +159,7 @@ ${code}
     // Convert buffer to string and clean Docker log formatting
     const buffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream);
     let output = '';
-    
+
     // Docker multiplexes stdout/stderr with 8-byte headers
     // Format: [stream_type, 0, 0, 0, size1, size2, size3, size4, ...data...]
     let offset = 0;
@@ -171,22 +171,22 @@ ${code}
       }
       offset += 8 + payloadSize;
     }
-    
+
     // Fallback if header parsing fails
     if (!output && buffer.length > 0) {
       output = buffer.toString('utf8').replace(/[\x00-\x08]/g, '');
     }
-    
+
     // Clean up container
     await container.remove({ force: true });
 
     // Split into lines and filter empty ones
     const lines = output.split('\n').filter((line: string) => line.trim());
-    
+
     // Separate stdout and stderr
-    const hasError = lines.some((line: string) => 
-      line.includes('Error') || 
-      line.includes('Traceback') || 
+    const hasError = lines.some((line: string) =>
+      line.includes('Error') ||
+      line.includes('Traceback') ||
       line.includes('File "<string>"')
     );
 
@@ -227,12 +227,12 @@ ${code}
 
 async function executeJavaCode(code: string, input?: string): Promise<{ output: string; error: string }> {
   const containerName = `nexusquest-java-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   try {
     // Extract class name from code
     const classMatch = code.match(/public\s+class\s+(\w+)/);
     const className = classMatch ? classMatch[1] : 'Main';
-    
+
     // If no public class is found, wrap code in a Main class
     let javaCode = code;
     if (!classMatch) {
@@ -243,13 +243,13 @@ ${code.split('\n').map(line => '        ' + line).join('\n')}
     }
 }`;
     }
-    
+
     // Prepare input for stdin
     const inputData = input ? input.split(',').map(i => i.trim()).join('\n') : '';
-    
+
     // Escape single quotes in Java code for shell
     const escapedCode = javaCode.replace(/'/g, "'\\''");
-    
+
     // Build command with heredoc for input
     let cmd: string;
     if (inputData) {
@@ -263,7 +263,7 @@ INPUT`;
     } else {
       cmd = `cd /tmp && echo '${escapedCode}' > ${className}.java && javac -d . ${className}.java && java -cp . ${className}`;
     }
-    
+
     // Create container with Java
     const container = await docker.createContainer({
       Image: languageImages['java'],
@@ -297,7 +297,7 @@ INPUT`;
 
     // Wait for container to finish or timeout
     const resultPromise = container.wait();
-    
+
     await Promise.race([resultPromise, timeoutPromise]);
 
     // Get output
@@ -310,7 +310,7 @@ INPUT`;
     // Convert buffer to string and clean Docker log formatting
     const buffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream);
     let output = '';
-    
+
     // Docker multiplexes stdout/stderr with 8-byte headers
     // Format: [stream_type, 0, 0, 0, size1, size2, size3, size4, ...data...]
     let offset = 0;
@@ -322,22 +322,22 @@ INPUT`;
       }
       offset += 8 + payloadSize;
     }
-    
+
     // Fallback if header parsing fails
     if (!output && buffer.length > 0) {
       output = buffer.toString('utf8').replace(/[\x00-\x08]/g, '');
     }
-    
+
     // Clean up container
     await container.remove({ force: true });
 
     // Split into lines and filter empty ones
     const lines = output.split('\n').filter((line: string) => line.trim());
-    
+
     // Check for compilation or runtime errors
-    const hasError = lines.some((line: string) => 
-      line.includes('error:') || 
-      line.includes('Exception') || 
+    const hasError = lines.some((line: string) =>
+      line.includes('error:') ||
+      line.includes('Exception') ||
       line.includes('Error')
     );
 
@@ -378,7 +378,7 @@ INPUT`;
 
 async function executeJavaScriptCode(code: string, input?: string): Promise<{ output: string; error: string }> {
   const containerName = `nexusquest-js-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   try {
     // Wrap code to handle input
     let wrappedCode = code;
@@ -401,7 +401,7 @@ function input(prompt = '') {
 ${code}
 `;
     }
-    
+
     // Create and start container
     const container = await docker.createContainer({
       Image: languageImages['javascript'],
@@ -438,7 +438,7 @@ ${code}
 
     const buffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream);
     let output = '';
-    
+
     let offset = 0;
     while (offset < buffer.length) {
       if (buffer.length - offset < 8) break;
@@ -448,18 +448,18 @@ ${code}
       }
       offset += 8 + payloadSize;
     }
-    
+
     if (!output && buffer.length > 0) {
       output = buffer.toString('utf8').replace(/[\x00-\x08]/g, '');
     }
-    
+
     await container.remove({ force: true });
 
     const lines = output.split('\n').filter((line: string) => line.trim());
-    
-    const hasError = lines.some((line: string) => 
-      line.includes('Error') || 
-      line.includes('TypeError') || 
+
+    const hasError = lines.some((line: string) =>
+      line.includes('Error') ||
+      line.includes('TypeError') ||
       line.includes('ReferenceError') ||
       line.includes('at ')
     );
@@ -480,7 +480,7 @@ ${code}
     try {
       const container = docker.getContainer(containerName);
       await container.remove({ force: true });
-    } catch {}
+    } catch { }
 
     if (error instanceof Error && error.message.includes('timeout')) {
       return {
@@ -498,12 +498,12 @@ ${code}
 
 async function executeCppCode(code: string, input?: string): Promise<{ output: string; error: string }> {
   const containerName = `nexusquest-cpp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   try {
     const inputData = input ? input.split(',').map(i => i.trim()).join('\n') : '';
-    
+
     const escapedCode = code.replace(/'/g, "'\\''");
-    
+
     let cmd: string;
     if (inputData) {
       cmd = `cd /tmp && cat << 'CPPCODE' > main.cpp
@@ -515,7 +515,7 @@ INPUT`;
     } else {
       cmd = `cd /tmp && echo '${escapedCode}' > main.cpp && g++ -std=c++20 -O2 main.cpp -o main && ./main`;
     }
-    
+
     const container = await docker.createContainer({
       Image: languageImages['cpp'],
       name: containerName,
@@ -552,7 +552,7 @@ INPUT`;
 
     const buffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream);
     let output = '';
-    
+
     let offset = 0;
     while (offset < buffer.length) {
       if (buffer.length - offset < 8) break;
@@ -562,17 +562,17 @@ INPUT`;
       }
       offset += 8 + payloadSize;
     }
-    
+
     if (!output && buffer.length > 0) {
       output = buffer.toString('utf8').replace(/[\x00-\x08]/g, '');
     }
-    
+
     await container.remove({ force: true });
 
     const lines = output.split('\n').filter((line: string) => line.trim());
-    
-    const hasError = lines.some((line: string) => 
-      line.includes('error:') || 
+
+    const hasError = lines.some((line: string) =>
+      line.includes('error:') ||
       line.includes('undefined reference') ||
       line.includes('segmentation fault')
     );
@@ -593,7 +593,7 @@ INPUT`;
     try {
       const container = docker.getContainer(containerName);
       await container.remove({ force: true });
-    } catch {}
+    } catch { }
 
     if (error instanceof Error && error.message.includes('timeout')) {
       return {
@@ -611,10 +611,10 @@ INPUT`;
 
 async function executeGoCode(code: string, input?: string): Promise<{ output: string; error: string }> {
   const containerName = `nexusquest-go-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   try {
     const inputData = input ? input.split(',').map(i => i.trim()).join('\n') : '';
-    
+
     let cmd: string;
     if (inputData) {
       cmd = `cd /tmp && cat << 'GOCODE' > main.go
@@ -627,7 +627,7 @@ INPUT`;
       const escapedCode = code.replace(/'/g, "'\\''");
       cmd = `cd /tmp && echo '${escapedCode}' > main.go && go run main.go`;
     }
-    
+
     const container = await docker.createContainer({
       Image: languageImages['go'],
       name: containerName,
@@ -664,7 +664,7 @@ INPUT`;
 
     const buffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream);
     let output = '';
-    
+
     let offset = 0;
     while (offset < buffer.length) {
       if (buffer.length - offset < 8) break;
@@ -674,17 +674,17 @@ INPUT`;
       }
       offset += 8 + payloadSize;
     }
-    
+
     if (!output && buffer.length > 0) {
       output = buffer.toString('utf8').replace(/[\x00-\x08]/g, '');
     }
-    
+
     await container.remove({ force: true });
 
     const lines = output.split('\n').filter((line: string) => line.trim());
-    
-    const hasError = lines.some((line: string) => 
-      line.includes('error:') || 
+
+    const hasError = lines.some((line: string) =>
+      line.includes('error:') ||
       line.includes('panic:') ||
       line.includes('fatal error:')
     );
@@ -705,7 +705,7 @@ INPUT`;
     try {
       const container = docker.getContainer(containerName);
       await container.remove({ force: true });
-    } catch {}
+    } catch { }
 
     if (error instanceof Error && error.message.includes('timeout')) {
       return {

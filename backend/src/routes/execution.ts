@@ -11,9 +11,9 @@ codeExecutionRouter.post('/run', validateCode, async (req, res) => {
 
   try {
     logger.info(`Executing ${language} code${input ? ' with input' : ''}`);
-    
+
     const result = await executeCode(code, language, input);
-    
+
     res.json({
       success: true,
       output: result.output,
@@ -22,7 +22,7 @@ codeExecutionRouter.post('/run', validateCode, async (req, res) => {
     });
   } catch (error) {
     logger.error('Code execution failed:', error);
-    
+
     res.status(500).json({
       success: false,
       error: 'Internal server error during code execution',
