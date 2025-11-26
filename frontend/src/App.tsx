@@ -180,18 +180,31 @@ function App() {
       return;
     }
 
-    // Check for interactive input (Scanner/input)
-    if (language === 'java' && /Scanner.*next|BufferedReader/.test(code)) {
-      addToConsole('💡 Scanner detected: Enter values when prompted in the console below', 'info');
-    }
+    // Check for interactive input (Scanner/input) and prompt user to provide inputs
+    const needsInput = (language === 'java' && (/Scanner/.test(code) && (/nextInt|nextLine|next\(|nextDouble|nextFloat/.test(code) || /BufferedReader/.test(code)))) ||
+                       (language === 'python' && /input\s*\(/.test(code));
     
-    if (language === 'python' && /input\s*\(/.test(code)) {
-      addToConsole('💡 input() detected: Enter values when prompted in the console below', 'info');
+    if (needsInput && inputQueue.length === 0) {
+      addToConsole('⚠️ Your code requires input!', 'error');
+      addToConsole('', 'output');
+      addToConsole('📝 How to provide inputs:', 'info');
+      addToConsole('   1. Type each value in the console input field below', 'output');
+      addToConsole('   2. Press Enter after each value', 'output');
+      addToConsole('   3. Repeat for all inputs your code needs', 'output');
+      addToConsole('   4. Click "Run Code" again to execute', 'output');
+      addToConsole('', 'output');
+      addToConsole(`💡 Example: For your code, type "10" and press Enter, then "20" and press Enter`, 'info');
+      setWaitingForInput(true);
+      return;
     }
 
     setIsRunning(true);
-    addToConsole('Running code...', 'info');
-    console.log('Executing code with language:', language);
+    setWaitingForInput(false);
+    
+    if (inputQueue.length > 0) {
+      addToConsole(`📥 Using inputs: ${inputQueue.join(', ')}`, 'info');
+    }
+    addToConsole('⏳ Running code...', 'info');
 
     try {
       const response = await fetch('http://localhost:9876/api/run', {
@@ -211,8 +224,11 @@ function App() {
       if (result.error) {
         addToConsole(result.error, 'error');
       } else {
-        addToConsole(result.output || 'Code executed successfully', 'output');
+        addToConsole(result.output || '✅ Code executed successfully', 'output');
       }
+      
+      // Clear input queue after successful execution
+      setInputQueue([]);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
@@ -227,6 +243,8 @@ function App() {
 
   const clearConsole = () => {
     setOutput([]);
+    setInputQueue([]);
+    setWaitingForInput(false);
   };
 
   const addToConsole = (message: string, type: ConsoleOutput['type'] = 'output') => {
@@ -282,9 +300,18 @@ function App() {
   };
 
   const handleConsoleInput = (value: string) => {
-    setInputQueue(prev => [...prev, value]);
-    setWaitingForInput(false);
-    addToConsole(`> ${value}`, 'input' as ConsoleOutput['type']);
+    if (!value.trim()) return;
+    
+    const newQueue = [...inputQueue, value];
+    setInputQueue(newQueue);
+    addToConsole(`✅ Input #${newQueue.length} added: ${value}`, 'input' as ConsoleOutput['type']);
+    
+    // Keep waiting for more inputs unless user is done
+    if (newQueue.length === 1) {
+      addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Need more? Type again. Ready? Click "Run Code".`, 'info');
+    } else {
+      addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Add more or click "Run Code" to execute.`, 'info');
+    }
   };
 
   return (
@@ -305,13 +332,22 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {inputQueue.length > 0 && (
+                <div className="px-3 py-1.5 bg-yellow-500/20 border border-yellow-500/50 rounded-lg flex items-center gap-2">
+                  <span className="text-yellow-400 text-xs font-semibold">📥 {inputQueue.length} input{inputQueue.length > 1 ? 's' : ''} ready</span>
+                </div>
+              )}
               <Button 
                 onClick={runCode} 
                 disabled={isRunning}
-                className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/30 transition-all duration-200 hover:scale-105"
+                className={`flex items-center gap-2 ${
+                  waitingForInput 
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 shadow-yellow-500/30 animate-pulse' 
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-green-500/30'
+                } text-white shadow-lg transition-all duration-200 hover:scale-105`}
               >
                 <Play className="w-4 h-4" fill="currentColor" />
-                {isRunning ? 'Running...' : 'Run Code'}
+                {isRunning ? 'Running...' : waitingForInput ? 'Waiting for Input' : inputQueue.length > 0 ? `Run with ${inputQueue.length} input${inputQueue.length > 1 ? 's' : ''}` : 'Run Code'}
               </Button>
               <Button 
                 onClick={loadCodeFile} 

@@ -13,8 +13,24 @@ interface ConsoleProps {
   waitingForInput?: boolean;
 }
 
-export function Console({ output, height = '200px', onInput, waitingForInput = false }: ConsoleProps) {
+export function Console({ output, onInput, waitingForInput = false }: ConsoleProps) {
   const [inputValue, setInputValue] = React.useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  
+  // Auto-scroll to bottom when output changes
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [output]);
+
+  // Auto-focus input when waiting for input
+  React.useEffect(() => {
+    if (waitingForInput && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [waitingForInput]);
   
   const getTypeClass = (type: ConsoleOutput['type']) => {
     switch (type) {
@@ -23,7 +39,7 @@ export function Console({ output, height = '200px', onInput, waitingForInput = f
       case 'info':
         return 'text-blue-400';
       case 'input':
-        return 'text-yellow-400';
+        return 'text-cyan-400';
       default:
         return 'text-green-400';
     }
@@ -42,16 +58,17 @@ export function Console({ output, height = '200px', onInput, waitingForInput = f
   };
 
   return (
-    <div 
-      className="bg-gradient-to-b from-gray-900 to-black text-white font-mono text-sm p-4 overflow-y-auto relative"
-      style={{ height }}
-    >
+    <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 to-black text-white font-mono text-sm relative">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-5" style={{
         backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)'
       }}></div>
       
-      <div className="relative z-10">
+      {/* Output area */}
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 relative z-10"
+      >
         {output.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mb-4 animate-pulse">
@@ -100,25 +117,31 @@ export function Console({ output, height = '200px', onInput, waitingForInput = f
                 </div>
               </div>
             ))}
-            
-            {/* Input field when waiting for input */}
-            {waitingForInput && (
-              <div className="mt-4 flex items-center gap-2 p-2 bg-gray-800/50 rounded border border-yellow-500/30">
-                <span className="text-yellow-400">›</span>
-                <form onSubmit={handleInputSubmit} className="flex-1">
-                  <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Enter input and press Enter..."
-                    className="w-full bg-transparent text-white outline-none placeholder-gray-500"
-                    autoFocus
-                  />
-                </form>
-              </div>
-            )}
           </div>
         )}
+      </div>
+      
+      {/* Fixed input area at bottom - always visible like GDBOnline */}
+      <div className="border-t border-gray-800 p-3 bg-gray-900/80 backdrop-blur-sm relative z-10">
+        <form onSubmit={handleInputSubmit} className="flex items-center gap-2">
+          <span className={`${waitingForInput ? 'text-yellow-400 animate-pulse' : 'text-gray-600'} flex-shrink-0`}>
+            {waitingForInput ? '⚡' : '›'}
+          </span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={waitingForInput ? "Program is waiting for input..." : "Type input here (for programs using Scanner/input)"}
+            disabled={!waitingForInput && output.length === 0}
+            className={`flex-1 bg-transparent outline-none placeholder-gray-600 ${
+              waitingForInput ? 'text-white' : 'text-gray-500'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          />
+          {waitingForInput && (
+            <span className="text-xs text-yellow-400/60">Press Enter to submit</span>
+          )}
+        </form>
       </div>
     </div>
   );

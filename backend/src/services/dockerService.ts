@@ -135,10 +135,25 @@ ${code}
     });
 
     // Convert buffer to string and clean Docker log formatting
-    let output = stream.toString('utf8');
+    const buffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream);
+    let output = '';
     
-    // Remove Docker log headers (8 bytes at start of each line)
-    output = output.replace(/[\x00-\x08]/g, '');
+    // Docker multiplexes stdout/stderr with 8-byte headers
+    // Format: [stream_type, 0, 0, 0, size1, size2, size3, size4, ...data...]
+    let offset = 0;
+    while (offset < buffer.length) {
+      if (buffer.length - offset < 8) break;
+      const payloadSize = buffer.readUInt32BE(offset + 4);
+      if (payloadSize > 0 && offset + 8 + payloadSize <= buffer.length) {
+        output += buffer.toString('utf8', offset + 8, offset + 8 + payloadSize);
+      }
+      offset += 8 + payloadSize;
+    }
+    
+    // Fallback if header parsing fails
+    if (!output && buffer.length > 0) {
+      output = buffer.toString('utf8').replace(/[\x00-\x08]/g, '');
+    }
     
     // Clean up container
     await container.remove({ force: true });
@@ -192,27 +207,39 @@ async function executeJavaCode(code: string, input?: string): Promise<{ output: 
   const containerName = `nexusquest-java-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
-    // Inject input handling for Scanner if input is provided
-    let wrappedCode = code;
-    if (input && code.includes('Scanner')) {
-      const inputs = input.split(',').map(i => i.trim());
-      const inputsStr = inputs.join('\\n');
-      wrappedCode = code.replace(/new\s+Scanner\(System\.in\)/, `new Scanner("${inputsStr}")`);
-    }
-    
     // Extract class name from code
-    const classMatch = wrappedCode.match(/public\s+class\s+(\w+)/);
+    const classMatch = code.match(/public\s+class\s+(\w+)/);
     const className = classMatch ? classMatch[1] : 'Main';
     
     // If no public class is found, wrap code in a Main class
-    let javaCode = wrappedCode;
+    let javaCode = code;
     if (!classMatch) {
       javaCode = `
 public class Main {
     public static void main(String[] args) {
-${wrappedCode.split('\n').map(line => '        ' + line).join('\n')}
+${code.split('\n').map(line => '        ' + line).join('\n')}
     }
 }`;
+    }
+    
+    // Prepare input for stdin
+    const inputData = input ? input.split(',').map(i => i.trim()).join('\n') : '';
+    
+    // Escape single quotes in Java code for shell
+    const escapedCode = javaCode.replace(/'/g, "'\\''");
+    
+    // Build command with heredoc for input
+    let cmd: string;
+    if (inputData) {
+      // Use heredoc to provide input via stdin
+      cmd = `cat << 'JAVACODE' > ${className}.java
+${javaCode}
+JAVACODE
+javac ${className}.java && cat << 'INPUT' | java ${className}
+${inputData}
+INPUT`;
+    } else {
+      cmd = `echo '${escapedCode}' > ${className}.java && javac ${className}.java && java ${className}`;
     }
     
     // Create container with Java
@@ -222,7 +249,7 @@ ${wrappedCode.split('\n').map(line => '        ' + line).join('\n')}
       Cmd: [
         'sh',
         '-c',
-        `echo '${javaCode.replace(/'/g, "'\\''")}' > ${className}.java && javac ${className}.java && java ${className}`
+        cmd
       ],
       WorkingDir: '/app',
       HostConfig: {
@@ -259,10 +286,25 @@ ${wrappedCode.split('\n').map(line => '        ' + line).join('\n')}
     });
 
     // Convert buffer to string and clean Docker log formatting
-    let output = stream.toString('utf8');
+    const buffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream);
+    let output = '';
     
-    // Remove Docker log headers
-    output = output.replace(/[\x00-\x08]/g, '');
+    // Docker multiplexes stdout/stderr with 8-byte headers
+    // Format: [stream_type, 0, 0, 0, size1, size2, size3, size4, ...data...]
+    let offset = 0;
+    while (offset < buffer.length) {
+      if (buffer.length - offset < 8) break;
+      const payloadSize = buffer.readUInt32BE(offset + 4);
+      if (payloadSize > 0 && offset + 8 + payloadSize <= buffer.length) {
+        output += buffer.toString('utf8', offset + 8, offset + 8 + payloadSize);
+      }
+      offset += 8 + payloadSize;
+    }
+    
+    // Fallback if header parsing fails
+    if (!output && buffer.length > 0) {
+      output = buffer.toString('utf8').replace(/[\x00-\x08]/g, '');
+    }
     
     // Clean up container
     await container.remove({ force: true });
