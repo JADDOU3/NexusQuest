@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CodeEditor, CodeErrorMarker } from './components/CodeEditor';
 import { Console } from './components/Console';
 import { Button } from './components/ui/button';
-import { Play, Square, Download, Upload, Sparkles, FolderTree, ChevronRight, ChevronLeft, User, LogIn, LogOut, X, FolderOpen, Trophy, Settings, Moon, Sun, Minus, Plus, FilePlus, FolderPlus, Trash2, ChevronDown, File } from 'lucide-react';
+import { Play, Square, Download, Upload, Sparkles, FolderTree, ChevronRight, ChevronLeft, User, LogIn, LogOut, X, FolderOpen, Trophy, Settings, Moon, Sun, Minus, Plus, FilePlus, FolderPlus, Trash2, ChevronDown, File, Save } from 'lucide-react';
 import * as aiService from './services/aiService';
 import * as projectService from './services/projectService';
 import type { Project, ProjectFile } from './services/projectService';
@@ -145,6 +145,9 @@ function App({ user, onLogout }: AppProps) {
   const [newProjectLanguage, setNewProjectLanguage] = useState<'python' | 'java' | 'javascript' | 'cpp'>('python');
   const [newFileName, setNewFileName] = useState('');
   const [newFileLanguage, setNewFileLanguage] = useState<'python' | 'java' | 'javascript' | 'cpp'>('python');
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedCode, setLastSavedCode] = useState<string>('');
 
   // Load projects when user is logged in
   const loadProjects = useCallback(async () => {
@@ -174,18 +177,77 @@ function App({ user, onLogout }: AppProps) {
     localStorage.setItem('nexusquest-fontsize', fontSize.toString());
   }, [fontSize]);
 
-  // Save code to localStorage and sync with current file
+  // Track unsaved changes
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (currentFile) {
+      setHasUnsavedChanges(code !== lastSavedCode);
+    }
+  }, [code, lastSavedCode, currentFile]);
+
+  // Update lastSavedCode when file changes
+  useEffect(() => {
+    if (currentFile) {
+      setLastSavedCode(currentFile.content);
+    }
+  }, [currentFile]);
+
+  // Manual save function
+  const saveFile = useCallback(async () => {
+    if (!currentProject || !currentFile) {
+      // Just save to localStorage for standalone mode
       localStorage.setItem('nexusquest-code', code);
-      // Auto-save to current file if one is selected
-      if (currentProject && currentFile) {
-        projectService.updateFile(currentProject._id, currentFile._id, { content: code })
-          .catch(err => console.error('Failed to auto-save file:', err));
+      addToConsole('💾 Code saved to local storage', 'info');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await projectService.updateFile(currentProject._id, currentFile._id, { content: code });
+      setLastSavedCode(code);
+      setHasUnsavedChanges(false);
+      addToConsole(`💾 Saved: ${currentFile.name}`, 'info');
+
+      // Update the file in the projects list
+      setProjects(prev => prev.map(p =>
+        p._id === currentProject._id
+          ? { ...p, files: p.files.map(f => f._id === currentFile._id ? { ...f, content: code } : f) }
+          : p
+      ));
+      // Update currentProject as well
+      setCurrentProject(prev => prev ? {
+        ...prev,
+        files: prev.files.map(f => f._id === currentFile._id ? { ...f, content: code } : f)
+      } : null);
+    } catch (err) {
+      console.error('Failed to save file:', err);
+      addToConsole(`❌ Failed to save: ${err}`, 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentProject, currentFile, code]);
+
+  // Keyboard shortcut: Shift+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        saveFile();
       }
-    }, 1000); // Debounce 1 second
-    return () => clearTimeout(timer);
-  }, [code, currentProject, currentFile]);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [saveFile]);
+
+  // Save code to localStorage (for standalone mode only, no auto-save for projects)
+  useEffect(() => {
+    if (!currentProject) {
+      const timer = setTimeout(() => {
+        localStorage.setItem('nexusquest-code', code);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [code, currentProject]);
 
   // Save language to localStorage
   useEffect(() => {
@@ -619,6 +681,19 @@ function App({ user, onLogout }: AppProps) {
               >
                 <Play className="w-3 h-3" fill="currentColor" />
                 {isRunning ? 'Running...' : waitingForInput ? 'Waiting for Input' : inputQueue.length > 0 ? `Run with ${inputQueue.length} input${inputQueue.length > 1 ? 's' : ''}` : 'Run Code'}
+              </Button>
+              <Button
+                onClick={saveFile}
+                disabled={isSaving || (!currentProject && !hasUnsavedChanges)}
+                className={`h-8 px-3 flex items-center gap-1 text-xs transition-all duration-200 hover:scale-105 ${
+                  hasUnsavedChanges
+                    ? 'bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-md shadow-yellow-500/30'
+                    : 'bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 text-white shadow-md shadow-slate-500/30'
+                }`}
+                title="Save file (Shift+S)"
+              >
+                <Save className="w-3 h-3" />
+                {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save*' : 'Save'}
               </Button>
               <Button
                 onClick={loadCodeFile}
