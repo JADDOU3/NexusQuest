@@ -15,15 +15,17 @@ interface CodeEditorProps {
   height?: string;
   theme?: string;
   errors?: CodeErrorMarker[];
+  fontSize?: number;
 }
 
-export function CodeEditor({ 
-  value, 
-  onChange, 
+export function CodeEditor({
+  value,
+  onChange,
   language = 'python',
   height = '400px',
   theme = 'vs-dark',
   errors = [],
+  fontSize = 14,
 }: CodeEditorProps) {
   const editorRef = useRef<MonacoNamespace.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof MonacoNamespace | null>(null);
@@ -410,7 +412,7 @@ export function CodeEditor({
         theme={theme}
         options={{
           minimap: { enabled: true },
-          fontSize: 14,
+          fontSize: fontSize,
           lineNumbers: 'on',
           wordWrap: 'on',
           automaticLayout: true,

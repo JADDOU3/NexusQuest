@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CodeEditor, CodeErrorMarker } from './components/CodeEditor';
 import { Console } from './components/Console';
 import { Button } from './components/ui/button';
-import { Play, Square, Download, Upload, Moon, Sun, Sparkles, FolderTree, ChevronRight, ChevronLeft, User, LogIn, LogOut } from 'lucide-react';
+import { Play, Square, Download, Upload, Sparkles, FolderTree, ChevronRight, ChevronLeft, User, LogIn, LogOut, X, FolderOpen, Trophy, Settings, Moon, Sun, Minus, Plus } from 'lucide-react';
 import * as aiService from './services/aiService';
 
 interface AppProps {
@@ -125,12 +125,22 @@ function App({ user, onLogout }: AppProps) {
   const [codeErrors, setCodeErrors] = useState<CodeErrorMarker[]>([]);
   const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal'>('console');
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSidePanel, setShowSidePanel] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [fontSize, setFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('nexusquest-fontsize');
+    return saved ? parseInt(saved) : 14;
+  });
 
   // Save theme to localStorage
   useEffect(() => {
     localStorage.setItem('nexusquest-theme', theme);
   }, [theme]);
+
+  // Save font size to localStorage
+  useEffect(() => {
+    localStorage.setItem('nexusquest-fontsize', fontSize.toString());
+  }, [fontSize]);
 
   // Save code to localStorage
   useEffect(() => {
@@ -427,10 +437,6 @@ function App({ user, onLogout }: AppProps) {
     setCode(newCode);
   };
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  };
-
   const explainSelectedCode = async () => {
     if (!code.trim()) {
       addToConsole('No code to explain!', 'error');
@@ -559,65 +565,24 @@ function App({ user, onLogout }: AppProps) {
                 <Download className="w-3 h-3" />
                 Download
               </Button>
-              <Button
-                onClick={toggleTheme}
-                className={`h-8 px-2 flex items-center gap-1 text-xs ${
-                  theme === 'dark'
-                    ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700'
-                    : 'bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400'
-                } text-white shadow-lg transition-all duration-200 hover:scale-105`}
-                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {theme === 'dark' ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
-              </Button>
             </div>
 
             {/* User login section */}
             <div className="flex items-center gap-2 flex-shrink-0 relative">
               {user ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                    }`}>
-                      <User className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
-                    </div>
-                    <span className={`text-xs hidden sm:block ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {user.name}
-                    </span>
-                  </button>
-                  {showUserMenu && (
-                    <div className={`absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border z-50 ${
-                      theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                    }`}>
-                      <div className={`px-4 py-3 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {user.name}
-                        </p>
-                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {user.email}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          onLogout();
-                        }}
-                        className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
-                          theme === 'dark'
-                            ? 'text-red-400 hover:bg-gray-700'
-                            : 'text-red-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Sign out
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setShowSidePanel(true)}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                  }`}>
+                    <User className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
+                  </div>
+                  <span className={`text-xs hidden sm:block ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {user.name}
+                  </span>
+                </button>
               ) : (
                 <Button
                   onClick={() => navigate('/login')}
@@ -664,6 +629,7 @@ function App({ user, onLogout }: AppProps) {
               height="100%"
               theme={theme === 'dark' ? 'vs-dark' : 'light'}
               errors={codeErrors}
+              fontSize={fontSize}
             />
           </div>
 
@@ -828,6 +794,198 @@ function App({ user, onLogout }: AppProps) {
           </div>
         </div>
       </div>
+      {/* User Side Panel */}
+      {showSidePanel && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setShowSidePanel(false)}
+          />
+          {/* Panel */}
+          <div className={`fixed top-0 right-0 h-full w-80 z-50 shadow-2xl transform transition-transform duration-300 ${
+            theme === 'dark' ? 'bg-gray-900 border-l border-gray-800' : 'bg-white border-l border-gray-200'
+          }`}>
+            {/* Header */}
+            <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                  }`}>
+                    <User className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
+                  </div>
+                  <div>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {user?.name}
+                    </p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {user?.email}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSidePanel(false)}
+                  className={`p-1 rounded-lg transition-colors ${
+                    theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Menu Items */}
+            <nav className="p-2">
+              <button
+                onClick={() => {
+                  setShowSidePanel(false);
+                  navigate('/profile');
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-gray-800 text-gray-300'
+                    : 'hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <User className="w-5 h-5" />
+                <span>Profile</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowSidePanel(false);
+                  navigate('/projects');
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-gray-800 text-gray-300'
+                    : 'hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <FolderOpen className="w-5 h-5" />
+                <span>Projects</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowSidePanel(false);
+                  navigate('/tournaments');
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-gray-800 text-gray-300'
+                    : 'hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <Trophy className="w-5 h-5" />
+                <span>Tournaments</span>
+              </button>
+
+              {/* Settings Section */}
+              <div className="mt-2">
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+                    theme === 'dark'
+                      ? 'hover:bg-gray-800 text-gray-300'
+                      : 'hover:bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Settings className="w-5 h-5" />
+                    <span>Settings</span>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 transition-transform ${showSettings ? 'rotate-90' : ''}`} />
+                </button>
+
+                {showSettings && (
+                  <div className={`mt-1 ml-4 mr-2 p-3 rounded-lg ${
+                    theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-100'
+                  }`}>
+                    {/* Dark Mode Toggle */}
+                    <div className="flex items-center justify-between py-2">
+                      <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Dark Mode
+                      </span>
+                      <button
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${
+                          theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform flex items-center justify-center ${
+                          theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                        }`}>
+                          {theme === 'dark' ? (
+                            <Moon className="w-2.5 h-2.5 text-blue-600" />
+                          ) : (
+                            <Sun className="w-2.5 h-2.5 text-yellow-500" />
+                          )}
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Font Size Control */}
+                    <div className="flex items-center justify-between py-2">
+                      <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Font Size
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setFontSize(Math.max(10, fontSize - 2))}
+                          className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
+                            theme === 'dark'
+                              ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                          }`}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className={`w-8 text-center text-sm font-medium ${
+                          theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                          {fontSize}
+                        </span>
+                        <button
+                          onClick={() => setFontSize(Math.min(24, fontSize + 2))}
+                          className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
+                            theme === 'dark'
+                              ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                          }`}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </nav>
+
+            {/* Logout at bottom */}
+            <div className={`absolute bottom-0 left-0 right-0 p-4 border-t ${
+              theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+            }`}>
+              <button
+                onClick={() => {
+                  setShowSidePanel(false);
+                  onLogout();
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-red-500/10 text-red-400'
+                    : 'hover:bg-red-50 text-red-600'
+                }`}
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Sign out</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
