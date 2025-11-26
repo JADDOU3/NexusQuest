@@ -484,14 +484,14 @@ function App() {
               Ready to execute
             </span>
             <span>|</span>
-            <span>Python 3.10</span>
+            <span>{language === 'python' ? 'Python 3.10' : 'Java 17'}</span>
             <span>|</span>
             <span>Docker Isolated</span>
           </div>
           <div className="flex items-center gap-4 text-gray-400">
-            <span>Memory: 128MB</span>
+            <span>Memory: {language === 'python' ? '128MB' : '256MB'}</span>
             <span>|</span>
-            <span>Timeout: 10s</span>
+            <span>Timeout: {language === 'python' ? '10s' : '15s'}</span>
             <span>|</span>
             <span className="text-blue-400">Secure Mode ✓</span>
           </div>
