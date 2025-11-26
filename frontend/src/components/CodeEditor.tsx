@@ -16,6 +16,19 @@ export function CodeEditor({
   height = '400px',
   theme = 'vs-dark'
 }: CodeEditorProps) {
+  // Map our language names to Monaco language IDs
+  const getMonacoLanguage = (lang: string): string => {
+    const languageMap: Record<string, string> = {
+      'python': 'python',
+      'java': 'java',
+      'javascript': 'javascript',
+      'cpp': 'cpp',
+      'c++': 'cpp',
+      'go': 'go'
+    };
+    return languageMap[lang] || 'python';
+  };
+
   const handleEditorChange = (value: string | undefined) => {
     onChange(value);
   };
@@ -355,7 +368,7 @@ export function CodeEditor({
     <div className="h-full w-full relative overflow-hidden">
       <Editor
         height={height}
-        language={language}
+        language={getMonacoLanguage(language)}
         value={value}
         onChange={handleEditorChange}
         onMount={handleEditorDidMount}

@@ -52,6 +52,73 @@ public class Main {
 }
 `;
 
+const defaultJavaScriptCode = `// Welcome to NexusQuest IDE!
+// Write your JavaScript code here and click Run
+// Popular frameworks: express, axios, lodash available
+
+console.log("Hello from JavaScript!");
+
+// Example: Using lodash
+const _ = require('lodash');
+const numbers = [1, 2, 3, 4, 5];
+const doubled = _.map(numbers, n => n * 2);
+console.log("Doubled:", doubled);
+
+// Example: Date formatting with moment
+const moment = require('moment');
+console.log("Current time:", moment().format('MMMM Do YYYY, h:mm:ss a'));
+`;
+
+const defaultCppCode = `// Welcome to NexusQuest IDE!
+// Write your C++ code here and click Run
+// Available: STL, Boost, C++20 features
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    cout << "Hello from C++!" << endl;
+    
+    // Example: Vector and algorithms
+    vector<int> numbers = {5, 2, 8, 1, 9};
+    sort(numbers.begin(), numbers.end());
+    
+    cout << "Sorted numbers: ";
+    for(int num : numbers) {
+        cout << num << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}
+`;
+
+const defaultGoCode = `// Welcome to NexusQuest IDE!
+// Write your Go code here and click Run
+// Available frameworks: Gin, GORM, Chi
+
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	fmt.Println("Hello from Go!")
+	
+	// Example: Slices and range
+	numbers := []int{5, 2, 8, 1, 9}
+	
+	fmt.Print("Numbers: ")
+	for _, num := range numbers {
+		fmt.Printf("%d ", num)
+	}
+	fmt.Println()
+}
+`;
+
 const defaultCode = defaultPythonCode;
 
 // Code suggestions based on patterns
@@ -164,9 +231,9 @@ function App() {
   const [output, setOutput] = useState<ConsoleOutput[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [language, setLanguage] = useState<'python' | 'java'>(() => {
+  const [language, setLanguage] = useState<'python' | 'java' | 'javascript' | 'cpp' | 'go'>(() => {
     const saved = localStorage.getItem('nexusquest-language');
-    return (saved as 'python' | 'java') || 'python';
+    return (saved as 'python' | 'java' | 'javascript' | 'cpp' | 'go') || 'python';
   });
   const [waitingForInput, setWaitingForInput] = useState(false);
   const [inputQueue, setInputQueue] = useState<string[]>([]);
@@ -201,6 +268,12 @@ function App() {
       setCode(defaultPythonCode);
     } else if (language === 'java') {
       setCode(defaultJavaCode);
+    } else if (language === 'javascript') {
+      setCode(defaultJavaScriptCode);
+    } else if (language === 'cpp') {
+      setCode(defaultCppCode);
+    } else if (language === 'go') {
+      setCode(defaultGoCode);
     }
   }, [language]);
 
@@ -512,15 +585,18 @@ function App() {
             <div className="flex gap-2 items-center">
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as 'python' | 'java')}
+                onChange={(e) => setLanguage(e.target.value as 'python' | 'java' | 'javascript' | 'cpp' | 'go')}
                 className={`text-xs px-3 py-1 rounded border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   theme === 'dark'
                     ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
                     : 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200'
                 }`}
               >
-                <option value="python">Python</option>
-                <option value="java">Java</option>
+                <option value="python">Python 🐍</option>
+                <option value="javascript">JavaScript 📜</option>
+                <option value="java">Java ☕</option>
+                <option value="cpp">C++ ⚡</option>
+                <option value="go">Go 🚀</option>
               </select>
               <span className={`text-xs px-2 py-1 rounded border ${
                 theme === 'dark'
