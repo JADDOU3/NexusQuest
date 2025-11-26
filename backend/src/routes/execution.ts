@@ -62,13 +62,6 @@ codeExecutionRouter.get('/languages', (req, res) => {
         extensions: ['.cpp'],
         frameworks: ['STL', 'CMake'],
         supported: true
-      },
-      {
-        name: 'go',
-        version: '1.23',
-        extensions: ['.go'],
-        frameworks: ['Gin', 'GORM', 'Chi'],
-        supported: true
       }
     ]
   });

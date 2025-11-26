@@ -34,8 +34,7 @@ export function CodeEditor({
       'java': 'java',
       'javascript': 'javascript',
       'cpp': 'cpp',
-      'c++': 'cpp',
-      'go': 'go'
+      'c++': 'cpp'
     };
     return languageMap[lang] || 'python';
   };

@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CodeEditor, CodeErrorMarker } from './components/CodeEditor';
 import { Console } from './components/Console';
 import { Button } from './components/ui/button';
-import { Play, Square, Download, Upload, Moon, Sun, Sparkles, FolderTree, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Play, Square, Download, Upload, Moon, Sun, Sparkles, FolderTree, ChevronRight, ChevronLeft, User, LogIn, LogOut } from 'lucide-react';
 import * as aiService from './services/aiService';
+
+interface AppProps {
+  user: { name: string; email: string } | null;
+  onLogout: () => void;
+}
 
 interface ConsoleOutput {
   type: 'output' | 'error' | 'info' | 'input';
@@ -95,33 +101,10 @@ int main() {
 }
 `;
 
-const defaultGoCode = `// Welcome to NexusQuest IDE!
-// Write your Go code here and click Run
-// Available frameworks: Gin, GORM, Chi
-
-package main
-
-import (
-	"fmt"
-)
-
-func main() {
-	fmt.Println("Hello from Go!")
-	
-	// Example: Slices and range
-	numbers := []int{5, 2, 8, 1, 9}
-	
-	fmt.Print("Numbers: ")
-	for _, num := range numbers {
-		fmt.Printf("%d ", num)
-	}
-	fmt.Println()
-}
-`;
-
 const defaultCode = defaultPythonCode;
 
-function App() {
+function App({ user, onLogout }: AppProps) {
+  const navigate = useNavigate();
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('nexusquest-theme');
     return (saved as 'dark' | 'light') || 'dark';
@@ -132,9 +115,9 @@ function App() {
   });
   const [output, setOutput] = useState<ConsoleOutput[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [language, setLanguage] = useState<'python' | 'java' | 'javascript' | 'cpp' | 'go'>(() => {
+  const [language, setLanguage] = useState<'python' | 'java' | 'javascript' | 'cpp'>(() => {
     const saved = localStorage.getItem('nexusquest-language');
-    return (saved as 'python' | 'java' | 'javascript' | 'cpp' | 'go') || 'python';
+    return (saved as 'python' | 'java' | 'javascript' | 'cpp') || 'python';
   });
   const [waitingForInput, setWaitingForInput] = useState(false);
   const [inputQueue, setInputQueue] = useState<string[]>([]);
@@ -142,6 +125,7 @@ function App() {
   const [codeErrors, setCodeErrors] = useState<CodeErrorMarker[]>([]);
   const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal'>('console');
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Save theme to localStorage
   useEffect(() => {
@@ -179,8 +163,6 @@ function App() {
       setCode(defaultJavaScriptCode);
     } else if (language === 'cpp') {
       setCode(defaultCppCode);
-    } else if (language === 'go') {
-      setCode(defaultGoCode);
     }
     // Clear previous error markers when switching language
     setCodeErrors([]);
@@ -232,13 +214,6 @@ function App() {
           addMarker(parseInt(m[1], 10), line.trim());
         }
       }
-    } else if (lang === 'go') {
-      for (const line of lines) {
-        const m = line.match(/main\.go:(\d+):\d*:/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-      }
     }
 
     // Fallback: if nothing parsed but we have an error, attach it to first line
@@ -262,8 +237,7 @@ function App() {
     const needsInput = (language === 'java' && (/Scanner/.test(code) && (/nextInt|nextLine|next\(|nextDouble|nextFloat/.test(code) || /BufferedReader/.test(code)))) ||
                        (language === 'python' && /input\s*\(/.test(code)) ||
                        (language === 'cpp' && /cin\s*>>/.test(code)) ||
-                       (language === 'javascript' && /readline|stdin/.test(code)) ||
-                       (language === 'go' && /fmt\.Scan|bufio\.NewScanner/.test(code));
+                       (language === 'javascript' && /readline|stdin/.test(code));
     
     if (needsInput && inputs.length === 0) {
       // Extract input prompts from the code to show user what inputs are expected
@@ -302,17 +276,6 @@ function App() {
         const lines = code.split('\n');
         for (let i = 0; i < lines.length; i++) {
           if (lines[i].includes('console.log') && lines[i].includes('"') && i + 1 < lines.length && /readline|stdin/.test(lines[i + 1])) {
-            const promptMatch = lines[i].match(/["'](.*?)["']/);
-            if (promptMatch) {
-              prompts.push(promptMatch[1]);
-            }
-          }
-        }
-      } else if (language === 'go') {
-        // Match fmt.Print patterns before Scan
-        const lines = code.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes('fmt.Print') && lines[i].includes('"') && i + 1 < lines.length && /Scan/.test(lines[i + 1])) {
             const promptMatch = lines[i].match(/["'](.*?)["']/);
             if (promptMatch) {
               prompts.push(promptMatch[1]);
@@ -527,69 +490,61 @@ function App() {
       } backdrop-blur-sm`}>
         <div className="px-4 py-2">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
+            {/* Logo only */}
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md flex items-center justify-center shadow-md flex-shrink-0">
                 <span className="text-white font-bold text-lg">N</span>
               </div>
-              <div className="leading-tight min-w-0">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-sm font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate">
-                    NexusQuest IDE
-                  </h1>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value as 'python' | 'java' | 'javascript' | 'cpp' | 'go')}
-                    className={`text-[11px] px-2 py-1 rounded border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      theme === 'dark'
-                        ? 'bg-blue-500/10 text-blue-300 border-blue-500/40 hover:bg-blue-500/20'
-                        : 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
-                    }`}
-                  >
-                    <option value="python">Python 🐍</option>
-                    <option value="javascript">JavaScript 📜</option>
-                    <option value="java">Java ☕</option>
-                    <option value="cpp">C++ ⚡</option>
-                    <option value="go">Go 🚀</option>
-                  </select>
-                </div>
-                <p className="text-[10px] text-gray-400">
-                  {language === 'python' ? 'Python 3.10 · Docker isolated' : 'Multi-language · Docker isolated'}
-                </p>
-              </div>
             </div>
+
+            {/* Center toolbar with language chooser and run button */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {inputQueue.length > 0 && (
                 <div className="px-2 py-1 bg-yellow-500/10 border border-yellow-500/40 rounded-md flex items-center gap-1">
                   <span className="text-yellow-400 text-[10px] font-semibold">📥 {inputQueue.length} input{inputQueue.length > 1 ? 's' : ''}</span>
                 </div>
               )}
-              <Button 
-                onClick={() => runCode()} 
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as 'python' | 'java' | 'javascript' | 'cpp')}
+                className={`h-8 text-[11px] px-2 py-1 rounded border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                  theme === 'dark'
+                    ? 'bg-blue-500/10 text-blue-300 border-blue-500/40 hover:bg-blue-500/20'
+                    : 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                }`}
+              >
+                <option value="python">Python 🐍</option>
+                <option value="javascript">JavaScript 📜</option>
+                <option value="java">Java ☕</option>
+                <option value="cpp">C++ ⚡</option>
+              </select>
+              <Button
+                onClick={() => runCode()}
                 disabled={isRunning}
                 className={`h-8 px-3 flex items-center gap-1 text-xs ${
-                  waitingForInput 
-                    ? 'bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 shadow-yellow-500/30 animate-pulse' 
+                  waitingForInput
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 shadow-yellow-500/30 animate-pulse'
                     : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-green-500/30'
                 } text-white shadow-lg transition-all duration-200 hover:scale-105`}
               >
                 <Play className="w-3 h-3" fill="currentColor" />
                 {isRunning ? 'Running...' : waitingForInput ? 'Waiting for Input' : inputQueue.length > 0 ? `Run with ${inputQueue.length} input${inputQueue.length > 1 ? 's' : ''}` : 'Run Code'}
               </Button>
-              <Button 
-                onClick={loadCodeFile} 
+              <Button
+                onClick={loadCodeFile}
                 className="h-8 px-3 flex items-center gap-1 text-xs bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white shadow-md shadow-purple-500/30 transition-all duration-200 hover:scale-105"
               >
                 <Upload className="w-3 h-3" />
                 Open File
               </Button>
-              <Button 
-                onClick={clearConsole} 
+              <Button
+                onClick={clearConsole}
                 className="h-8 px-3 flex items-center gap-1 text-xs bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white shadow-md shadow-orange-500/30 transition-all duration-200 hover:scale-105"
               >
                 <Square className="w-3 h-3" />
                 Clear
               </Button>
-              <Button 
+              <Button
                 onClick={explainSelectedCode}
                 className="h-8 px-3 hidden sm:flex items-center gap-1 text-xs bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-md shadow-indigo-500/30 transition-all duration-200 hover:scale-105"
                 title="Explain code with AI"
@@ -597,14 +552,14 @@ function App() {
                 <Sparkles className="w-3 h-3" />
                 Explain
               </Button>
-              <Button 
-                onClick={downloadCode} 
+              <Button
+                onClick={downloadCode}
                 className="h-8 px-3 hidden md:flex items-center gap-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white shadow-md shadow-blue-500/30 transition-all duration-200 hover:scale-105"
               >
                 <Download className="w-3 h-3" />
                 Download
               </Button>
-              <Button 
+              <Button
                 onClick={toggleTheme}
                 className={`h-8 px-2 flex items-center gap-1 text-xs ${
                   theme === 'dark'
@@ -615,6 +570,67 @@ function App() {
               >
                 {theme === 'dark' ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
               </Button>
+            </div>
+
+            {/* User login section */}
+            <div className="flex items-center gap-2 flex-shrink-0 relative">
+              {user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}>
+                      <User className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
+                    </div>
+                    <span className={`text-xs hidden sm:block ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {user.name}
+                    </span>
+                  </button>
+                  {showUserMenu && (
+                    <div className={`absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border z-50 ${
+                      theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    }`}>
+                      <div className={`px-4 py-3 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {user.name}
+                        </p>
+                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {user.email}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onLogout();
+                        }}
+                        className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
+                          theme === 'dark'
+                            ? 'text-red-400 hover:bg-gray-700'
+                            : 'text-red-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  onClick={() => navigate('/login')}
+                  className={`h-8 px-3 flex items-center gap-1 text-xs ${
+                    theme === 'dark'
+                      ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700'
+                      : 'bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400'
+                  } text-white shadow-lg transition-all duration-200 hover:scale-105`}
+                >
+                  <LogIn className="w-3 h-3" />
+                  Login
+                </Button>
+              )}
             </div>
           </div>
         </div>

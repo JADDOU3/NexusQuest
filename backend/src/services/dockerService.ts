@@ -31,8 +31,7 @@ const languageImages: Record<string, string> = {
   'javascript': 'nexusquest-javascript:latest',
   'java': 'nexusquest-java:latest',
   'cpp': 'nexusquest-cpp:latest',
-  'c++': 'nexusquest-cpp:latest',
-  'go': 'nexusquest-go:latest'
+  'c++': 'nexusquest-cpp:latest'
 };
 
 export async function executeCode(code: string, language: string, input?: string): Promise<ExecutionResult> {
@@ -57,10 +56,6 @@ export async function executeCode(code: string, language: string, input?: string
       case 'cpp':
       case 'c++':
         result = await executeCppCode(code, input);
-        break;
-      case 'go':
-      case 'golang':
-        result = await executeGoCode(code, input);
         break;
       default:
         throw new Error(`Language ${language} is not supported yet`);
@@ -609,114 +604,3 @@ INPUT`;
   }
 }
 
-async function executeGoCode(code: string, input?: string): Promise<{ output: string; error: string }> {
-  const containerName = `nexusquest-go-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  try {
-    const inputData = input ? input.split(',').map(i => i.trim()).join('\n') : '';
-
-    let cmd: string;
-    if (inputData) {
-      cmd = `cd /tmp && cat << 'GOCODE' > main.go
-${code}
-GOCODE
-cat << 'INPUT' | go run main.go
-${inputData}
-INPUT`;
-    } else {
-      const escapedCode = code.replace(/'/g, "'\\''");
-      cmd = `cd /tmp && echo '${escapedCode}' > main.go && go run main.go`;
-    }
-
-    const container = await docker.createContainer({
-      Image: languageImages['go'],
-      name: containerName,
-      Cmd: ['sh', '-c', cmd],
-      WorkingDir: '/tmp',
-      HostConfig: {
-        Memory: 256 * 1024 * 1024,
-        CpuQuota: 50000,
-        NetworkMode: 'none',
-        ReadonlyRootfs: false,
-        Tmpfs: {
-          '/app': 'rw,exec,nosuid,size=200m',
-          '/tmp': 'rw,exec,nosuid,size=100m'
-        }
-      },
-      AttachStdout: true,
-      AttachStderr: true,
-    });
-
-    await container.start();
-
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Execution timeout (15 seconds)')), 15000);
-    });
-
-    const resultPromise = container.wait();
-    await Promise.race([resultPromise, timeoutPromise]);
-
-    const stream = await container.logs({
-      stdout: true,
-      stderr: true,
-      timestamps: false
-    });
-
-    const buffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream);
-    let output = '';
-
-    let offset = 0;
-    while (offset < buffer.length) {
-      if (buffer.length - offset < 8) break;
-      const payloadSize = buffer.readUInt32BE(offset + 4);
-      if (payloadSize > 0 && offset + 8 + payloadSize <= buffer.length) {
-        output += buffer.toString('utf8', offset + 8, offset + 8 + payloadSize);
-      }
-      offset += 8 + payloadSize;
-    }
-
-    if (!output && buffer.length > 0) {
-      output = buffer.toString('utf8').replace(/[\x00-\x08]/g, '');
-    }
-
-    await container.remove({ force: true });
-
-    const lines = output.split('\n').filter((line: string) => line.trim());
-
-    const hasError = lines.some((line: string) =>
-      line.includes('error:') ||
-      line.includes('panic:') ||
-      line.includes('fatal error:')
-    );
-
-    if (hasError) {
-      return {
-        output: '',
-        error: lines.join('\n')
-      };
-    }
-
-    return {
-      output: lines.join('\n') || 'Code executed successfully (no output)',
-      error: ''
-    };
-
-  } catch (error) {
-    try {
-      const container = docker.getContainer(containerName);
-      await container.remove({ force: true });
-    } catch { }
-
-    if (error instanceof Error && error.message.includes('timeout')) {
-      return {
-        output: '',
-        error: 'Code execution timed out (maximum 15 seconds allowed)'
-      };
-    }
-
-    return {
-      output: '',
-      error: error instanceof Error ? error.message : 'Unknown execution error'
-    };
-  }
-}
