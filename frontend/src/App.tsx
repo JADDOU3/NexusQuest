@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CodeEditor, CodeErrorMarker } from './components/CodeEditor';
 import { Console } from './components/Console';
+import { Terminal } from './components/Terminal';
 import { Button } from './components/ui/button';
 import { Play, Square, Download, Upload, Sparkles, FolderTree, ChevronRight, ChevronLeft, User, LogIn, LogOut, X, FolderOpen, Trophy, Settings, Moon, Sun, Minus, Plus, FilePlus, FolderPlus, Trash2, ChevronDown, File, Save, Folder } from 'lucide-react';
 import * as aiService from './services/aiService';
@@ -62,7 +63,9 @@ public class Main {
 
 const defaultJavaScriptCode = `// Welcome to NexusQuest IDE!
 // Write your JavaScript code here and click Run
-// Popular frameworks: express, axios, lodash available
+// Popular frameworks: express, axios, lodash, moment available
+// NOTE: Browser functions (prompt, alert, document) are not available
+// This runs in Node.js environment
 
 console.log("Hello from JavaScript!");
 
@@ -71,6 +74,12 @@ const _ = require('lodash');
 const numbers = [1, 2, 3, 4, 5];
 const doubled = _.map(numbers, n => n * 2);
 console.log("Doubled:", doubled);
+
+// Example: Calculate sum
+function calculateSum(arr) {
+    return arr.reduce((sum, num) => sum + num, 0);
+}
+console.log("Sum of numbers:", calculateSum([10, 20, 30]));
 
 // Example: Date formatting with moment
 const moment = require('moment');
@@ -520,7 +529,7 @@ function App({ user, onLogout }: AppProps) {
         );
       } else {
         // Single file execution
-        const response = await fetch('http://localhost:3001/api/run', {
+        const response = await fetch('http://localhost:9876/api/run', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1364,34 +1373,11 @@ function App({ user, onLogout }: AppProps) {
                   theme={theme}
                 />
               ) : (
-                <div className={`h-full w-full font-mono text-xs flex flex-col ${
-                  theme === 'dark'
-                    ? 'bg-gradient-to-b from-gray-950 to-gray-900 text-gray-200'
-                    : 'bg-gradient-to-b from-gray-100 to-white text-gray-800'
-                }`}>
-                  <div className={`px-3 py-2 border-b text-[11px] flex items-center justify-between ${
-                    theme === 'dark' ? 'border-gray-800' : 'border-gray-300'
-                  }`}>
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                      Integrated Terminal (preview)
-                    </span>
-                    <span className={theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}>No shell attached</span>
-                  </div>
-                  <div className="flex-1 px-3 py-2 overflow-auto">
-                    <div className={theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}>
-                      Terminal support is not wired to a real shell yet.
-                    </div>
-                    <div className={theme === 'dark' ? 'text-gray-600 mt-2' : 'text-gray-700 mt-2'}>
-                      Future features could include:
-                    </div>
-                    <ul className="mt-1 list-disc list-inside space-y-0.5 text-[11px]">
-                      <li>Run build and test commands</li>
-                      <li>Watch Docker status and logs</li>
-                      <li>Interactive REPL for languages</li>
-                    </ul>
-                  </div>
-                </div>
+                <Terminal 
+                  height="100%" 
+                  theme={theme}
+                  language={language}
+                />
               )}
             </div>
           </div>

@@ -9,7 +9,7 @@ export async function connectDatabase(): Promise<void> {
     logger.info('Connected to MongoDB successfully');
   } catch (error) {
     logger.error('MongoDB connection error:', error);
-    process.exit(1);
+    throw error; // Let the caller decide how to handle it
   }
 }
 
