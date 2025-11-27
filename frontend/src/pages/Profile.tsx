@@ -22,8 +22,9 @@ export function Profile({ user, onLogout }: ProfileProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'achievements' | 'settings'>('overview');
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [tempAvatar, setTempAvatar] = useState<string | null>(null);
-  const [tempCover, setTempCover] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editConfirmPassword, setEditConfirmPassword] = useState('');
   const { theme, setTheme } = useTheme();
 
   // Load user images on mount
@@ -48,53 +49,122 @@ export function Profile({ user, onLogout }: ProfileProps) {
     loadUserImages();
   }, []);
 
-  const handleModalAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setTempAvatar(reader.result as string);
+      reader.onloadend = async () => {
+        const imageData = reader.result as string;
+        try {
+          const token = localStorage.getItem('nexusquest-token');
+          const response = await fetch('http://localhost:9876/api/auth/profile/images', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              avatarImage: imageData,
+              coverImage: coverImage
+            })
+          });
+          const data = await response.json();
+          if (data.success) {
+            setAvatarImage(imageData);
+            console.log('Avatar updated successfully');
+          } else {
+            console.error('Failed to update avatar:', data.error);
+            alert('Failed to update avatar: ' + (data.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Failed to update avatar:', error);
+          alert('Failed to update avatar. Please check console for details.');
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleModalCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setTempCover(reader.result as string);
+      reader.onloadend = async () => {
+        const imageData = reader.result as string;
+        try {
+          const token = localStorage.getItem('nexusquest-token');
+          const response = await fetch('http://localhost:9876/api/auth/profile/images', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              avatarImage: avatarImage,
+              coverImage: imageData
+            })
+          });
+          const data = await response.json();
+          if (data.success) {
+            setCoverImage(imageData);
+            console.log('Cover image updated successfully');
+          } else {
+            console.error('Failed to update cover:', data.error);
+            alert('Failed to update cover: ' + (data.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Failed to update cover:', error);
+          alert('Failed to update cover. Please check console for details.');
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const saveModalImages = async () => {
+  const saveProfileChanges = async () => {
+    if (editPassword && editPassword !== editConfirmPassword) {
+      alert('Passwords do not match!');
+      return;
+    }
+
+    // Check if there's anything to update
+    if (!editName && !editPassword) {
+      alert('Please enter a name or password to update.');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('nexusquest-token');
-      const response = await fetch('http://localhost:9876/api/auth/profile/images', {
+      const updateData: any = {};
+      
+      if (editName) updateData.name = editName;
+      if (editPassword) updateData.password = editPassword;
+
+      const response = await fetch('http://localhost:9876/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          avatarImage: tempAvatar || avatarImage,
-          coverImage: tempCover || coverImage
-        })
+        body: JSON.stringify(updateData)
       });
 
       const data = await response.json();
+      
       if (data.success) {
-        setAvatarImage(tempAvatar || avatarImage);
-        setCoverImage(tempCover || coverImage);
         setShowEditModal(false);
-        setTempAvatar(null);
-        setTempCover(null);
+        setEditName('');
+        setEditPassword('');
+        setEditConfirmPassword('');
+        alert('Profile updated successfully!');
+        console.log('Profile updated:', data.user);
+      } else {
+        console.error('Update failed:', data.error);
+        alert(data.error || 'Failed to update profile. Please try again.');
       }
     } catch (error) {
-      console.error('Failed to update images:', error);
+      console.error('Failed to update profile:', error);
+      alert('Failed to update profile. Please try again.');
     }
   };
 
@@ -363,6 +433,19 @@ export function Profile({ user, onLogout }: ProfileProps) {
             ) : (
               <div className="w-full h-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600" />
             )}
+            <input
+              type="file"
+              id="cover-upload"
+              accept="image/*"
+              onChange={handleCoverChange}
+              className="hidden"
+            />
+            <label
+              htmlFor="cover-upload"
+              className={`absolute bottom-4 right-4 cursor-pointer ${theme === 'dark' ? 'bg-gray-900 hover:bg-gray-800' : 'bg-white hover:bg-gray-100'} rounded-lg p-2 shadow-lg transition-colors`}
+            >
+              <Camera className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} />
+            </label>
           </div>
 
           <div className="px-8 pb-6 relative">
@@ -380,6 +463,19 @@ export function Profile({ user, onLogout }: ProfileProps) {
                     {user?.name?.charAt(0).toUpperCase()}
                   </div>
                 )}
+                <input
+                  type="file"
+                  id="avatar-upload"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="avatar-upload"
+                  className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 rounded-full p-2 shadow-lg transition-colors cursor-pointer"
+                >
+                  <Camera className="w-3 h-3 text-white" />
+                </label>
               </div>
               <Button 
                 onClick={() => setShowEditModal(true)}
@@ -668,8 +764,9 @@ export function Profile({ user, onLogout }: ProfileProps) {
             className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
             onClick={() => {
               setShowEditModal(false);
-              setTempAvatar(null);
-              setTempCover(null);
+              setEditName('');
+              setEditPassword('');
+              setEditConfirmPassword('');
             }}
           />
           {/* Modal */}
@@ -688,8 +785,9 @@ export function Profile({ user, onLogout }: ProfileProps) {
                 <button
                   onClick={() => {
                     setShowEditModal(false);
-                    setTempAvatar(null);
-                    setTempCover(null);
+                    setEditName('');
+                    setEditPassword('');
+                    setEditConfirmPassword('');
                   }}
                   className={`p-2 rounded-lg transition-colors ${
                     theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
@@ -702,78 +800,65 @@ export function Profile({ user, onLogout }: ProfileProps) {
 
             {/* Content */}
             <div className="p-6 max-h-[70vh] overflow-y-auto">
-              {/* Cover Image */}
+              {/* Name */}
               <div className="mb-6">
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Cover Image
+                  Full Name
                 </label>
-                <div className={`relative h-40 rounded-xl overflow-hidden ${
-                  theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
-                }`}>
-                  {(tempCover || coverImage) ? (
-                    <img
-                      src={tempCover || coverImage || ''}
-                      alt="Cover"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-white text-lg">No Cover Image</span>
-                    </div>
-                  )}
-                  <label className="absolute bottom-3 right-3 cursor-pointer">
-                    <div className="bg-white/90 hover:bg-white p-3 rounded-full shadow-lg transition-all">
-                      <Camera className="w-5 h-5 text-gray-700" />
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleModalCoverChange}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder={user?.name || 'Enter your name'}
+                  className={`w-full px-4 py-3 rounded-lg border transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+                  } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                />
               </div>
 
-              {/* Avatar Image */}
+              {/* New Password */}
               <div className="mb-6">
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Profile Picture
+                  New Password (leave empty to keep current)
                 </label>
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    {(tempAvatar || avatarImage) ? (
-                      <img
-                        src={tempAvatar || avatarImage || ''}
-                        alt="Avatar"
-                        className="w-24 h-24 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                        <span className="text-white text-3xl font-bold">
-                          {user?.name?.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <label className="absolute bottom-0 right-0 cursor-pointer">
-                      <div className="bg-white hover:bg-gray-100 p-2 rounded-full shadow-lg transition-all">
-                        <Camera className="w-4 h-4 text-gray-700" />
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleModalAvatarChange}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Click the camera icon to upload a new profile picture
-                    </p>
-                  </div>
-                </div>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className={`w-full px-4 py-3 rounded-lg border transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+                  } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                />
               </div>
+
+              {/* Confirm Password */}
+              {editPassword && (
+                <div className="mb-6">
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={editConfirmPassword}
+                    onChange={(e) => setEditConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    className={`w-full px-4 py-3 rounded-lg border transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500'
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                  />
+                </div>
+              )}
+
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Note: To change your profile picture or cover image, use the camera icons on your profile page.
+              </p>
             </div>
 
             {/* Footer */}
@@ -783,8 +868,9 @@ export function Profile({ user, onLogout }: ProfileProps) {
               <Button
                 onClick={() => {
                   setShowEditModal(false);
-                  setTempAvatar(null);
-                  setTempCover(null);
+                  setEditName('');
+                  setEditPassword('');
+                  setEditConfirmPassword('');
                 }}
                 className={`px-6 ${
                   theme === 'dark'
@@ -795,7 +881,7 @@ export function Profile({ user, onLogout }: ProfileProps) {
                 Cancel
               </Button>
               <Button
-                onClick={saveModalImages}
+                onClick={saveProfileChanges}
                 className="px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
               >
                 Save Changes

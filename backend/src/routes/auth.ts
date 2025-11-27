@@ -256,5 +256,67 @@ router.put('/profile/images', authMiddleware, async (req: AuthRequest, res: Resp
   }
 });
 
+/**
+ * PUT /api/auth/profile
+ * Update user profile (name and/or password)
+ */
+router.put('/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { name, password } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    // Update name if provided
+    if (name && name.trim()) {
+      user.name = name.trim();
+    }
+
+    // Update password if provided
+    if (password && password.trim()) {
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          error: 'Password must be at least 6 characters',
+        });
+      }
+      user.password = password;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatarImage: user.avatarImage,
+        coverImage: user.coverImage,
+      },
+    });
+  } catch (error) {
+    logger.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update profile',
+    });
+  }
+});
+
 export default router;
 
