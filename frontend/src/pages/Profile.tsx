@@ -18,9 +18,12 @@ export function Profile({ user, onLogout }: ProfileProps) {
   const navigate = useNavigate();
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'achievements' | 'settings'>('overview');
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [tempAvatar, setTempAvatar] = useState<string | null>(null);
+  const [tempCover, setTempCover] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
 
   // Load user images on mount
@@ -45,7 +48,29 @@ export function Profile({ user, onLogout }: ProfileProps) {
     loadUserImages();
   }, []);
 
-  const updateImages = async (avatarData?: string, coverData?: string) => {
+  const handleModalAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTempAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleModalCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTempCover(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const saveModalImages = async () => {
     try {
       const token = localStorage.getItem('nexusquest-token');
       const response = await fetch('http://localhost:9876/api/auth/profile/images', {
@@ -55,44 +80,25 @@ export function Profile({ user, onLogout }: ProfileProps) {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          avatarImage: avatarData,
-          coverImage: coverData
+          avatarImage: tempAvatar || avatarImage,
+          coverImage: tempCover || coverImage
         })
       });
 
       const data = await response.json();
       if (data.success) {
-        if (avatarData !== undefined) setAvatarImage(avatarData);
-        if (coverData !== undefined) setCoverImage(coverData);
+        setAvatarImage(tempAvatar || avatarImage);
+        setCoverImage(tempCover || coverImage);
+        setShowEditModal(false);
+        setTempAvatar(null);
+        setTempCover(null);
       }
     } catch (error) {
       console.error('Failed to update images:', error);
     }
   };
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageData = reader.result as string;
-        updateImages(imageData, undefined);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const handleCoverChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageData = reader.result as string;
-        updateImages(undefined, imageData);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   // Mock data
   const profileData = {
@@ -357,25 +363,12 @@ export function Profile({ user, onLogout }: ProfileProps) {
             ) : (
               <div className="w-full h-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600" />
             )}
-            <input
-              type="file"
-              id="cover-upload"
-              accept="image/*"
-              onChange={handleCoverChange}
-              className="hidden"
-            />
-            <label
-              htmlFor="cover-upload"
-              className={`absolute bottom-4 right-4 ${theme === 'dark' ? 'bg-gray-900 hover:bg-gray-800' : 'bg-white hover:bg-gray-100'} rounded-lg p-2 shadow-lg transition-colors cursor-pointer`}
-            >
-              <Camera className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} />
-            </label>
           </div>
 
-          <div className="px-8 pb-6">
+          <div className="px-8 pb-6 relative">
             {/* Avatar */}
             <div className="flex items-end justify-between -mt-12 mb-4">
-              <div className="relative">
+              <div className="relative z-10">
                 {avatarImage ? (
                   <img
                     src={avatarImage}
@@ -387,21 +380,11 @@ export function Profile({ user, onLogout }: ProfileProps) {
                     {user?.name?.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <input
-                  type="file"
-                  id="avatar-upload"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 rounded-full p-2 shadow-lg transition-colors cursor-pointer"
-                >
-                  <Camera className="w-3 h-3 text-white" />
-                </label>
               </div>
-              <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white">
+              <Button 
+                onClick={() => setShowEditModal(true)}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+              >
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Profile
               </Button>
@@ -676,6 +659,151 @@ export function Profile({ user, onLogout }: ProfileProps) {
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {showEditModal && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              setShowEditModal(false);
+              setTempAvatar(null);
+              setTempCover(null);
+            }}
+          />
+          {/* Modal */}
+          <div
+            className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl z-50 rounded-2xl shadow-2xl ${
+              theme === 'dark' ? 'bg-gray-900' : 'bg-white'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className={`px-6 py-4 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Edit Profile
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setTempAvatar(null);
+                    setTempCover(null);
+                  }}
+                  className={`p-2 rounded-lg transition-colors ${
+                    theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 max-h-[70vh] overflow-y-auto">
+              {/* Cover Image */}
+              <div className="mb-6">
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Cover Image
+                </label>
+                <div className={`relative h-40 rounded-xl overflow-hidden ${
+                  theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+                }`}>
+                  {(tempCover || coverImage) ? (
+                    <img
+                      src={tempCover || coverImage || ''}
+                      alt="Cover"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                      <span className="text-white text-lg">No Cover Image</span>
+                    </div>
+                  )}
+                  <label className="absolute bottom-3 right-3 cursor-pointer">
+                    <div className="bg-white/90 hover:bg-white p-3 rounded-full shadow-lg transition-all">
+                      <Camera className="w-5 h-5 text-gray-700" />
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleModalCoverChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Avatar Image */}
+              <div className="mb-6">
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Profile Picture
+                </label>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    {(tempAvatar || avatarImage) ? (
+                      <img
+                        src={tempAvatar || avatarImage || ''}
+                        alt="Avatar"
+                        className="w-24 h-24 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <span className="text-white text-3xl font-bold">
+                          {user?.name?.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <label className="absolute bottom-0 right-0 cursor-pointer">
+                      <div className="bg-white hover:bg-gray-100 p-2 rounded-full shadow-lg transition-all">
+                        <Camera className="w-4 h-4 text-gray-700" />
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleModalAvatarChange}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Click the camera icon to upload a new profile picture
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className={`px-6 py-4 border-t flex justify-end gap-3 ${
+              theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+            }`}>
+              <Button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setTempAvatar(null);
+                  setTempCover(null);
+                }}
+                className={`px-6 ${
+                  theme === 'dark'
+                    ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                }`}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveModalImages}
+                className="px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
