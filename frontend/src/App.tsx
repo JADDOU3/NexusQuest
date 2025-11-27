@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CodeEditor, CodeErrorMarker } from './components/CodeEditor';
+import { CodeEditor } from './components/CodeEditor';
 import { Console } from './components/Console';
 import { Terminal } from './components/Terminal';
 import { Button } from './components/ui/button';
@@ -133,10 +133,9 @@ function App({ user, onLogout }: AppProps) {
   });
   const [waitingForInput, setWaitingForInput] = useState(false);
   const [inputQueue, setInputQueue] = useState<string[]>([]);
-  const [expectedInputCount, setExpectedInputCount] = useState(0);
-  const [codeErrors, setCodeErrors] = useState<CodeErrorMarker[]>([]);
   const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal'>('console');
+  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number } | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
@@ -340,8 +339,6 @@ function App({ user, onLogout }: AppProps) {
   useEffect(() => {
     setWaitingForInput(false);
     setInputQueue([]);
-    setExpectedInputCount(0);
-    setCodeErrors([]);
   }, [language]);
 
   // Change default code when language changes (only when not logged in or not in a project)
@@ -359,241 +356,29 @@ function App({ user, onLogout }: AppProps) {
         setCode(defaultCppCode);
       }
     }
-    // Clear previous error markers when switching language
-    setCodeErrors([]);
   }, [language, user, currentProject]);
 
   // Parse error text coming from backend to extract line numbers
-  const parseErrorLocations = (errorText: string, lang: typeof language): CodeErrorMarker[] => {
-    const markers: CodeErrorMarker[] = [];
-
-    const addMarker = (line: number, message: string) => {
-      if (!Number.isFinite(line) || line <= 0) return;
-      markers.push({ line, message });
-    };
-
-    const lines = errorText.split('\n');
-
-    if (lang === 'python') {
-      for (const line of lines) {
-        const m = line.match(/File\s+"<string>",\s+line\s+(\d+)/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), errorText);
-        }
-      }
-    } else if (lang === 'java') {
-      for (const line of lines) {
-        let m = line.match(/\.java:(\d+):\s+error:/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-        m = line.match(/\((?:[A-Za-z0-9_$.]+\.java):(\d+)\)/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-      }
-    } else if (lang === 'javascript') {
-      for (const line of lines) {
-        let m = line.match(/<anonymous>:(\d+):\d+/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-        if (/^\w*Error:/.test(line)) {
-          addMarker(1, line.trim());
-        }
-      }
-    } else if (lang === 'cpp') {
-      for (const line of lines) {
-        const m = line.match(/main\.cpp:(\d+):\d*:\s+error:/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-      }
-    }
-
-    // Fallback: if nothing parsed but we have an error, attach it to first line
-    if (markers.length === 0 && errorText.trim()) {
-      addMarker(1, errorText.trim());
-    }
-
-    return markers;
-  };
-
-  const runCode = async (providedInputs?: string[]) => {
+  const runCode = async () => {
     if (!code.trim()) {
       addToConsole('Please write some code first!', 'error');
       return;
     }
 
-    // Use provided inputs or current queue
-    const inputs = providedInputs || inputQueue;
-
-    // Check for interactive input (Scanner/input/cin/stdin) and show instructions if no inputs provided
-    const needsInput = (language === 'java' && (/Scanner/.test(code) && (/nextInt|nextLine|next\(|nextDouble|nextFloat/.test(code) || /BufferedReader/.test(code)))) ||
-                       (language === 'python' && /input\s*\(/.test(code)) ||
-                       (language === 'cpp' && /cin\s*>>/.test(code)) ||
-                       (language === 'javascript' && /readline|stdin/.test(code));
+    // Switch to Terminal for interactive execution
+    setActiveBottomTab('terminal');
     
-    if (needsInput && inputs.length === 0) {
-      // Extract input prompts from the code to show user what inputs are expected
-      const prompts: string[] = [];
-      
-      if (language === 'python') {
-        // Match input("prompt") patterns
-        const inputMatches = code.matchAll(/input\s*\(\s*['"](.*?)['"]\s*\)/g);
-        for (const match of inputMatches) {
-          prompts.push(match[1] || 'Enter value');
-        }
-      } else if (language === 'java') {
-        // Match System.out.print patterns before Scanner calls
-        const lines = code.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes('System.out.print') && lines[i].includes('"')) {
-            const promptMatch = lines[i].match(/["'](.*?)["']/);
-            if (promptMatch && i + 1 < lines.length && /next(Int|Line|Double|Float|\()/.test(lines[i + 1])) {
-              prompts.push(promptMatch[1]);
-            }
-          }
-        }
-      } else if (language === 'cpp') {
-        // Match cout << "prompt" patterns before cin
-        const lines = code.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes('cout') && lines[i].includes('"') && i + 1 < lines.length && lines[i + 1].includes('cin >>')) {
-            const promptMatch = lines[i].match(/["'](.*?)["']/);
-            if (promptMatch) {
-              prompts.push(promptMatch[1]);
-            }
-          }
-        }
-      } else if (language === 'javascript') {
-        // Match console.log("prompt") patterns before readline
-        const lines = code.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes('console.log') && lines[i].includes('"') && i + 1 < lines.length && /readline|stdin/.test(lines[i + 1])) {
-            const promptMatch = lines[i].match(/["'](.*?)["']/);
-            if (promptMatch) {
-              prompts.push(promptMatch[1]);
-            }
-          }
-        }
-      }
-      
-      setExpectedInputCount(prompts.length || 1);
-      addToConsole('⚠️ Your code requires input!', 'error');
-      addToConsole('', 'output');
-      
-      if (prompts.length > 0) {
-        addToConsole(`📝 Your code expects these inputs:`, 'info');
-        prompts.forEach((prompt, i) => {
-          addToConsole(`   ${i + 1}. ${prompt}`, 'output');
-        });
-      } else {
-        addToConsole(`📝 Your code requires input values`, 'info');
-      }
-      
-      addToConsole('', 'output');
-      addToConsole('💡 Type each value below and press Enter', 'info');
-      addToConsole(`   After ${prompts.length || 'all'} input${prompts.length !== 1 ? 's' : ''}, code will run automatically`, 'output');
-      setWaitingForInput(true);
-      return;
-    }
-
-    setIsRunning(true);
-    setWaitingForInput(false);
-
-    if (inputs.length > 0) {
-      addToConsole(`📥 Using inputs: ${inputs.join(', ')}`, 'info');
-    }
-    addToConsole('⏳ Running code...', 'info');
-
-    try {
-      let result;
-
-      // If we're in a project, use multi-file execution
-      if (currentProject && currentFile) {
-        addToConsole(`📁 Running project: ${currentProject.name} (main: ${currentFile.name})`, 'info');
-
-        // Get all project files with current editor content for the active file
-        const projectFiles = currentProject.files.map(f => ({
-          name: f.name,
-          content: f._id === currentFile._id ? code.trim() : f.content,
-          language: f.language
-        }));
-
-        result = await projectService.runProject(
-          projectFiles,
-          currentFile.name,
-          currentProject.language,
-          inputs.join(',')
-        );
-      } else {
-        // Single file execution
-        const response = await fetch('http://localhost:9876/api/run', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: code.trim(),
-            language: language,
-            input: inputs.join(',')
-          }),
-        });
-
-        result = await response.json();
-      }
-
-      if (result.error) {
-        addToConsole(result.error, 'error');
-        // Extract error locations for highlighting in editor
-        const effectiveLanguage = (currentProject?.language || language) as 'python' | 'java' | 'javascript' | 'cpp';
-        const markers = parseErrorLocations(result.error, effectiveLanguage);
-        setCodeErrors(markers);
-
-        // Get AI error suggestions
-        try {
-          const errorAnalysis = await aiService.getErrorSuggestions(result.error, code, effectiveLanguage);
-          if (errorAnalysis.explanation) {
-            addToConsole('', 'output');
-            addToConsole('🤖 AI Error Analysis:', 'info');
-            addToConsole(errorAnalysis.explanation, 'info');
-
-            if (errorAnalysis.suggestions.length > 0) {
-              addToConsole('', 'output');
-              addToConsole('💡 Suggested Fixes:', 'info');
-              errorAnalysis.suggestions.forEach((suggestion, idx) => {
-                addToConsole(`   ${idx + 1}. ${suggestion}`, 'output');
-              });
-            }
-          }
-        } catch (aiError) {
-          console.error('Failed to get AI error suggestions:', aiError);
-        }
-      } else {
-        addToConsole(result.output || '✅ Code executed successfully', 'output');
-        setCodeErrors([]);
-      }
-
-      // Clear input queue after successful execution
-      setInputQueue([]);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-        addToConsole('❌ Cannot connect to backend server!\n\nMake sure the backend is running:\n  cd backend\n  npm run dev', 'error');
-      } else {
-        addToConsole(`Connection error: ${errorMessage}`, 'error');
-      }
-    } finally {
-      setIsRunning(false);
-    }
+    // Send code to Terminal for interactive execution
+    setCodeToExecute({ code: code.trim(), timestamp: Date.now() });
+    
+    addToConsole('⏳ Code sent to Terminal for interactive execution', 'info');
+    addToConsole('💡 Switch to Terminal tab to see output and provide inputs in real-time', 'info');
   };
 
   const clearConsole = () => {
     setOutput([]);
     setInputQueue([]);
     setWaitingForInput(false);
-    setExpectedInputCount(0);
   };
 
   const addToConsole = (message: string, type: ConsoleOutput['type'] = 'output') => {
@@ -663,31 +448,10 @@ function App({ user, onLogout }: AppProps) {
     }
   };
 
-  const handleConsoleInput = (value: string) => {
-    if (!value.trim()) return;
-    
-    const newQueue = [...inputQueue, value];
-    setInputQueue(newQueue);
-    addToConsole(`✅ Input #${newQueue.length} added: ${value}`, 'input' as ConsoleOutput['type']);
-    
-    // Check if we have all required inputs
-    if (expectedInputCount > 0 && newQueue.length >= expectedInputCount) {
-      addToConsole(`🎯 All ${expectedInputCount} inputs received! Auto-running code...`, 'info');
-      // Auto-run after a short delay to show the message
-      setTimeout(() => {
-        runCode(newQueue);
-      }, 500);
-    } else if (expectedInputCount > 0) {
-      const remaining = expectedInputCount - newQueue.length;
-      addToConsole(`💬 Input ${newQueue.length}/${expectedInputCount} received. ${remaining} more needed...`, 'info');
-    } else {
-      // Fallback if count detection failed
-      if (newQueue.length === 1) {
-        addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Need more? Type again. Ready? Click "Run Code".`, 'info');
-      } else {
-        addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Add more or click "Run Code" to execute.`, 'info');
-      }
-    }
+  const handleConsoleInput = (_value: string) => {
+    // Console input disabled - now using Terminal for interactive execution
+    addToConsole('💡 Code execution moved to Terminal tab for real-time interaction', 'info');
+    addToConsole('   Click the Terminal tab to see and interact with your running code', 'output');
   };
 
   return (
@@ -853,15 +617,7 @@ function App({ user, onLogout }: AppProps) {
         <div className="flex-1 flex overflow-hidden px-4 pt-3 pb-2">
           {/* Code Editor */}
           <div className="flex-1 flex flex-col min-w-0 mr-2">
-          <div className="mb-2 flex items-center justify-end">
-            {codeErrors.length > 0 && (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/40">
-                {codeErrors.length} error{codeErrors.length > 1 ? 's' : ''}{' '}
-                {`on line${codeErrors.length > 1 ? 's' : ''} `}
-                {Array.from(new Set(codeErrors.map(e => e.line))).sort((a, b) => a - b).join(', ')}
-              </span>
-            )}
-          </div>
+
           <div className={`flex-1 rounded-xl overflow-hidden border shadow-2xl backdrop-blur-sm ${
             theme === 'dark'
               ? 'border-gray-700 bg-gray-900/50'
@@ -874,8 +630,6 @@ function App({ user, onLogout }: AppProps) {
               language={language}
               height="100%"
               theme={theme === 'dark' ? 'vs-dark' : 'light'}
-              errors={codeErrors}
-              fontSize={fontSize}
             />
           </div>
 
@@ -1377,6 +1131,7 @@ function App({ user, onLogout }: AppProps) {
                   height="100%" 
                   theme={theme}
                   language={language}
+                  codeToExecute={codeToExecute}
                 />
               )}
             </div>

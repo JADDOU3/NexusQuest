@@ -8,6 +8,7 @@ import aiRouter from './routes/ai.js';
 import authRouter from './routes/auth.js';
 import projectsRouter from './routes/projects.js';
 import terminalRouter from './routes/terminal.js';
+import { streamExecutionRouter } from './routes/stream-execution.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
 import { connectDatabase } from './config/database.js';
@@ -52,6 +53,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api', codeExecutionRouter);
 app.use('/api', terminalRouter);
+app.use('/api/stream', streamExecutionRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectsRouter);

@@ -4,6 +4,7 @@ interface TerminalProps {
   height?: string;
   theme?: 'dark' | 'light';
   language: 'python' | 'java' | 'javascript' | 'cpp' | 'go';
+  codeToExecute?: { code: string; timestamp: number } | null;
 }
 
 interface TerminalLine {
@@ -12,7 +13,7 @@ interface TerminalLine {
   timestamp: Date;
 }
 
-export function Terminal({ height = '400px', theme = 'dark', language }: TerminalProps) {
+export function Terminal({ height = '400px', theme = 'dark', language, codeToExecute }: TerminalProps) {
   const getWelcomeMessage = () => {
     switch (language) {
       case 'python':
@@ -37,12 +38,111 @@ export function Terminal({ height = '400px', theme = 'dark', language }: Termina
   const [currentCommand, setCurrentCommand] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isExecutingCode, setIsExecutingCode] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [lines]);
+
+  // Execute code when codeToExecute changes
+  useEffect(() => {
+    if (codeToExecute && codeToExecute.code) {
+      executeCodeInteractive(codeToExecute.code);
+    }
+  }, [codeToExecute]);
+
+  const executeCodeInteractive = async (code: string) => {
+    const sessionId = `session-${Date.now()}`;
+    setCurrentSessionId(sessionId);
+    setIsExecutingCode(true);
+
+    setLines(prev => [...prev, { 
+      type: 'output', 
+      content: `\n▶️ Running ${language} program (interactive mode)...`, 
+      timestamp: new Date() 
+    }]);
+
+    try {
+      // Start execution
+      const startRes = await fetch('http://localhost:9876/api/stream/stream-start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language, sessionId })
+      });
+
+      if (!startRes.ok) throw new Error('Failed to start execution');
+
+      // Listen to output stream
+      const eventSource = new EventSource(`http://localhost:9876/api/stream/stream-output/${sessionId}`);
+      eventSourceRef.current = eventSource;
+
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'end') {
+          setLines(prev => [...prev, { 
+            type: 'output', 
+            content: '\n✓ Program finished', 
+            timestamp: new Date() 
+          }]);
+          setIsExecutingCode(false);
+          setCurrentSessionId(null);
+          eventSource.close();
+        } else {
+          const content = data.data;
+          if (content) {
+            setLines(prev => [...prev, { 
+              type: data.type === 'stderr' ? 'error' : 'output', 
+              content: content.trimEnd(), 
+              timestamp: new Date() 
+            }]);
+          }
+        }
+      };
+
+      eventSource.onerror = () => {
+        setLines(prev => [...prev, { 
+          type: 'error', 
+          content: 'Connection error', 
+          timestamp: new Date() 
+        }]);
+        setIsExecutingCode(false);
+        setCurrentSessionId(null);
+        eventSource.close();
+      };
+
+    } catch (error) {
+      setLines(prev => [...prev, { 
+        type: 'error', 
+        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        timestamp: new Date() 
+      }]);
+      setIsExecutingCode(false);
+      setCurrentSessionId(null);
+    }
+  };
+
+  const sendInput = async (input: string) => {
+    if (!currentSessionId) return;
+
+    try {
+      await fetch('http://localhost:9876/api/stream/stream-input', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentSessionId, input })
+      });
+    } catch (error) {
+      setLines(prev => [...prev, { 
+        type: 'error', 
+        content: `Failed to send input: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        timestamp: new Date() 
+      }]);
+    }
+  };
 
   // Update welcome message when language changes
   useEffect(() => {
@@ -99,7 +199,15 @@ export function Terminal({ height = '400px', theme = 'dark', language }: Termina
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      executeCommand(currentCommand);
+      // If executing code interactively, send as input
+      if (isExecutingCode && currentSessionId) {
+        setLines(prev => [...prev, { type: 'command', content: currentCommand, timestamp: new Date() }]);
+        sendInput(currentCommand);
+        setCurrentCommand('');
+      } else {
+        // Otherwise execute as shell command
+        executeCommand(currentCommand);
+      }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (commandHistory.length > 0) {
