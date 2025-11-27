@@ -1009,6 +1009,9 @@ function App({ user, onLogout }: AppProps) {
                                     setNewFileName('');
                                     setNewFileLanguage('python');
                                     setShowNewFileInput(null);
+                                    // Refresh current project to show new file immediately
+                                    const updatedProject = await projectService.getProject(currentProject._id);
+                                    setCurrentProject(updatedProject);
                                     loadProjects();
                                   } catch (err) {
                                     console.error('Failed to add file:', err);

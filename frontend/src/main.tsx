@@ -1,7 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import App from './App.tsx'
+import Home from './pages/Home.tsx'
 import { Login } from './pages/Login.tsx'
 import { Signup } from './pages/Signup.tsx'
 import { Projects } from './pages/Projects.tsx'
@@ -26,9 +27,10 @@ function Root() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<App user={user} onLogout={handleLogout} />} />
-        <Route path="/projects" element={<Projects user={user} />} />
-        <Route path="/project/:projectId" element={<App user={user} onLogout={handleLogout} />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/editor" element={user ? <App user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+        <Route path="/projects" element={user ? <Projects user={user} /> : <Navigate to="/login" />} />
+        <Route path="/project/:projectId" element={user ? <App user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
         <Route path="/login" element={<Login onLogin={handleAuth} />} />
         <Route path="/signup" element={<Signup onSignup={handleAuth} />} />
       </Routes>
