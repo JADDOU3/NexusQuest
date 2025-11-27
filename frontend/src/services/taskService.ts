@@ -104,3 +104,61 @@ export async function deleteTask(id: string): Promise<void> {
   if (!data.success) throw new Error(data.error);
 }
 
+// Task Progress Types and Functions
+export type TaskStatus = 'started' | 'completed';
+
+export interface TaskProgress {
+  _id: string;
+  userId: string;
+  taskId: Task;
+  status: TaskStatus;
+  code: string;
+  startedAt: string;
+  completedAt?: string;
+}
+
+export async function getMyProgress(status?: TaskStatus): Promise<TaskProgress[]> {
+  const params = new URLSearchParams();
+  if (status) params.append('status', status);
+
+  const res = await authFetch(`${API_URL}/api/task-progress/my-progress?${params.toString()}`);
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+export async function getTaskProgress(taskId: string): Promise<TaskProgress | null> {
+  const res = await authFetch(`${API_URL}/api/task-progress/${taskId}`);
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+export async function startTask(taskId: string): Promise<TaskProgress> {
+  const res = await authFetch(`${API_URL}/api/task-progress/${taskId}/start`, {
+    method: 'POST',
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+export async function saveTaskCode(taskId: string, code: string): Promise<TaskProgress> {
+  const res = await authFetch(`${API_URL}/api/task-progress/${taskId}/save`, {
+    method: 'PUT',
+    body: JSON.stringify({ code }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+export async function completeTask(taskId: string, code: string): Promise<TaskProgress> {
+  const res = await authFetch(`${API_URL}/api/task-progress/${taskId}/complete`, {
+    method: 'PUT',
+    body: JSON.stringify({ code }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}

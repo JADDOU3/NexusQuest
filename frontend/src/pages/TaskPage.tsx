@@ -5,7 +5,7 @@ import { CodeEditor } from '../components/CodeEditor';
 import { Console } from '../components/Console';
 import { Terminal } from '../components/Terminal';
 import { Button } from '../components/ui/button';
-import { Task, getTask } from '../services/taskService';
+import { Task, getTask, startTask, saveTaskCode } from '../services/taskService';
 import type { Language, Theme, ConsoleOutput } from '../types';
 
 interface TaskPageProps {
@@ -38,7 +38,7 @@ export default function TaskPage({ user }: TaskPageProps) {
   const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number } | null>(null);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
 
-  // Load task
+  // Load task and start progress tracking
   useEffect(() => {
     const loadTask = async () => {
       if (!taskId) return;
@@ -46,7 +46,16 @@ export default function TaskPage({ user }: TaskPageProps) {
         setLoading(true);
         const data = await getTask(taskId);
         setTask(data);
-        setCode(data.starterCode || getDefaultCode(data.language));
+
+        // Start the task to track progress
+        const progress = await startTask(taskId);
+
+        // Use saved code if available, otherwise use starter code or default
+        if (progress.code) {
+          setCode(progress.code);
+        } else {
+          setCode(data.starterCode || getDefaultCode(data.language));
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load task');
       } finally {
@@ -55,6 +64,19 @@ export default function TaskPage({ user }: TaskPageProps) {
     };
     loadTask();
   }, [taskId]);
+
+  // Auto-save code every 30 seconds
+  useEffect(() => {
+    if (!taskId || !code) return;
+    const saveInterval = setInterval(async () => {
+      try {
+        await saveTaskCode(taskId, code);
+      } catch (err) {
+        console.error('Failed to auto-save:', err);
+      }
+    }, 30000);
+    return () => clearInterval(saveInterval);
+  }, [taskId, code]);
 
   // Load user avatar
   useEffect(() => {

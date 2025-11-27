@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Code2, Trophy, Target, BookOpen, Play, Clock, Star, TrendingUp, Award, FolderOpen, User, X, Settings, ChevronRight, Moon, Sun, LogOut, GraduationCap } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
-import { getTasks, Task } from '../services/taskService';
+import { getMyProgress, TaskProgress } from '../services/taskService';
 
 interface DashboardProps {
   user: { name: string; email: string } | null;
@@ -41,23 +41,23 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
     loadUserAvatar();
   }, []);
 
-  // Available tasks from API
-  const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
+  // User's task progress (started/completed tasks)
+  const [myTaskProgress, setMyTaskProgress] = useState<TaskProgress[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
 
-  // Load available tasks
+  // Load user's task progress
   useEffect(() => {
-    const loadTasks = async () => {
+    const loadProgress = async () => {
       try {
-        const tasks = await getTasks();
-        setAvailableTasks(tasks.slice(0, 4)); // Show first 4 tasks
+        const progress = await getMyProgress();
+        setMyTaskProgress(progress.slice(0, 4)); // Show first 4
       } catch (err) {
-        console.error('Failed to load tasks:', err);
+        console.error('Failed to load task progress:', err);
       } finally {
         setTasksLoading(false);
       }
     };
-    loadTasks();
+    loadProgress();
   }, []);
 
   // Mock data - replace with real API calls
@@ -408,65 +408,89 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
                   <Target className="w-6 h-6 text-blue-400" />
-                  Your Tasks
+                  My Tasks
                 </h2>
                 <Button
-                  onClick={() => navigate('/challenges')}
+                  onClick={() => navigate('/tasks')}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  Browse All
+                  Browse All Tasks
                 </Button>
               </div>
 
               <div className="space-y-3">
                 {tasksLoading ? (
                   <div className="text-center py-4 text-gray-400">Loading tasks...</div>
-                ) : availableTasks.length === 0 ? (
-                  <div className="text-center py-4 text-gray-400">No tasks available yet</div>
-                ) : (
-                  availableTasks.map((task) => (
-                    <div
-                      key={task._id}
-                      onClick={() => navigate(`/task/${task._id}`)}
-                      className={`rounded-lg p-4 transition-all cursor-pointer border ${
-                        theme === 'dark'
-                          ? 'bg-gray-800/50 border-gray-700 hover:border-blue-500/30'
-                          : 'bg-gray-50 border-gray-200 hover:border-blue-300'
-                      }`}
+                ) : myTaskProgress.length === 0 ? (
+                  <div className="text-center py-8">
+                    <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-500" />
+                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      You haven't started any tasks yet
+                    </p>
+                    <Button
+                      onClick={() => navigate('/tasks')}
+                      className="mt-3 bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Clock className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <div>
-                            <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                              {task.title}
-                            </h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className={`text-xs px-2 py-0.5 rounded ${
-                                task.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
-                                task.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                                'bg-red-500/20 text-red-400'
-                              }`}>
-                                {task.difficulty}
-                              </span>
-                              <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {task.points} points
-                              </span>
-                              <span className={`text-xs px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
-                                {task.language}
-                              </span>
+                      Find Tasks to Start
+                    </Button>
+                  </div>
+                ) : (
+                  myTaskProgress.map((progress) => {
+                    const task = progress.taskId;
+                    if (!task || typeof task !== 'object') return null;
+                    return (
+                      <div
+                        key={progress._id}
+                        onClick={() => navigate(`/task/${task._id}`)}
+                        className={`rounded-lg p-4 transition-all cursor-pointer border ${
+                          theme === 'dark'
+                            ? 'bg-gray-800/50 border-gray-700 hover:border-blue-500/30'
+                            : 'bg-gray-50 border-gray-200 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {progress.status === 'completed' ? (
+                              <Award className="w-5 h-5 text-green-400" />
+                            ) : (
+                              <Clock className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
+                            )}
+                            <div>
+                              <h3 className={`font-semibold ${
+                                progress.status === 'completed'
+                                  ? 'line-through opacity-75'
+                                  : ''
+                              } ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                {task.title}
+                              </h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-xs px-2 py-0.5 rounded ${
+                                  task.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
+                                  task.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-red-500/20 text-red-400'
+                                }`}>
+                                  {task.difficulty}
+                                </span>
+                                <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  {task.points} points
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                  {task.language}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            progress.status === 'completed'
+                              ? 'bg-green-500/20 text-green-400'
+                              : 'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {progress.status === 'completed' ? 'Completed' : 'In Progress'}
+                          </span>
                         </div>
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          Start
-                        </Button>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

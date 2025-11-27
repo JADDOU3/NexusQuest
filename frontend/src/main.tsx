@@ -10,6 +10,7 @@ import { Signup } from './pages/Signup.tsx'
 import { Projects } from './pages/Projects.tsx'
 import TeacherDashboard from './pages/TeacherDashboard.tsx'
 import TaskPage from './pages/TaskPage.tsx'
+import TasksPage from './pages/TasksPage.tsx'
 import { ThemeProvider } from './context/ThemeContext.tsx'
 import './index.css'
 
@@ -39,6 +40,7 @@ function Root() {
         <Route path="/projects" element={user ? <Projects user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
         <Route path="/project/:projectId" element={user ? <App user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
         <Route path="/teacher" element={user ? <TeacherDashboard /> : <Navigate to="/" />} />
+        <Route path="/tasks" element={user ? <TasksPage user={user} /> : <Navigate to="/" />} />
         <Route path="/task/:taskId" element={user ? <TaskPage user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
         <Route path="/login" element={<Login onLogin={handleAuth} />} />
         <Route path="/signup" element={<Signup onSignup={handleAuth} />} />
