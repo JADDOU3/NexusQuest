@@ -454,9 +454,9 @@ export function Profile({ user, onLogout }: ProfileProps) {
             />
             <label
               htmlFor="cover-upload"
-              className={`absolute bottom-4 right-4 cursor-pointer ${theme === 'dark' ? 'bg-gray-900 hover:bg-gray-800' : 'bg-white hover:bg-gray-100'} rounded-lg p-2 shadow-lg transition-colors`}
+              className={`absolute bottom-4 right-4 z-20 cursor-pointer ${theme === 'dark' ? 'bg-gray-900 hover:bg-gray-800' : 'bg-white hover:bg-gray-100'} rounded-lg p-3 shadow-xl transition-all hover:scale-110`}
             >
-              <Camera className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} />
+              <Camera className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} />
             </label>
           </div>
 
