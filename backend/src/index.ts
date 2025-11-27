@@ -7,6 +7,7 @@ import { codeExecutionRouter } from './routes/execution.js';
 import aiRouter from './routes/ai.js';
 import authRouter from './routes/auth.js';
 import projectsRouter from './routes/projects.js';
+import tasksRouter from './routes/tasks.js';
 import terminalRouter from './routes/terminal.js';
 import { streamExecutionRouter } from './routes/stream-execution.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -57,6 +58,7 @@ app.use('/api/stream', streamExecutionRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectsRouter);
+app.use('/api/tasks', tasksRouter);
 
 // Error handling
 app.use(errorHandler);

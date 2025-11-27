@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Code2, Trophy, Target, BookOpen, Play, CheckCircle2, Clock, Star, TrendingUp, Award, FolderOpen, User, X, Settings, ChevronRight, Moon, Sun, LogOut } from 'lucide-react';
+import { Code2, Trophy, Target, BookOpen, Play, Clock, Star, TrendingUp, Award, FolderOpen, User, X, Settings, ChevronRight, Moon, Sun, LogOut, GraduationCap } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { getStoredUser } from '../services/authService';
+import { getTasks, Task } from '../services/taskService';
 
 interface DashboardProps {
   user: { name: string; email: string } | null;
@@ -15,6 +17,8 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
+  const storedUser = getStoredUser();
+  const isTeacher = storedUser?.role === 'teacher';
 
   // Load user avatar
   useEffect(() => {
@@ -37,6 +41,25 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
     loadUserAvatar();
   }, []);
 
+  // Available tasks from API
+  const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+
+  // Load available tasks
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const tasks = await getTasks();
+        setAvailableTasks(tasks.slice(0, 4)); // Show first 4 tasks
+      } catch (err) {
+        console.error('Failed to load tasks:', err);
+      } finally {
+        setTasksLoading(false);
+      }
+    };
+    loadTasks();
+  }, []);
+
   // Mock data - replace with real API calls
   const stats = {
     completedChallenges: 12,
@@ -45,13 +68,6 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
     rank: 156,
     streak: 5
   };
-
-  const recentTasks = [
-    { id: 1, title: 'Two Sum Problem', difficulty: 'Easy', points: 10, completed: true },
-    { id: 2, title: 'Binary Search', difficulty: 'Medium', points: 25, completed: true },
-    { id: 3, title: 'Merge Sort Implementation', difficulty: 'Medium', points: 30, completed: false },
-    { id: 4, title: 'Dynamic Programming - Fibonacci', difficulty: 'Hard', points: 50, completed: false }
-  ];
 
   const myProjects = [
     { id: 1, name: 'Todo App', language: 'JavaScript', lastModified: '2 hours ago' },
@@ -202,6 +218,24 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
                 <FolderOpen className="w-5 h-5" />
                 <span>Projects</span>
               </button>
+
+              {/* Teacher Dashboard - only visible for teachers */}
+              {isTeacher && (
+                <button
+                  onClick={() => {
+                    setShowSidePanel(false);
+                    navigate('/teacher');
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    theme === 'dark'
+                      ? 'hover:bg-gray-800 text-gray-300'
+                      : 'hover:bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  <GraduationCap className="w-5 h-5 text-purple-400" />
+                  <span>Teacher Dashboard</span>
+                </button>
+              )}
 
               {/* Settings Section */}
               <div className="mt-2">
@@ -385,59 +419,55 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
               </div>
 
               <div className="space-y-3">
-                {recentTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`rounded-lg p-4 transition-all cursor-pointer border ${
-                      theme === 'dark'
-                        ? 'bg-gray-800/50 border-gray-700 hover:border-blue-500/30'
-                        : 'bg-gray-50 border-gray-200 hover:border-blue-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {task.completed ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-400" />
-                        ) : (
-                          <Clock className={`w-5 h-5 ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`} />
-                        )}
-                        <div>
-                          <h3 className={`font-semibold ${
-                            task.completed 
-                              ? theme === 'dark' ? 'text-gray-400 line-through' : 'text-gray-500 line-through'
-                              : theme === 'dark' ? 'text-white' : 'text-gray-900'
-                          }`}>
-                            {task.title}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`text-xs px-2 py-0.5 rounded ${
-                              task.difficulty === 'Easy' ? 'bg-green-500/20 text-green-400' :
-                              task.difficulty === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-red-500/20 text-red-400'
-                            }`}>
-                              {task.difficulty}
-                            </span>
-                            <span className={`text-xs ${
-                              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                            }`}>{task.points} points</span>
+                {tasksLoading ? (
+                  <div className="text-center py-4 text-gray-400">Loading tasks...</div>
+                ) : availableTasks.length === 0 ? (
+                  <div className="text-center py-4 text-gray-400">No tasks available yet</div>
+                ) : (
+                  availableTasks.map((task) => (
+                    <div
+                      key={task._id}
+                      onClick={() => navigate(`/task/${task._id}`)}
+                      className={`rounded-lg p-4 transition-all cursor-pointer border ${
+                        theme === 'dark'
+                          ? 'bg-gray-800/50 border-gray-700 hover:border-blue-500/30'
+                          : 'bg-gray-50 border-gray-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Clock className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <div>
+                            <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {task.title}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-xs px-2 py-0.5 rounded ${
+                                task.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
+                                task.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-red-500/20 text-red-400'
+                              }`}>
+                                {task.difficulty}
+                              </span>
+                              <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {task.points} points
+                              </span>
+                              <span className={`text-xs px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                {task.language}
+                              </span>
+                            </div>
                           </div>
                         </div>
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Start
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        className={task.completed 
-                          ? theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-300 text-gray-600'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }
-                        disabled={task.completed}
-                      >
-                        {task.completed ? 'Completed' : 'Start'}
-                      </Button>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
