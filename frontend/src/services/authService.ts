@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9876';
 
 export type UserRole = 'user' | 'teacher';
 
@@ -7,6 +7,8 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  avatarImage?: string;
+  coverImage?: string;
 }
 
 export interface AuthResponse {

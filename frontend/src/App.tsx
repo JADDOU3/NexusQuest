@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CodeEditor, CodeErrorMarker } from './components/CodeEditor';
+import { CodeEditor } from './components/CodeEditor';
 import { Console } from './components/Console';
+import { Terminal } from './components/Terminal';
 import { Button } from './components/ui/button';
 import { Play, Square, Download, Upload, Sparkles, FolderTree, ChevronRight, ChevronLeft, User, LogIn, LogOut, X, FolderOpen, Trophy, Settings, Moon, Sun, Minus, Plus, FilePlus, FolderPlus, Trash2, ChevronDown, File, Save, Folder } from 'lucide-react';
 import * as aiService from './services/aiService';
@@ -62,7 +63,9 @@ public class Main {
 
 const defaultJavaScriptCode = `// Welcome to NexusQuest IDE!
 // Write your JavaScript code here and click Run
-// Popular frameworks: express, axios, lodash available
+// Popular frameworks: express, axios, lodash, moment available
+// NOTE: Browser functions (prompt, alert, document) are not available
+// This runs in Node.js environment
 
 console.log("Hello from JavaScript!");
 
@@ -71,6 +74,12 @@ const _ = require('lodash');
 const numbers = [1, 2, 3, 4, 5];
 const doubled = _.map(numbers, n => n * 2);
 console.log("Doubled:", doubled);
+
+// Example: Calculate sum
+function calculateSum(arr) {
+    return arr.reduce((sum, num) => sum + num, 0);
+}
+console.log("Sum of numbers:", calculateSum([10, 20, 30]));
 
 // Example: Date formatting with moment
 const moment = require('moment');
@@ -124,16 +133,37 @@ function App({ user, onLogout }: AppProps) {
   });
   const [waitingForInput, setWaitingForInput] = useState(false);
   const [inputQueue, setInputQueue] = useState<string[]>([]);
-  const [expectedInputCount, setExpectedInputCount] = useState(0);
-  const [codeErrors, setCodeErrors] = useState<CodeErrorMarker[]>([]);
   const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal'>('console');
+  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number } | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
     const saved = localStorage.getItem('nexusquest-fontsize');
     return saved ? parseInt(saved) : 14;
   });
+  const [avatarImage, setAvatarImage] = useState<string | null>(null);
+
+  // Load user avatar
+  useEffect(() => {
+    const loadUserAvatar = async () => {
+      try {
+        const token = localStorage.getItem('nexusquest-token');
+        const response = await fetch('http://localhost:9876/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await response.json();
+        if (data.success && data.user) {
+          setAvatarImage(data.user.avatarImage || null);
+        }
+      } catch (error) {
+        console.error('Failed to load user avatar:', error);
+      }
+    };
+    loadUserAvatar();
+  }, []);
 
   // Project state
   const [projects, setProjects] = useState<Project[]>([]); // Used for session restoration
@@ -331,8 +361,6 @@ function App({ user, onLogout }: AppProps) {
   useEffect(() => {
     setWaitingForInput(false);
     setInputQueue([]);
-    setExpectedInputCount(0);
-    setCodeErrors([]);
   }, [language]);
 
   // Change default code when language changes (only when not logged in or not in a project)
@@ -350,241 +378,29 @@ function App({ user, onLogout }: AppProps) {
         setCode(defaultCppCode);
       }
     }
-    // Clear previous error markers when switching language
-    setCodeErrors([]);
   }, [language, user, currentProject]);
 
   // Parse error text coming from backend to extract line numbers
-  const parseErrorLocations = (errorText: string, lang: typeof language): CodeErrorMarker[] => {
-    const markers: CodeErrorMarker[] = [];
-
-    const addMarker = (line: number, message: string) => {
-      if (!Number.isFinite(line) || line <= 0) return;
-      markers.push({ line, message });
-    };
-
-    const lines = errorText.split('\n');
-
-    if (lang === 'python') {
-      for (const line of lines) {
-        const m = line.match(/File\s+"<string>",\s+line\s+(\d+)/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), errorText);
-        }
-      }
-    } else if (lang === 'java') {
-      for (const line of lines) {
-        let m = line.match(/\.java:(\d+):\s+error:/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-        m = line.match(/\((?:[A-Za-z0-9_$.]+\.java):(\d+)\)/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-      }
-    } else if (lang === 'javascript') {
-      for (const line of lines) {
-        let m = line.match(/<anonymous>:(\d+):\d+/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-        if (/^\w*Error:/.test(line)) {
-          addMarker(1, line.trim());
-        }
-      }
-    } else if (lang === 'cpp') {
-      for (const line of lines) {
-        const m = line.match(/main\.cpp:(\d+):\d*:\s+error:/);
-        if (m) {
-          addMarker(parseInt(m[1], 10), line.trim());
-        }
-      }
-    }
-
-    // Fallback: if nothing parsed but we have an error, attach it to first line
-    if (markers.length === 0 && errorText.trim()) {
-      addMarker(1, errorText.trim());
-    }
-
-    return markers;
-  };
-
-  const runCode = async (providedInputs?: string[]) => {
+  const runCode = async () => {
     if (!code.trim()) {
       addToConsole('Please write some code first!', 'error');
       return;
     }
 
-    // Use provided inputs or current queue
-    const inputs = providedInputs || inputQueue;
-
-    // Check for interactive input (Scanner/input/cin/stdin) and show instructions if no inputs provided
-    const needsInput = (language === 'java' && (/Scanner/.test(code) && (/nextInt|nextLine|next\(|nextDouble|nextFloat/.test(code) || /BufferedReader/.test(code)))) ||
-                       (language === 'python' && /input\s*\(/.test(code)) ||
-                       (language === 'cpp' && /cin\s*>>/.test(code)) ||
-                       (language === 'javascript' && /readline|stdin/.test(code));
+    // Switch to Terminal for interactive execution
+    setActiveBottomTab('terminal');
     
-    if (needsInput && inputs.length === 0) {
-      // Extract input prompts from the code to show user what inputs are expected
-      const prompts: string[] = [];
-      
-      if (language === 'python') {
-        // Match input("prompt") patterns
-        const inputMatches = code.matchAll(/input\s*\(\s*['"](.*?)['"]\s*\)/g);
-        for (const match of inputMatches) {
-          prompts.push(match[1] || 'Enter value');
-        }
-      } else if (language === 'java') {
-        // Match System.out.print patterns before Scanner calls
-        const lines = code.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes('System.out.print') && lines[i].includes('"')) {
-            const promptMatch = lines[i].match(/["'](.*?)["']/);
-            if (promptMatch && i + 1 < lines.length && /next(Int|Line|Double|Float|\()/.test(lines[i + 1])) {
-              prompts.push(promptMatch[1]);
-            }
-          }
-        }
-      } else if (language === 'cpp') {
-        // Match cout << "prompt" patterns before cin
-        const lines = code.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes('cout') && lines[i].includes('"') && i + 1 < lines.length && lines[i + 1].includes('cin >>')) {
-            const promptMatch = lines[i].match(/["'](.*?)["']/);
-            if (promptMatch) {
-              prompts.push(promptMatch[1]);
-            }
-          }
-        }
-      } else if (language === 'javascript') {
-        // Match console.log("prompt") patterns before readline
-        const lines = code.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes('console.log') && lines[i].includes('"') && i + 1 < lines.length && /readline|stdin/.test(lines[i + 1])) {
-            const promptMatch = lines[i].match(/["'](.*?)["']/);
-            if (promptMatch) {
-              prompts.push(promptMatch[1]);
-            }
-          }
-        }
-      }
-      
-      setExpectedInputCount(prompts.length || 1);
-      addToConsole('⚠️ Your code requires input!', 'error');
-      addToConsole('', 'output');
-      
-      if (prompts.length > 0) {
-        addToConsole(`📝 Your code expects these inputs:`, 'info');
-        prompts.forEach((prompt, i) => {
-          addToConsole(`   ${i + 1}. ${prompt}`, 'output');
-        });
-      } else {
-        addToConsole(`📝 Your code requires input values`, 'info');
-      }
-      
-      addToConsole('', 'output');
-      addToConsole('💡 Type each value below and press Enter', 'info');
-      addToConsole(`   After ${prompts.length || 'all'} input${prompts.length !== 1 ? 's' : ''}, code will run automatically`, 'output');
-      setWaitingForInput(true);
-      return;
-    }
-
-    setIsRunning(true);
-    setWaitingForInput(false);
-
-    if (inputs.length > 0) {
-      addToConsole(`📥 Using inputs: ${inputs.join(', ')}`, 'info');
-    }
-    addToConsole('⏳ Running code...', 'info');
-
-    try {
-      let result;
-
-      // If we're in a project, use multi-file execution
-      if (currentProject && currentFile) {
-        addToConsole(`📁 Running project: ${currentProject.name} (main: ${currentFile.name})`, 'info');
-
-        // Get all project files with current editor content for the active file
-        const projectFiles = currentProject.files.map(f => ({
-          name: f.name,
-          content: f._id === currentFile._id ? code.trim() : f.content,
-          language: f.language
-        }));
-
-        result = await projectService.runProject(
-          projectFiles,
-          currentFile.name,
-          currentProject.language,
-          inputs.join(',')
-        );
-      } else {
-        // Single file execution
-        const response = await fetch('http://localhost:3001/api/run', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: code.trim(),
-            language: language,
-            input: inputs.join(',')
-          }),
-        });
-
-        result = await response.json();
-      }
-
-      if (result.error) {
-        addToConsole(result.error, 'error');
-        // Extract error locations for highlighting in editor
-        const effectiveLanguage = (currentProject?.language || language) as 'python' | 'java' | 'javascript' | 'cpp';
-        const markers = parseErrorLocations(result.error, effectiveLanguage);
-        setCodeErrors(markers);
-
-        // Get AI error suggestions
-        try {
-          const errorAnalysis = await aiService.getErrorSuggestions(result.error, code, effectiveLanguage);
-          if (errorAnalysis.explanation) {
-            addToConsole('', 'output');
-            addToConsole('🤖 AI Error Analysis:', 'info');
-            addToConsole(errorAnalysis.explanation, 'info');
-
-            if (errorAnalysis.suggestions.length > 0) {
-              addToConsole('', 'output');
-              addToConsole('💡 Suggested Fixes:', 'info');
-              errorAnalysis.suggestions.forEach((suggestion, idx) => {
-                addToConsole(`   ${idx + 1}. ${suggestion}`, 'output');
-              });
-            }
-          }
-        } catch (aiError) {
-          console.error('Failed to get AI error suggestions:', aiError);
-        }
-      } else {
-        addToConsole(result.output || '✅ Code executed successfully', 'output');
-        setCodeErrors([]);
-      }
-
-      // Clear input queue after successful execution
-      setInputQueue([]);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-        addToConsole('❌ Cannot connect to backend server!\n\nMake sure the backend is running:\n  cd backend\n  npm run dev', 'error');
-      } else {
-        addToConsole(`Connection error: ${errorMessage}`, 'error');
-      }
-    } finally {
-      setIsRunning(false);
-    }
+    // Send code to Terminal for interactive execution
+    setCodeToExecute({ code: code.trim(), timestamp: Date.now() });
+    
+    addToConsole('⏳ Code sent to Terminal for interactive execution', 'info');
+    addToConsole('💡 Switch to Terminal tab to see output and provide inputs in real-time', 'info');
   };
 
   const clearConsole = () => {
     setOutput([]);
     setInputQueue([]);
     setWaitingForInput(false);
-    setExpectedInputCount(0);
   };
 
   const addToConsole = (message: string, type: ConsoleOutput['type'] = 'output') => {
@@ -654,31 +470,10 @@ function App({ user, onLogout }: AppProps) {
     }
   };
 
-  const handleConsoleInput = (value: string) => {
-    if (!value.trim()) return;
-    
-    const newQueue = [...inputQueue, value];
-    setInputQueue(newQueue);
-    addToConsole(`✅ Input #${newQueue.length} added: ${value}`, 'input' as ConsoleOutput['type']);
-    
-    // Check if we have all required inputs
-    if (expectedInputCount > 0 && newQueue.length >= expectedInputCount) {
-      addToConsole(`🎯 All ${expectedInputCount} inputs received! Auto-running code...`, 'info');
-      // Auto-run after a short delay to show the message
-      setTimeout(() => {
-        runCode(newQueue);
-      }, 500);
-    } else if (expectedInputCount > 0) {
-      const remaining = expectedInputCount - newQueue.length;
-      addToConsole(`💬 Input ${newQueue.length}/${expectedInputCount} received. ${remaining} more needed...`, 'info');
-    } else {
-      // Fallback if count detection failed
-      if (newQueue.length === 1) {
-        addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Need more? Type again. Ready? Click "Run Code".`, 'info');
-      } else {
-        addToConsole(`💬 Input queue: [${newQueue.join(', ')}]. Add more or click "Run Code" to execute.`, 'info');
-      }
-    }
+  const handleConsoleInput = (_value: string) => {
+    // Console input disabled - now using Terminal for interactive execution
+    addToConsole('💡 Code execution moved to Terminal tab for real-time interaction', 'info');
+    addToConsole('   Click the Terminal tab to see and interact with your running code', 'output');
   };
 
   return (
@@ -811,11 +606,19 @@ function App({ user, onLogout }: AppProps) {
                   onClick={() => setShowSidePanel(true)}
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                  }`}>
-                    <User className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
-                  </div>
+                  {avatarImage ? (
+                    <img 
+                      src={avatarImage} 
+                      alt="Avatar" 
+                      className="w-8 h-8 rounded-full object-cover" 
+                    />
+                  ) : (
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}>
+                      <User className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
+                    </div>
+                  )}
                   <span className={`text-xs hidden sm:block ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     {user.name}
                   </span>
@@ -844,15 +647,7 @@ function App({ user, onLogout }: AppProps) {
         <div className="flex-1 flex overflow-hidden px-4 pt-3 pb-2">
           {/* Code Editor */}
           <div className="flex-1 flex flex-col min-w-0 mr-2">
-          <div className="mb-2 flex items-center justify-end">
-            {codeErrors.length > 0 && (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/40">
-                {codeErrors.length} error{codeErrors.length > 1 ? 's' : ''}{' '}
-                {`on line${codeErrors.length > 1 ? 's' : ''} `}
-                {Array.from(new Set(codeErrors.map(e => e.line))).sort((a, b) => a - b).join(', ')}
-              </span>
-            )}
-          </div>
+
           <div className={`flex-1 rounded-xl overflow-hidden border shadow-2xl backdrop-blur-sm ${
             theme === 'dark'
               ? 'border-gray-700 bg-gray-900/50'
@@ -865,8 +660,6 @@ function App({ user, onLogout }: AppProps) {
               language={language}
               height="100%"
               theme={theme === 'dark' ? 'vs-dark' : 'light'}
-              errors={codeErrors}
-              fontSize={fontSize}
             />
           </div>
 
@@ -1246,6 +1039,9 @@ function App({ user, onLogout }: AppProps) {
                                     setNewFileName('');
                                     setNewFileLanguage('python');
                                     setShowNewFileInput(null);
+                                    // Refresh current project to show new file immediately
+                                    const updatedProject = await projectService.getProject(currentProject._id);
+                                    setCurrentProject(updatedProject);
                                     loadProjects();
                                   } catch (err) {
                                     console.error('Failed to add file:', err);
@@ -1364,34 +1160,12 @@ function App({ user, onLogout }: AppProps) {
                   theme={theme}
                 />
               ) : (
-                <div className={`h-full w-full font-mono text-xs flex flex-col ${
-                  theme === 'dark'
-                    ? 'bg-gradient-to-b from-gray-950 to-gray-900 text-gray-200'
-                    : 'bg-gradient-to-b from-gray-100 to-white text-gray-800'
-                }`}>
-                  <div className={`px-3 py-2 border-b text-[11px] flex items-center justify-between ${
-                    theme === 'dark' ? 'border-gray-800' : 'border-gray-300'
-                  }`}>
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                      Integrated Terminal (preview)
-                    </span>
-                    <span className={theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}>No shell attached</span>
-                  </div>
-                  <div className="flex-1 px-3 py-2 overflow-auto">
-                    <div className={theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}>
-                      Terminal support is not wired to a real shell yet.
-                    </div>
-                    <div className={theme === 'dark' ? 'text-gray-600 mt-2' : 'text-gray-700 mt-2'}>
-                      Future features could include:
-                    </div>
-                    <ul className="mt-1 list-disc list-inside space-y-0.5 text-[11px]">
-                      <li>Run build and test commands</li>
-                      <li>Watch Docker status and logs</li>
-                      <li>Interactive REPL for languages</li>
-                    </ul>
-                  </div>
-                </div>
+                <Terminal 
+                  height="100%" 
+                  theme={theme}
+                  language={language}
+                  codeToExecute={codeToExecute}
+                />
               )}
             </div>
           </div>
@@ -1413,11 +1187,19 @@ function App({ user, onLogout }: AppProps) {
             <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                  }`}>
-                    <User className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
-                  </div>
+                  {avatarImage ? (
+                    <img 
+                      src={avatarImage} 
+                      alt="Avatar" 
+                      className="w-10 h-10 rounded-full object-cover" 
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {user?.name}
@@ -1575,6 +1357,7 @@ function App({ user, onLogout }: AppProps) {
                 onClick={() => {
                   setShowSidePanel(false);
                   onLogout();
+                  navigate('/');
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   theme === 'dark'

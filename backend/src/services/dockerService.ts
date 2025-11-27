@@ -118,7 +118,8 @@ def input(prompt=''):
     if _input_index < len(_inputs):
         value = _inputs[_input_index]
         _input_index += 1
-        print(prompt + value)
+        if prompt:
+            print(prompt, end='')
         return value
     return ''
 
