@@ -3,9 +3,11 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import App from './App.tsx'
 import Home from './pages/Home.tsx'
+import { Dashboard } from './pages/Dashboard.tsx'
 import { Login } from './pages/Login.tsx'
 import { Signup } from './pages/Signup.tsx'
 import { Projects } from './pages/Projects.tsx'
+import { ThemeProvider } from './context/ThemeContext.tsx'
 import './index.css'
 
 function Root() {
@@ -27,7 +29,8 @@ function Root() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Home />} />
+        <Route path="/dashboard" element={user ? <Dashboard user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
         <Route path="/editor" element={user ? <App user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
         <Route path="/projects" element={user ? <Projects user={user} /> : <Navigate to="/" />} />
         <Route path="/project/:projectId" element={user ? <App user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
@@ -40,6 +43,8 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Root />
+    <ThemeProvider>
+      <Root />
+    </ThemeProvider>
   </React.StrictMode>,
 )
