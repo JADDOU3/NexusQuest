@@ -139,6 +139,21 @@ export function UserSidebar({ user, onLogout, isOpen, onClose }: UserSidebarProp
               <button
                 onClick={() => {
                   onClose();
+                  navigate('/playground');
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors bg-green-600/10 border border-green-600/20 ${
+                  theme === 'dark'
+                    ? 'hover:bg-green-600/20 text-green-400'
+                    : 'hover:bg-green-100 text-green-600'
+                }`}
+              >
+                <Trophy className="w-5 h-5" />
+                <span>⚡ Quick Playground</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  onClose();
                   navigate('/projects');
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
