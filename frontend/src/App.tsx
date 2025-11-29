@@ -381,24 +381,6 @@ function App({ user, onLogout }: AppProps) {
     setCode(newCode);
   };
 
-  const explainSelectedCode = async () => {
-    if (!code.trim()) {
-      addToConsole('No code to explain!', 'error');
-      return;
-    }
-
-    addToConsole('🤖 Analyzing code...', 'info');
-    
-    try {
-      const explanation = await aiService.explainCode(code, language);
-      addToConsole('', 'output');
-      addToConsole('💡 Code Explanation:', 'info');
-      addToConsole(explanation, 'output');
-    } catch (error) {
-      addToConsole('Failed to explain code', 'error');
-    }
-  };
-
   const handleConsoleInput = (_value: string) => {
     // Console input disabled - now using Terminal for interactive execution
     addToConsole('💡 Code execution moved to Terminal tab for real-time interaction', 'info');
@@ -512,7 +494,6 @@ function App({ user, onLogout }: AppProps) {
         onRun={runCode}
         onSave={saveFile}
         onClear={clearConsole}
-        onExplain={explainSelectedCode}
         onDownload={downloadCode}
         onLoadFile={loadCodeFile}
         onCloseProject={handleCloseProject}

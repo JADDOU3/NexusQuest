@@ -321,34 +321,7 @@ SUGGESTIONS:
   }
 }
 
-/**
- * Explain selected code using AI
- */
-export async function explainCode(code: string, language: string): Promise<string> {
-  if (!openai) {
-    return getFallbackCodeExplanation(code, language);
-  }
 
-  try {
-    const languageName = language === 'java' ? 'Java' : 'Python';
-    const prompt = `Explain this ${languageName} code in simple terms. Keep it concise (2-3 sentences).
-
-Code:
-${code}`;
-
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.5,
-      max_tokens: 150,
-    });
-
-    return response.choices[0]?.message?.content || 'No explanation available';
-  } catch (error) {
-    console.error('AI code explanation failed:', error);
-    return getFallbackCodeExplanation(code, language);
-  }
-}
 
 // Fallback error suggestions
 function getFallbackErrorSuggestions(error: string, language: string): { suggestions: string[]; explanation: string } {
@@ -420,22 +393,4 @@ function getFallbackErrorSuggestions(error: string, language: string): { suggest
   return { explanation, suggestions: suggestions.slice(0, 3) };
 }
 
-// Fallback code explanation
-function getFallbackCodeExplanation(code: string, language: string): string {
-  const lines = code.split('\n').length;
-  const languageName = language === 'java' ? 'Java' : 'Python';
-  
-  if (code.includes('for') || code.includes('while')) {
-    return `This ${languageName} code contains a loop that repeats operations. It processes data iteratively over ${lines} line${lines > 1 ? 's' : ''}.`;
-  }
-  
-  if (code.includes('if')) {
-    return `This ${languageName} code uses conditional logic to make decisions based on certain conditions.`;
-  }
-  
-  if (code.includes('def') || code.includes('public')) {
-    return `This ${languageName} code defines a function/method that encapsulates reusable logic.`;
-  }
-  
-  return `This is ${languageName} code spanning ${lines} line${lines > 1 ? 's' : ''}. It performs programmatic operations.`;
-}
+

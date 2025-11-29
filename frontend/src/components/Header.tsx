@@ -19,7 +19,6 @@ interface HeaderProps {
   onRun: () => void;
   onSave: () => void;
   onClear: () => void;
-  onExplain: () => void;
   onDownload: () => void;
   onLoadFile: () => void;
   onCloseProject: () => void;
@@ -42,7 +41,6 @@ export function Header({
   onRun,
   onSave,
   onClear,
-  onExplain,
   onDownload,
   onLoadFile,
   onCloseProject,
@@ -142,11 +140,6 @@ export function Header({
             <Button onClick={onClear} className="h-8 px-3 flex items-center gap-1 text-xs bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white shadow-md shadow-orange-500/30 transition-all duration-200 hover:scale-105">
               <Square className="w-3 h-3" />
               Clear
-            </Button>
-
-            <Button onClick={onExplain} className="h-8 px-3 hidden sm:flex items-center gap-1 text-xs bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-md shadow-indigo-500/30 transition-all duration-200 hover:scale-105" title="Explain code with AI">
-              <Sparkles className="w-3 h-3" />
-              Explain
             </Button>
 
             <Button onClick={onDownload} className="h-8 px-3 hidden md:flex items-center gap-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white shadow-md shadow-blue-500/30 transition-all duration-200 hover:scale-105">

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getAiCompletions, getInlineSuggestion, getErrorSuggestions, explainCode } from '../services/aiService.js';
+import { getAiCompletions, getInlineSuggestion, getErrorSuggestions } from '../services/aiService.js';
 
 const router = Router();
 
@@ -108,36 +108,6 @@ router.post('/error-suggestions', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to analyze error',
-    });
-  }
-});
-
-/**
- * POST /api/ai/explain
- * Explain selected code
- */
-router.post('/explain', async (req: Request, res: Response) => {
-  try {
-    const { code, language } = req.body;
-
-    if (!code || typeof code !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'Code is required',
-      });
-    }
-
-    const explanation = await explainCode(code, language || 'python');
-
-    res.json({
-      success: true,
-      explanation,
-    });
-  } catch (err) {
-    console.error('Code explanation failed:', err);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to explain code',
     });
   }
 });
