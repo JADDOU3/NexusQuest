@@ -6,16 +6,14 @@ import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
 import { getMyTasks, Task } from '../services/taskService';
 import { UserSidebar } from '../components/UserSidebar';
-import { EditProfileModal } from '../components/profile/EditProfileModal';
+import { useProfileImages } from '../hooks/useProfileImages';
 
 export function TeacherProfile() {
   const navigate = useNavigate();
   const user = getStoredUser();
   const { theme, setTheme } = useTheme();
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [avatarImage, setAvatarImage] = useState<string | null>(null);
-  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const { avatarImage, coverImage, handleAvatarChange, handleCoverChange } = useProfileImages();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState({
     totalTasks: 0,
@@ -25,25 +23,8 @@ export function TeacherProfile() {
   });
 
   useEffect(() => {
-    loadUserData();
     loadTasks();
   }, []);
-
-  const loadUserData = async () => {
-    try {
-      const token = localStorage.getItem('nexusquest-token');
-      const response = await fetch('http://localhost:9876/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success && data.user) {
-        setAvatarImage(data.user.avatarImage || null);
-        setCoverImage(data.user.coverImage || null);
-      }
-    } catch (error) {
-      console.error('Failed to load user data:', error);
-    }
-  };
 
   const loadTasks = async () => {
     try {
@@ -66,67 +47,6 @@ export function TeacherProfile() {
     localStorage.removeItem('nexusquest-token');
     localStorage.removeItem('nexusquest-user');
     navigate('/');
-  };
-
-  const handleProfileUpdate = () => {
-    setShowEditModal(false);
-    loadUserData();
-  };
-
-  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result as string;
-      try {
-        const token = localStorage.getItem('nexusquest-token');
-        const response = await fetch('http://localhost:9876/api/auth/update-profile', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ coverImage: base64String })
-        });
-        
-        if (response.ok) {
-          setCoverImage(base64String);
-        }
-      } catch (error) {
-        console.error('Failed to update cover image:', error);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result as string;
-      try {
-        const token = localStorage.getItem('nexusquest-token');
-        const response = await fetch('http://localhost:9876/api/auth/update-profile', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ avatarImage: base64String })
-        });
-        
-        if (response.ok) {
-          setAvatarImage(base64String);
-        }
-      } catch (error) {
-        console.error('Failed to update avatar image:', error);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   return (
@@ -219,11 +139,8 @@ export function TeacherProfile() {
 
         {/* User Info */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2">
             <h2 className="text-3xl font-bold">{user?.name}</h2>
-            <Button onClick={() => setShowEditModal(true)}>
-              Edit Profile
-            </Button>
           </div>
           <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{user?.email}</p>
           <div className="flex items-center gap-2 mt-2">
@@ -319,14 +236,6 @@ export function TeacherProfile() {
         onLogout={handleLogout}
       />
 
-      {/* Edit Profile Modal */}
-      {showEditModal && (
-        <EditProfileModal
-          isOpen={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          onUpdate={handleProfileUpdate}
-        />
-      )}
     </div>
   );
 }
