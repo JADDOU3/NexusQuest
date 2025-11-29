@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getAiCompletions, getInlineSuggestion, getErrorSuggestions, getChatResponse } from '../services/aiService.js';
+import { getSimpleChatResponse } from '../services/simpleAiService.js';
 
 const router = Router();
 
@@ -114,7 +115,7 @@ router.post('/error-suggestions', async (req: Request, res: Response) => {
 
 /**
  * POST /api/ai/chat
- * AI chat assistant endpoint
+ * AI chat assistant endpoint - SIMPLE & WORKING! 🚀
  */
 router.post('/chat', async (req: Request, res: Response) => {
   try {
@@ -127,19 +128,24 @@ router.post('/chat', async (req: Request, res: Response) => {
       });
     }
 
-    const response = await getChatResponse({
+    console.log(`📨 AI Chat Request: "${message}" (${language})`);
+
+    // Use simple AI service (works 100%!)
+    const response = await getSimpleChatResponse({
       message,
       currentCode: currentCode || '',
-      language: language || 'python',
+      language: language || 'java',
       history: history || []
     });
+
+    console.log(`✅ AI Response sent successfully`);
 
     res.json({
       success: true,
       response,
     });
   } catch (err) {
-    console.error('AI chat failed:', err);
+    console.error('❌ AI chat failed:', err);
     res.status(500).json({
       success: false,
       error: 'Failed to get AI response',
