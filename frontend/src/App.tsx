@@ -6,6 +6,7 @@ import { Terminal } from './components/Terminal';
 import { Header } from './components/Header';
 import { ProjectExplorer } from './components/ProjectExplorer';
 import { UserSidePanel } from './components/UserSidePanel';
+import { AiAgent } from './components/AiAgent';
 import * as aiService from './services/aiService';
 import * as projectService from './services/projectService';
 import {
@@ -48,6 +49,7 @@ function App({ user, onLogout }: AppProps) {
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal'>('console');
   const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string } | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
+  const [isAiAgentOpen, setIsAiAgentOpen] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
     const saved = localStorage.getItem('nexusquest-fontsize');
     return saved ? parseInt(saved) : 14;
@@ -381,24 +383,6 @@ function App({ user, onLogout }: AppProps) {
     setCode(newCode);
   };
 
-  const explainSelectedCode = async () => {
-    if (!code.trim()) {
-      addToConsole('No code to explain!', 'error');
-      return;
-    }
-
-    addToConsole('🤖 Analyzing code...', 'info');
-    
-    try {
-      const explanation = await aiService.explainCode(code, language);
-      addToConsole('', 'output');
-      addToConsole('💡 Code Explanation:', 'info');
-      addToConsole(explanation, 'output');
-    } catch (error) {
-      addToConsole('Failed to explain code', 'error');
-    }
-  };
-
   const handleConsoleInput = (_value: string) => {
     // Console input disabled - now using Terminal for interactive execution
     addToConsole('💡 Code execution moved to Terminal tab for real-time interaction', 'info');
@@ -512,11 +496,20 @@ function App({ user, onLogout }: AppProps) {
         onRun={runCode}
         onSave={saveFile}
         onClear={clearConsole}
-        onExplain={explainSelectedCode}
         onDownload={downloadCode}
         onLoadFile={loadCodeFile}
         onCloseProject={handleCloseProject}
         onShowSidePanel={() => setShowSidePanel(true)}
+        onToggleAiAgent={() => setIsAiAgentOpen(!isAiAgentOpen)}
+      />
+
+      {/* AI Agent */}
+      <AiAgent
+        isOpen={isAiAgentOpen}
+        onClose={() => setIsAiAgentOpen(false)}
+        theme={theme}
+        currentCode={code}
+        language={language}
       />
 
       {/* Main Layout: editor + right project panel, console at bottom */}

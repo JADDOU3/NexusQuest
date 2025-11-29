@@ -48,14 +48,16 @@ export function Terminal({ height = '400px', theme = 'dark', language, codeToExe
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const lastExecutedTimestampRef = useRef<number | null>(null);
 
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [lines]);
 
-  // Execute code when codeToExecute changes
+  // Execute code when codeToExecute changes (prevent double execution in StrictMode)
   useEffect(() => {
-    if (codeToExecute && codeToExecute.code) {
+    if (codeToExecute && codeToExecute.code && codeToExecute.timestamp !== lastExecutedTimestampRef.current) {
+      lastExecutedTimestampRef.current = codeToExecute.timestamp;
       executeCodeInteractive(codeToExecute.code, codeToExecute.files, codeToExecute.mainFile);
     }
   }, [codeToExecute]);

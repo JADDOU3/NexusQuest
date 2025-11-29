@@ -11,6 +11,7 @@ import tasksRouter from './routes/tasks.js';
 import taskProgressRouter from './routes/task-progress.js';
 import terminalRouter from './routes/terminal.js';
 import { streamExecutionRouter } from './routes/stream-execution.js';
+import { playgroundExecutionRouter } from './routes/playground-execution.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
 import { connectDatabase } from './config/database.js';
@@ -25,10 +26,10 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 // Security middleware
 app.use(helmet());
 
-// Rate limiting
+// Rate limiting - increased for development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
 });
 app.use(limiter);
@@ -56,6 +57,7 @@ app.get('/health', (req, res) => {
 app.use('/api', codeExecutionRouter);
 app.use('/api', terminalRouter);
 app.use('/api/stream', streamExecutionRouter);
+app.use('/api/playground', playgroundExecutionRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectsRouter);

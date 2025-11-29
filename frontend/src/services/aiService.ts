@@ -91,27 +91,4 @@ export async function getErrorSuggestions(error: string, code: string, language:
   }
 }
 
-/**
- * Get AI explanation for selected code
- */
-export async function explainCode(code: string, language: string = 'python'): Promise<string> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/ai/explain`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code, language }),
-    });
 
-    if (!response.ok) {
-      return 'Unable to explain code at this time.';
-    }
-
-    const data = await response.json();
-    return data.explanation || 'No explanation available.';
-  } catch (err) {
-    console.error('Error explaining code:', err);
-    return 'Unable to explain code at this time.';
-  }
-}

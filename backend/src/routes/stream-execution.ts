@@ -88,11 +88,16 @@ streamExecutionRouter.post('/stream-start', async (req, res) => {
 
     // Create base directory
     const mkdirExec = await container.exec({
-      Cmd: ['sh', '-c', `mkdir -p ${baseDir}`],
+      Cmd: ['sh', '-c', `mkdir -p ${baseDir} && echo "Directory created successfully"`],
       AttachStdout: true,
       AttachStderr: true
     });
-    await mkdirExec.start({});
+    const mkdirStream = await mkdirExec.start({});
+    
+    // Wait for mkdir to complete
+    await new Promise<void>((resolve) => {
+      mkdirStream.on('end', () => resolve());
+    });
 
     // Create subdirectories if needed
     const dirCommands = createDirectories(projectFiles, baseDir);

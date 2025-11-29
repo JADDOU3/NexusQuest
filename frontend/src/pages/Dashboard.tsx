@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Code2, Trophy, Target, BookOpen, Play, Clock, Star, TrendingUp, Award, FolderOpen, User, X, Settings, ChevronRight, Moon, Sun, LogOut, GraduationCap } from 'lucide-react';
+import { Code2, Trophy, Target, BookOpen, Clock, Star, TrendingUp, Award, User } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
 import { getMyProgress, TaskProgress } from '../services/taskService';
@@ -21,8 +21,13 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   const [fontSize, setFontSize] = useState(14);
   const storedUser = getStoredUser();
   const isTeacher = storedUser?.role === 'teacher';
- 
-  
+
+  // Redirect teachers to their dashboard
+  useEffect(() => {
+    if (isTeacher) {
+      navigate('/teacher');
+    }
+  }, [isTeacher, navigate]);
 
   // Load user avatar
   useEffect(() => {
@@ -146,15 +151,31 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
       
       <div className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className={`text-4xl font-bold mb-2 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
-            Welcome back, {user?.name?.split(' ')[0]}! 👋
-          </h1>
-          <p className={`text-lg ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-          }`}>Here's what's happening with your learning journey</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className={`text-4xl font-bold mb-2 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
+              Welcome back, {user?.name?.split(' ')[0]}! 👋
+            </h1>
+            <p className={`text-lg ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>Here's what's happening with your learning journey</p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => navigate('/playground')}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 text-lg"
+            >
+              ⚡ Quick Playground
+            </Button>
+            <Button
+              onClick={() => navigate('/projects')}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 text-lg"
+            >
+              + New Project
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}

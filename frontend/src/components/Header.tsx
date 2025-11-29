@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { Play, Square, Download, Upload, Sparkles, User, LogIn, X, Save } from 'lucide-react';
+import { Play, Square, Download, Upload, Sparkles, User, LogIn, X, Save, MessageSquare } from 'lucide-react';
 import type { Language, Theme, User as UserType, Project, ProjectFile } from '../types';
 
 interface HeaderProps {
@@ -19,11 +19,11 @@ interface HeaderProps {
   onRun: () => void;
   onSave: () => void;
   onClear: () => void;
-  onExplain: () => void;
   onDownload: () => void;
   onLoadFile: () => void;
   onCloseProject: () => void;
   onShowSidePanel: () => void;
+  onToggleAiAgent: () => void;
 }
 
 export function Header({
@@ -42,11 +42,11 @@ export function Header({
   onRun,
   onSave,
   onClear,
-  onExplain,
   onDownload,
   onLoadFile,
   onCloseProject,
   onShowSidePanel,
+  onToggleAiAgent,
 }: HeaderProps) {
   const navigate = useNavigate();
 
@@ -144,14 +144,14 @@ export function Header({
               Clear
             </Button>
 
-            <Button onClick={onExplain} className="h-8 px-3 hidden sm:flex items-center gap-1 text-xs bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-md shadow-indigo-500/30 transition-all duration-200 hover:scale-105" title="Explain code with AI">
-              <Sparkles className="w-3 h-3" />
-              Explain
-            </Button>
-
             <Button onClick={onDownload} className="h-8 px-3 hidden md:flex items-center gap-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white shadow-md shadow-blue-500/30 transition-all duration-200 hover:scale-105">
               <Download className="w-3 h-3" />
               Download
+            </Button>
+
+            <Button onClick={onToggleAiAgent} className="h-8 px-3 flex items-center gap-1 text-xs bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white shadow-md shadow-purple-500/30 transition-all duration-200 hover:scale-105" title="AI Assistant (Ctrl+K)">
+              <MessageSquare className="w-3 h-3" />
+              <span className="hidden sm:inline">AI</span>
             </Button>
           </div>
 

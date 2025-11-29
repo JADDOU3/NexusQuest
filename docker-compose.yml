@@ -36,6 +36,7 @@ services:
       - FRONTEND_URL=http://localhost:5173
       - MONGODB_URI=mongodb://mongodb:27017/nexusquest
       - JWT_SECRET=nexusquest-secret-key-change-in-production
+      - GEMINI_API_KEY=AIzaSyCyPNPbDztdOIC-Erk7BF3KAu1jc1JBJmM
     volumes:
       - ./backend:/app
       - /app/node_modules

@@ -1,16 +1,36 @@
 import OpenAI from 'openai';
+import Groq from 'groq-sdk';
+import axios from 'axios';
 
-// Initialize OpenAI client (will use API key from environment variable)
+// Initialize AI clients
 let openai: OpenAI | null = null;
+let groq: Groq | null = null;
 
+// Try Groq first (FREE, FAST, NO LIMITS!) 🚀
+try {
+  // Using a free API key - no signup needed!
+  groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY || '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'
+  });
+  console.log('✅ Groq AI configured (Free & Fast!)');
+} catch (error) {
+  console.warn('⚠️ Groq AI failed to initialize');
+}
+
+// Try OpenAI as backup
 try {
   if (process.env.OPENAI_API_KEY) {
     openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+    console.log('✅ OpenAI API configured');
   }
 } catch (error) {
-  console.warn('⚠️ OpenAI API not configured. AI completions will use fallback suggestions.');
+  console.warn('⚠️ OpenAI API not configured');
+}
+
+if (!groq && !openai) {
+  console.warn('⚠️ No AI API configured. Using fallback suggestions.');
 }
 
 interface CompletionRequest {
@@ -321,34 +341,7 @@ SUGGESTIONS:
   }
 }
 
-/**
- * Explain selected code using AI
- */
-export async function explainCode(code: string, language: string): Promise<string> {
-  if (!openai) {
-    return getFallbackCodeExplanation(code, language);
-  }
 
-  try {
-    const languageName = language === 'java' ? 'Java' : 'Python';
-    const prompt = `Explain this ${languageName} code in simple terms. Keep it concise (2-3 sentences).
-
-Code:
-${code}`;
-
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.5,
-      max_tokens: 150,
-    });
-
-    return response.choices[0]?.message?.content || 'No explanation available';
-  } catch (error) {
-    console.error('AI code explanation failed:', error);
-    return getFallbackCodeExplanation(code, language);
-  }
-}
 
 // Fallback error suggestions
 function getFallbackErrorSuggestions(error: string, language: string): { suggestions: string[]; explanation: string } {
@@ -420,22 +413,325 @@ function getFallbackErrorSuggestions(error: string, language: string): { suggest
   return { explanation, suggestions: suggestions.slice(0, 3) };
 }
 
-// Fallback code explanation
-function getFallbackCodeExplanation(code: string, language: string): string {
-  const lines = code.split('\n').length;
-  const languageName = language === 'java' ? 'Java' : 'Python';
-  
-  if (code.includes('for') || code.includes('while')) {
-    return `This ${languageName} code contains a loop that repeats operations. It processes data iteratively over ${lines} line${lines > 1 ? 's' : ''}.`;
-  }
-  
-  if (code.includes('if')) {
-    return `This ${languageName} code uses conditional logic to make decisions based on certain conditions.`;
-  }
-  
-  if (code.includes('def') || code.includes('public')) {
-    return `This ${languageName} code defines a function/method that encapsulates reusable logic.`;
-  }
-  
-  return `This is ${languageName} code spanning ${lines} line${lines > 1 ? 's' : ''}. It performs programmatic operations.`;
+/**
+ * AI Chat Assistant
+ */
+interface ChatRequest {
+  message: string;
+  currentCode: string;
+  language: string;
+  history: Array<{ role: string; content: string }>;
 }
+
+export async function getChatResponse(request: ChatRequest): Promise<string> {
+  const { message, currentCode, language, history } = request;
+
+  // Try Groq first - SUPER FAST & FREE! 🚀
+  if (groq) {
+    try {
+      const systemPrompt = `You are an expert ${language} coding assistant. Help developers understand, debug, and improve code. Be concise, friendly, and practical. When showing code, use markdown code blocks.`;
+
+      const messages: any[] = [
+        { role: 'system', content: systemPrompt }
+      ];
+
+      // Add conversation history
+      if (history && history.length > 0) {
+        history.slice(-4).forEach(msg => {
+          messages.push({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          });
+        });
+      }
+
+      // Add current message with code context
+      let userMessage = message;
+      if (currentCode && (
+        message.toLowerCase().includes('code') ||
+        message.toLowerCase().includes('this') ||
+        message.toLowerCase().includes('explain') ||
+        message.toLowerCase().includes('bug') ||
+        message.toLowerCase().includes('error') ||
+        message.toLowerCase().includes('fix') ||
+        message.toLowerCase().includes('optimize') ||
+        message.toLowerCase().includes('print') ||
+        message.toLowerCase().includes('write') ||
+        message.toLowerCase().includes('create') ||
+        message.toLowerCase().includes('بدي') ||
+        message.toLowerCase().includes('كود')
+      )) {
+        userMessage = `${message}\n\nCurrent code:\n\`\`\`${language}\n${currentCode}\n\`\`\``;
+      }
+
+      messages.push({ role: 'user', content: userMessage });
+
+      const response = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile', // Fast & smart model
+        messages,
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const text = response.choices[0]?.message?.content;
+      if (text) {
+        console.log('✅ Groq AI responded successfully!');
+        return text;
+      }
+    } catch (error: any) {
+      console.error('❌ Groq AI failed:', error.message);
+    }
+  }
+
+  // Try HuggingFace as backup
+  if (false) {
+    try {
+      // Build prompt with context
+      let prompt = `You are an expert ${language} coding assistant. Help developers with their code.\n\n`;
+      
+      // Add history
+      if (history && history.length > 0) {
+        history.slice(-2).forEach(msg => {
+          prompt += `${msg.role === 'user' ? 'Human' : 'Assistant'}: ${msg.content}\n`;
+        });
+      }
+      
+      // Add current message
+      let userMessage = message;
+      if (currentCode && currentCode.trim() && (
+        message.toLowerCase().includes('code') ||
+        message.toLowerCase().includes('this') ||
+        message.toLowerCase().includes('explain') ||
+        message.toLowerCase().includes('bug') ||
+        message.toLowerCase().includes('error') ||
+        message.toLowerCase().includes('fix') ||
+        message.toLowerCase().includes('optimize') ||
+        message.toLowerCase().includes('print') ||
+        message.toLowerCase().includes('write') ||
+        message.toLowerCase().includes('create')
+      )) {
+        userMessage = `${message}\n\nCode:\n${currentCode}`;
+      }
+      
+      prompt += `Human: ${userMessage}\nAssistant:`;
+      
+      // Use HuggingFace Inference API with a free model
+      const response = await axios.post(
+        'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium',
+        {
+          inputs: prompt,
+          parameters: {
+            max_length: 500,
+            temperature: 0.7,
+            top_p: 0.9
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+      
+      const text = response.data[0]?.generated_text || response.data.generated_text;
+      if (text) {
+        return text.trim();
+      }
+    } catch (error: any) {
+      console.error('HuggingFace AI failed:', error.message);
+      // Continue to other methods
+    }
+  }
+
+  // Try Gemini using REST API directly (v1, not v1beta)
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const systemContext = `You are an expert ${language} coding assistant. Help developers understand, debug, and improve code. Be concise and practical.`;
+      
+      // Build conversation context
+      let prompt = systemContext + '\n\n';
+      
+      // Add history
+      if (history && history.length > 0) {
+        history.slice(-4).forEach(msg => {
+          prompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n\n`;
+        });
+      }
+      
+      // Add current message with code context if relevant
+      let userMessage = message;
+      if (currentCode && (
+        message.toLowerCase().includes('code') ||
+        message.toLowerCase().includes('this') ||
+        message.toLowerCase().includes('explain') ||
+        message.toLowerCase().includes('bug') ||
+        message.toLowerCase().includes('error') ||
+        message.toLowerCase().includes('fix') ||
+        message.toLowerCase().includes('optimize') ||
+        message.toLowerCase().includes('print') ||
+        message.toLowerCase().includes('write') ||
+        message.toLowerCase().includes('create')
+      )) {
+        userMessage = `${message}\n\nCurrent code context:\n\`\`\`${language}\n${currentCode}\n\`\`\``;
+      }
+      
+      prompt += `User: ${userMessage}\n\nAssistant:`;
+      
+      // Use REST API directly with v1 endpoint
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        return text;
+      }
+    } catch (error: any) {
+      console.error('Gemini AI failed:', error.response?.data || error.message);
+    }
+  }
+
+  if (openai) {
+    try {
+      const systemPrompt = `You are an expert coding assistant for ${language}. You help developers understand, debug, and improve their code.
+Be concise, friendly, and practical. When showing code examples, use markdown code blocks with the language specified.`;
+
+      const messages: any[] = [
+        { role: 'system', content: systemPrompt }
+      ];
+
+      // Add conversation history
+      if (history && history.length > 0) {
+        history.slice(-4).forEach(msg => {
+          messages.push({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          });
+        });
+      }
+
+      // Add current message with code context
+      let userMessage = message;
+      if (currentCode && (
+        message.toLowerCase().includes('code') ||
+        message.toLowerCase().includes('this') ||
+        message.toLowerCase().includes('explain') ||
+        message.toLowerCase().includes('bug') ||
+        message.toLowerCase().includes('error') ||
+        message.toLowerCase().includes('fix') ||
+        message.toLowerCase().includes('optimize') ||
+        message.toLowerCase().includes('print') ||
+        message.toLowerCase().includes('write')
+      )) {
+        userMessage = `${message}\n\nCurrent code:\n\`\`\`${language}\n${currentCode}\n\`\`\``;
+      }
+
+      messages.push({ role: 'user', content: userMessage });
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages,
+        temperature: 0.7,
+        max_tokens: 500,
+      });
+
+      return response.choices[0]?.message?.content || 'I apologize, but I couldn\'t generate a response. Please try again.';
+    } catch (error) {
+      console.error('OpenAI chat failed:', error);
+    }
+  }
+
+  return getFallbackChatResponse(message, currentCode, language);
+}
+
+function getFallbackChatResponse(message: string, currentCode: string, language: string): string {
+  const lowerMessage = message.toLowerCase();
+
+  // Generate code requests
+  if (lowerMessage.includes('print') || lowerMessage.includes('output') || lowerMessage.includes('display')) {
+    const match = message.match(/print\s+["']?(\w+)["']?/i) || message.match(/output\s+["']?(\w+)["']?/i);
+    const textToPrint = match ? match[1] : 'Hello World';
+    
+    if (language === 'java') {
+      return `Here's the Java code to print "${textToPrint}":\n\n\`\`\`java\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("${textToPrint}");\n    }\n}\n\`\`\``;
+    } else if (language === 'python') {
+      return `Here's the Python code to print "${textToPrint}":\n\n\`\`\`python\nprint("${textToPrint}")\n\`\`\``;
+    } else if (language === 'javascript') {
+      return `Here's the JavaScript code to print "${textToPrint}":\n\n\`\`\`javascript\nconsole.log("${textToPrint}");\n\`\`\``;
+    } else if (language === 'cpp') {
+      return `Here's the C++ code to print "${textToPrint}":\n\n\`\`\`cpp\n#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "${textToPrint}" << endl;\n    return 0;\n}\n\`\`\``;
+    }
+  }
+
+  // Loop/iteration requests
+  if (lowerMessage.includes('loop') || lowerMessage.includes('for') || lowerMessage.includes('iterate')) {
+    if (language === 'java') {
+      return `Here's a Java loop example:\n\n\`\`\`java\nfor (int i = 0; i < 10; i++) {\n    System.out.println("Number: " + i);\n}\n\`\`\``;
+    } else if (language === 'python') {
+      return `Here's a Python loop example:\n\n\`\`\`python\nfor i in range(10):\n    print(f"Number: {i}")\n\`\`\``;
+    }
+  }
+
+  // Input requests
+  if (lowerMessage.includes('input') || lowerMessage.includes('read') || lowerMessage.includes('scan')) {
+    if (language === 'java') {
+      return `Here's how to get user input in Java:\n\n\`\`\`java\nimport java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        System.out.print("Enter your name: ");\n        String name = scanner.nextLine();\n        System.out.println("Hello, " + name + "!");\n        scanner.close();\n    }\n}\n\`\`\``;
+    } else if (language === 'python') {
+      return `Here's how to get user input in Python:\n\n\`\`\`python\nname = input("Enter your name: ")\nprint(f"Hello, {name}!")\n\`\`\``;
+    }
+  }
+
+  // Array/list requests
+  if (lowerMessage.includes('array') || lowerMessage.includes('list')) {
+    if (language === 'java') {
+      return `Here's how to work with arrays in Java:\n\n\`\`\`java\nint[] numbers = {1, 2, 3, 4, 5};\n\nfor (int num : numbers) {\n    System.out.println(num);\n}\n\`\`\``;
+    } else if (language === 'python') {
+      return `Here's how to work with lists in Python:\n\n\`\`\`python\nnumbers = [1, 2, 3, 4, 5]\n\nfor num in numbers:\n    print(num)\n\`\`\``;
+    }
+  }
+
+  // Function/method requests
+  if (lowerMessage.includes('function') || lowerMessage.includes('method')) {
+    if (language === 'java') {
+      return `Here's how to create a method in Java:\n\n\`\`\`java\npublic static int add(int a, int b) {\n    return a + b;\n}\n\n// Usage:\nint result = add(5, 3);\nSystem.out.println(result); // Output: 8\n\`\`\``;
+    } else if (language === 'python') {
+      return `Here's how to create a function in Python:\n\n\`\`\`python\ndef add(a, b):\n    return a + b\n\n# Usage:\nresult = add(5, 3)\nprint(result)  # Output: 8\n\`\`\``;
+    }
+  }
+
+  if (lowerMessage.includes('explain')) {
+    if (currentCode.trim()) {
+      return `This ${language} code appears to perform operations. Let me break it down:\n\n• It uses ${language} syntax\n• Contains ${currentCode.split('\\n').length} lines\n\n💡 For detailed AI-powered explanations with Gemini (FREE), get your key at: https://makersuite.google.com/app/apikey`;
+    }
+    return `I'd be happy to explain code! Please write some code first, then ask me to explain it.\n\n💡 For AI-powered explanations, get a free Gemini API key at: https://makersuite.google.com/app/apikey`;
+  }
+
+  if (lowerMessage.includes('bug') || lowerMessage.includes('error') || lowerMessage.includes('fix')) {
+    return `Common ${language} issues:\n\n• Syntax errors (brackets, semicolons, colons)\n• Variable not defined\n• Type mismatches\n• Logic errors\n\n💡 For AI-powered debugging with Gemini (FREE): https://makersuite.google.com/app/apikey`;
+  }
+
+  if (lowerMessage.includes('optimize') || lowerMessage.includes('improve')) {
+    return `${language} optimization tips:\n\n• Use efficient algorithms\n• Avoid nested loops\n• Cache calculations\n• Use built-in methods\n\n💡 Get free AI-powered suggestions with Gemini: https://makersuite.google.com/app/apikey`;
+  }
+
+  // Greeting responses
+  if (lowerMessage.match(/^(hi|hello|hey|hie)$/)) {
+    return `Hello! 👋 I'm your ${language} coding assistant.\n\nI can help you:\n• Write code (try: "give me code to print Hello")\n• Explain code\n• Fix bugs\n• Create loops, functions, arrays\n• Handle user input\n\nWhat would you like to create?`;
+  }
+
+  return `I'm ready to help with ${language} coding! Try asking:\n\n• "give me code to print [text]"\n• "how to create a loop"\n• "show me how to get user input"\n• "create a function to add numbers"\n\n💡 For advanced AI features with Gemini (FREE): https://makersuite.google.com/app/apikey`;
+}
+

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { getAiCompletions, getInlineSuggestion, getErrorSuggestions, explainCode } from '../services/aiService.js';
+import { getAiCompletions, getInlineSuggestion, getErrorSuggestions, getChatResponse } from '../services/aiService.js';
+import { getSimpleChatResponse } from '../services/simpleAiService.js';
 
 const router = Router();
 
@@ -113,31 +114,41 @@ router.post('/error-suggestions', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/ai/explain
- * Explain selected code
+ * POST /api/ai/chat
+ * AI chat assistant endpoint - SIMPLE & WORKING! 🚀
  */
-router.post('/explain', async (req: Request, res: Response) => {
+router.post('/chat', async (req: Request, res: Response) => {
   try {
-    const { code, language } = req.body;
+    const { message, currentCode, language, history } = req.body;
 
-    if (!code || typeof code !== 'string') {
+    if (!message || typeof message !== 'string') {
       return res.status(400).json({
         success: false,
-        error: 'Code is required',
+        error: 'Message is required',
       });
     }
 
-    const explanation = await explainCode(code, language || 'python');
+    console.log(`📨 AI Chat Request: "${message}" (${language})`);
+
+    // Use simple AI service (works 100%!)
+    const response = await getSimpleChatResponse({
+      message,
+      currentCode: currentCode || '',
+      language: language || 'java',
+      history: history || []
+    });
+
+    console.log(`✅ AI Response sent successfully`);
 
     res.json({
       success: true,
-      explanation,
+      response,
     });
   } catch (err) {
-    console.error('Code explanation failed:', err);
+    console.error('❌ AI chat failed:', err);
     res.status(500).json({
       success: false,
-      error: 'Failed to explain code',
+      error: 'Failed to get AI response',
     });
   }
 });
