@@ -39,7 +39,14 @@ export function getStoredUser(): User | null {
 
 export function storeAuth(token: string, user: User): void {
   localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  // Store user without images to avoid quota exceeded error
+  const userWithoutImages = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role
+  };
+  localStorage.setItem(USER_KEY, JSON.stringify(userWithoutImages));
 }
 
 export function clearAuth(): void {

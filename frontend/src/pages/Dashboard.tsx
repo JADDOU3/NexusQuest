@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Code2, Trophy, Target, BookOpen, Play, Clock, Star, TrendingUp, Award, FolderOpen, User, X, Settings, ChevronRight, Moon, Sun, LogOut, GraduationCap } from 'lucide-react';
+import { Code2, Trophy, Target, BookOpen, Clock, Star, TrendingUp, Award, User } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
 import { getMyProgress, TaskProgress } from '../services/taskService';
@@ -21,8 +21,13 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   const [fontSize, setFontSize] = useState(14);
   const storedUser = getStoredUser();
   const isTeacher = storedUser?.role === 'teacher';
- 
-  
+
+  // Redirect teachers to their dashboard
+  useEffect(() => {
+    if (isTeacher) {
+      navigate('/teacher');
+    }
+  }, [isTeacher, navigate]);
 
   // Load user avatar
   useEffect(() => {

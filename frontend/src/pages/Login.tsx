@@ -25,7 +25,12 @@ export function Login({ onLogin }: LoginProps) {
 
     if (result.success && result.user) {
       onLogin(result.user);
-      navigate('/dashboard');
+      // Redirect based on user role
+      if (result.user.role === 'teacher') {
+        navigate('/teacher');
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       setError(result.error || 'Login failed');
     }

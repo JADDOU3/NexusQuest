@@ -1,19 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, BookOpen, Award, BarChart3, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, Award, BarChart3, User, Moon, Sun, LogOut } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Task, getMyTasks, deleteTask } from '../services/taskService';
 import { getStoredUser } from '../services/authService';
 import CreateTaskModal from '../components/teacher/CreateTaskModal';
+import { UserSidebar } from '../components/UserSidebar';
+import { useTheme } from '../context/ThemeContext';
 
-export default function TeacherDashboard() {
+interface TeacherDashboardProps {
+  user: { name: string; email: string } | null;
+  onLogout: () => void;
+}
+
+export default function TeacherDashboard({ user, onLogout }: TeacherDashboardProps) {
   const navigate = useNavigate();
-  const user = getStoredUser();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const theme = localStorage.getItem('nexusquest-theme') === 'light' ? 'light' : 'dark';
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [avatarImage, setAvatarImage] = useState<string | null>(null);
+  const { theme, setTheme } = useTheme();
 
   // Check if user is a teacher
   useEffect(() => {
@@ -37,6 +45,27 @@ export default function TeacherDashboard() {
   useEffect(() => {
     loadTasks();
   }, []);
+
+  // Load user avatar
+  useEffect(() => {
+    const loadUserAvatar = async () => {
+      try {
+        const token = localStorage.getItem('nexusquest-token');
+        const response = await fetch('http://localhost:9876/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success && data.user) {
+          setAvatarImage(data.user.avatarImage || null);
+        }
+      } catch (error) {
+        console.error('Failed to load user avatar:', error);
+      }
+    };
+    loadUserAvatar();
+  }, []);
+
+
 
   const handleDeleteTask = async (taskId: string, taskTitle: string) => {
     if (confirm(`Delete task "${taskTitle}"?`)) {
@@ -72,19 +101,51 @@ export default function TeacherDashboard() {
       <header className={`border-b ${theme === 'dark' ? 'bg-gray-900/80 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-sm sticky top-0 z-40`}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/dashboard')} className="p-2">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
             <div className="flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-blue-500" />
               <span className="text-xl font-bold">Teacher Dashboard</span>
             </div>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" /> Create Task
-          </Button>
+          
+          <div className="flex items-center gap-3">
+            <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" /> Create Task
+            </Button>
+
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="rounded-full"
+            >
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+
+            {/* User Menu */}
+            <Button
+              variant="ghost"
+              onClick={() => setShowSidebar(true)}
+              className="flex items-center gap-2"
+            >
+              {avatarImage ? (
+                <img src={avatarImage} alt="Profile" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <User className="h-5 w-5" />
+              )}
+              <span className="hidden md:inline">{user?.name}</span>
+            </Button>
+          </div>
         </div>
       </header>
+
+      {/* User Sidebar */}
+      <UserSidebar
+        isOpen={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        user={user}
+        onLogout={onLogout}
+      />
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats Cards */}

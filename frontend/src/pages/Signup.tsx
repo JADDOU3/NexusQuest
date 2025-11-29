@@ -40,7 +40,12 @@ export function Signup({ onSignup }: SignupProps) {
 
     if (result.success && result.user) {
       onSignup(result.user);
-      navigate('/dashboard');
+      // Redirect based on user role
+      if (result.user.role === 'teacher') {
+        navigate('/teacher');
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       setError(result.error || 'Signup failed');
     }
