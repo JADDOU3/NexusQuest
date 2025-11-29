@@ -393,4 +393,91 @@ function getFallbackErrorSuggestions(error: string, language: string): { suggest
   return { explanation, suggestions: suggestions.slice(0, 3) };
 }
 
+/**
+ * AI Chat Assistant
+ */
+interface ChatRequest {
+  message: string;
+  currentCode: string;
+  language: string;
+  history: Array<{ role: string; content: string }>;
+}
+
+export async function getChatResponse(request: ChatRequest): Promise<string> {
+  const { message, currentCode, language, history } = request;
+
+  if (!openai) {
+    return getFallbackChatResponse(message, currentCode, language);
+  }
+
+  try {
+    const systemPrompt = `You are an expert coding assistant for ${language}. You help developers understand, debug, and improve their code.
+Be concise, friendly, and practical. When showing code examples, use markdown code blocks with the language specified.
+Current context: The developer is working on ${language} code.`;
+
+    const messages: any[] = [
+      { role: 'system', content: systemPrompt }
+    ];
+
+    // Add conversation history (last 4 messages)
+    if (history && history.length > 0) {
+      history.slice(-4).forEach(msg => {
+        messages.push({
+          role: msg.role === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        });
+      });
+    }
+
+    // Add current message with code context if relevant
+    let userMessage = message;
+    if (currentCode && (
+      message.toLowerCase().includes('code') ||
+      message.toLowerCase().includes('this') ||
+      message.toLowerCase().includes('explain') ||
+      message.toLowerCase().includes('bug') ||
+      message.toLowerCase().includes('error') ||
+      message.toLowerCase().includes('fix') ||
+      message.toLowerCase().includes('optimize')
+    )) {
+      userMessage = `${message}\n\nCurrent code:\n\`\`\`${language}\n${currentCode}\n\`\`\``;
+    }
+
+    messages.push({ role: 'user', content: userMessage });
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages,
+      temperature: 0.7,
+      max_tokens: 500,
+    });
+
+    return response.choices[0]?.message?.content || 'I apologize, but I couldn\'t generate a response. Please try again.';
+  } catch (error) {
+    console.error('AI chat failed:', error);
+    return getFallbackChatResponse(message, currentCode, language);
+  }
+}
+
+function getFallbackChatResponse(message: string, currentCode: string, language: string): string {
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes('explain')) {
+    return `I'd be happy to explain the code! This ${language} code performs operations based on its structure. For detailed AI-powered explanations, please configure an OpenAI API key.`;
+  }
+
+  if (lowerMessage.includes('bug') || lowerMessage.includes('error') || lowerMessage.includes('fix')) {
+    return `Common issues to check in ${language}:\n\n• Syntax errors (missing colons, brackets, semicolons)\n• Variable scope issues\n• Type mismatches\n• Logic errors in conditions\n\nFor AI-powered debugging, please configure an OpenAI API key.`;
+  }
+
+  if (lowerMessage.includes('optimize') || lowerMessage.includes('improve')) {
+    return `To optimize ${language} code:\n\n• Use efficient data structures\n• Avoid nested loops when possible\n• Cache repeated calculations\n• Use built-in functions\n\nFor AI-powered optimization suggestions, please configure an OpenAI API key.`;
+  }
+
+  if (lowerMessage.includes('comment')) {
+    return `Good code comments should:\n\n• Explain WHY, not what\n• Describe complex logic\n• Document function parameters and return values\n• Note important assumptions\n\nFor AI-powered comment generation, please configure an OpenAI API key.`;
+  }
+
+  return `I'm here to help with your ${language} coding! I can assist with:\n\n• Explaining code\n• Finding and fixing bugs\n• Optimizing performance\n• Writing new code\n• Adding documentation\n\nNote: For AI-powered responses, please configure an OpenAI API key in your environment.`;
+}
 

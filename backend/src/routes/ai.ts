@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getAiCompletions, getInlineSuggestion, getErrorSuggestions } from '../services/aiService.js';
+import { getAiCompletions, getInlineSuggestion, getErrorSuggestions, getChatResponse } from '../services/aiService.js';
 
 const router = Router();
 
@@ -108,6 +108,41 @@ router.post('/error-suggestions', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to analyze error',
+    });
+  }
+});
+
+/**
+ * POST /api/ai/chat
+ * AI chat assistant endpoint
+ */
+router.post('/chat', async (req: Request, res: Response) => {
+  try {
+    const { message, currentCode, language, history } = req.body;
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Message is required',
+      });
+    }
+
+    const response = await getChatResponse({
+      message,
+      currentCode: currentCode || '',
+      language: language || 'python',
+      history: history || []
+    });
+
+    res.json({
+      success: true,
+      response,
+    });
+  } catch (err) {
+    console.error('AI chat failed:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get AI response',
     });
   }
 });

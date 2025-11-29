@@ -6,6 +6,7 @@ import { Terminal } from './components/Terminal';
 import { Header } from './components/Header';
 import { ProjectExplorer } from './components/ProjectExplorer';
 import { UserSidePanel } from './components/UserSidePanel';
+import { AiAgent } from './components/AiAgent';
 import * as aiService from './services/aiService';
 import * as projectService from './services/projectService';
 import {
@@ -48,6 +49,7 @@ function App({ user, onLogout }: AppProps) {
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal'>('console');
   const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string } | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
+  const [isAiAgentOpen, setIsAiAgentOpen] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
     const saved = localStorage.getItem('nexusquest-fontsize');
     return saved ? parseInt(saved) : 14;
@@ -498,6 +500,16 @@ function App({ user, onLogout }: AppProps) {
         onLoadFile={loadCodeFile}
         onCloseProject={handleCloseProject}
         onShowSidePanel={() => setShowSidePanel(true)}
+        onToggleAiAgent={() => setIsAiAgentOpen(!isAiAgentOpen)}
+      />
+
+      {/* AI Agent */}
+      <AiAgent
+        isOpen={isAiAgentOpen}
+        onClose={() => setIsAiAgentOpen(false)}
+        theme={theme}
+        currentCode={code}
+        language={language}
       />
 
       {/* Main Layout: editor + right project panel, console at bottom */}
