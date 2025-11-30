@@ -178,7 +178,6 @@ router.post('/:id/run-tests', async (req: AuthRequest, res: Response) => {
       index: number;
       passed: boolean;
       input: string;
-      expectedOutput: string;
       actualOutput: string;
       error?: string;
     }>;
@@ -187,28 +186,34 @@ router.post('/:id/run-tests', async (req: AuthRequest, res: Response) => {
       const test = testCases[i];
 
       try {
-        const execResult = await executeCode(code, task.language, test.input);
+        // Hard timeout per test so a hanging container doesn't block all results
+        const execResult = await Promise.race([
+          executeCode(code, task.language, test.input),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Test execution timeout (10 seconds)')), 10000);
+          }),
+        ]);
 
-        const actual = execResult.error
-          ? execResult.error
-          : execResult.output;
+        const actual = (execResult as any).error
+          ? (execResult as any).error
+          : (execResult as any).output;
 
-        const passed = !execResult.error && normalize(actual) === normalize(test.expectedOutput);
+        const passed = !(execResult as any).error && normalize(actual) === normalize(test.expectedOutput);
 
         results.push({
           index: i,
           passed,
-          input: test.isHidden ? '' : test.input,
-          expectedOutput: test.isHidden ? '' : test.expectedOutput,
-          actualOutput: test.isHidden ? '' : actual,
-          error: execResult.error || undefined,
+          // Show input only if not hidden
+          input: test.isHidden ? '(hidden)' : test.input,
+          // Never show expected output to students
+          actualOutput: test.isHidden ? (passed ? '(correct)' : '(incorrect)') : actual,
+          error: (execResult as any).error || undefined,
         });
       } catch (error: any) {
         results.push({
           index: i,
           passed: false,
-          input: test.isHidden ? '' : test.input,
-          expectedOutput: test.isHidden ? '' : test.expectedOutput,
+          input: test.isHidden ? '(hidden)' : test.input,
           actualOutput: '',
           error: error?.message || 'Execution failed',
         });
