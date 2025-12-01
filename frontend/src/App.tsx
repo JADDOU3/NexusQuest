@@ -10,7 +10,6 @@ import { AiAgent } from './components/AiAgent';
 import { VersionControl } from './components/VersionControl';
 import * as aiService from './services/aiService';
 import * as projectService from './services/projectService';
-import { createSnapshot } from './services/versionService';
 import {
   defaultCode,
   defaultPythonCode,
@@ -207,6 +206,15 @@ function App({ user, onLogout }: AppProps) {
     }
   }, [currentFile]);
 
+  // Console helper - defined early so saveFile can use it
+  const addToConsole = useCallback((message: string, type: ConsoleOutput['type'] = 'output') => {
+    setOutput(prev => [...prev, {
+      type,
+      message,
+      timestamp: new Date()
+    }]);
+  }, []);
+
   // Manual save function
   const saveFile = useCallback(async () => {
     if (!currentProject || !currentFile) {
@@ -222,16 +230,6 @@ function App({ user, onLogout }: AppProps) {
       setLastSavedCode(code);
       setHasUnsavedChanges(false);
       addToConsole(`💾 Saved: ${currentFile.name}`, 'info');
-
-      // Create a version snapshot
-      try {
-        const result = await createSnapshot(currentProject._id, currentFile._id, currentFile.name, code);
-        if (!result.unchanged) {
-          addToConsole(`📸 Snapshot created`, 'info');
-        }
-      } catch (snapshotErr) {
-        console.warn('Failed to create snapshot:', snapshotErr);
-      }
 
       // Update the file in the projects list
       setProjects(prev => prev.map(p =>
@@ -250,7 +248,7 @@ function App({ user, onLogout }: AppProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [currentProject, currentFile, code]);
+  }, [currentProject, currentFile, code, addToConsole]);
 
   // Keyboard shortcut: Ctrl+S to save
   useEffect(() => {
@@ -337,21 +335,13 @@ function App({ user, onLogout }: AppProps) {
       addToConsole('⏳ Code sent to Terminal for interactive execution', 'info');
     }
 
-    addToConsole('💡 Switch to Terminal tab to see output and provide inputs in real-time', 'info');
+    addToConsole(' Switch to Terminal tab to see output and provide inputs in real-time', 'info');
   };
 
   const clearConsole = () => {
     setOutput([]);
     setInputQueue([]);
     setWaitingForInput(false);
-  };
-
-  const addToConsole = (message: string, type: ConsoleOutput['type'] = 'output') => {
-    setOutput(prev => [...prev, {
-      type,
-      message,
-      timestamp: new Date()
-    }]);
   };
 
   const downloadCode = () => {
@@ -642,8 +632,10 @@ function App({ user, onLogout }: AppProps) {
                   projectId={currentProject?._id || null}
                   currentFileId={currentFile?._id || null}
                   currentFileName={currentFile?.name || null}
+                  currentCode={code}
+                  projectFiles={currentProject?.files || []}
+                  onSnapshotCreated={(msg) => addToConsole(msg, 'info')}
                   onRestore={(content, fileId, fileName) => {
-                    // Find the file in the project and update it
                     if (currentProject) {
                       const file = currentProject.files.find(f => f._id === fileId);
                       if (file) {

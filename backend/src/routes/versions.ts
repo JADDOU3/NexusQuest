@@ -16,8 +16,8 @@ router.post('/snapshot', authMiddleware, async (req: AuthRequest, res: Response)
             return res.status(400).json({ success: false, error: 'Missing required fields' });
         }
 
-        // Verify user owns the project
-        const project = await Project.findOne({ _id: projectId, userId });
+        // Verify user owns the project (field is 'owner' not 'userId')
+        const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
             return res.status(404).json({ success: false, error: 'Project not found' });
         }
@@ -52,6 +52,61 @@ router.post('/snapshot', authMiddleware, async (req: AuthRequest, res: Response)
     }
 });
 
+// Create snapshots for all files in a project (bulk snapshot)
+router.post('/snapshot-all', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const { projectId, files, message } = req.body;
+        const userId = req.user?._id;
+
+        if (!projectId || !files || !Array.isArray(files)) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+
+        // Verify user owns the project
+        const project = await Project.findOne({ _id: projectId, owner: userId });
+        if (!project) {
+            return res.status(404).json({ success: false, error: 'Project not found' });
+        }
+
+        const results: { fileId: string; fileName: string; created: boolean }[] = [];
+
+        for (const file of files) {
+            const { fileId, fileName, content } = file;
+            if (!fileId || !fileName || content === undefined) continue;
+
+            // Check if content is different from last snapshot
+            const lastSnapshot = await FileSnapshot.findOne({ projectId, fileId })
+                .sort({ createdAt: -1 });
+
+            if (lastSnapshot && lastSnapshot.content === content) {
+                results.push({ fileId, fileName, created: false });
+                continue;
+            }
+
+            // Create new snapshot
+            await FileSnapshot.create({
+                projectId,
+                fileId,
+                fileName,
+                content,
+                message: message || 'Project snapshot',
+                createdBy: userId,
+            });
+
+            // Cleanup old snapshots
+            await (FileSnapshot as any).cleanupOldSnapshots(projectId, fileId, 20);
+            results.push({ fileId, fileName, created: true });
+        }
+
+        const createdCount = results.filter(r => r.created).length;
+        logger.info(`[versions] Created ${createdCount} snapshots for project ${projectId}`);
+        res.json({ success: true, results, createdCount });
+    } catch (error) {
+        logger.error('[versions] Bulk snapshot error:', error);
+        res.status(500).json({ success: false, error: 'Failed to create snapshots' });
+    }
+});
+
 // Get snapshots for a file
 router.get('/file/:projectId/:fileId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
@@ -59,7 +114,7 @@ router.get('/file/:projectId/:fileId', authMiddleware, async (req: AuthRequest, 
         const userId = req.user?._id;
 
         // Verify user owns the project
-        const project = await Project.findOne({ _id: projectId, userId });
+        const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
             return res.status(404).json({ success: false, error: 'Project not found' });
         }
@@ -83,7 +138,7 @@ router.get('/project/:projectId', authMiddleware, async (req: AuthRequest, res: 
         const userId = req.user?._id;
 
         // Verify user owns the project
-        const project = await Project.findOne({ _id: projectId, userId });
+        const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
             return res.status(404).json({ success: false, error: 'Project not found' });
         }
@@ -130,7 +185,7 @@ router.get('/snapshot/:snapshotId', authMiddleware, async (req: AuthRequest, res
         }
 
         // Verify user owns the project
-        const project = await Project.findOne({ _id: snapshot.projectId, userId });
+        const project = await Project.findOne({ _id: snapshot.projectId, owner: userId });
         if (!project) {
             return res.status(404).json({ success: false, error: 'Project not found' });
         }
@@ -154,7 +209,7 @@ router.post('/restore/:snapshotId', authMiddleware, async (req: AuthRequest, res
         }
 
         // Verify user owns the project
-        const project = await Project.findOne({ _id: snapshot.projectId, userId });
+        const project = await Project.findOne({ _id: snapshot.projectId, owner: userId });
         if (!project) {
             return res.status(404).json({ success: false, error: 'Project not found' });
         }
@@ -188,7 +243,7 @@ router.get('/diff/:snapshotId1/:snapshotId2', authMiddleware, async (req: AuthRe
         }
 
         // Verify user owns the project
-        const project = await Project.findOne({ _id: snapshot1.projectId, userId });
+        const project = await Project.findOne({ _id: snapshot1.projectId, owner: userId });
         if (!project) {
             return res.status(404).json({ success: false, error: 'Project not found' });
         }

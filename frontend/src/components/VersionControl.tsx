@@ -1,23 +1,34 @@
 import { useState, useEffect } from 'react';
-import { GitBranch, History, RotateCcw, Eye, ChevronDown, ChevronRight, Clock, FileCode } from 'lucide-react';
+import { GitBranch, History, RotateCcw, Eye, ChevronDown, ChevronRight, Clock, FileCode, Plus, Camera } from 'lucide-react';
 import {
   getFileSnapshots,
   getProjectVersions,
   getSnapshot,
   restoreSnapshot,
   compareSnapshots,
+  createSnapshot,
+  createProjectSnapshot,
   formatRelativeTime,
   Snapshot,
   FileVersionInfo,
   DiffLine,
 } from '../services/versionService';
 
+interface ProjectFile {
+  _id: string;
+  name: string;
+  content: string;
+}
+
 interface VersionControlProps {
   theme: string;
   projectId: string | null;
   currentFileId: string | null;
   currentFileName: string | null;
+  currentCode: string; // Current code in editor
+  projectFiles?: ProjectFile[]; // All files in the project for bulk snapshot
   onRestore: (content: string, fileId: string, fileName: string) => void;
+  onSnapshotCreated?: (message: string) => void; // Callback when snapshot is created
 }
 
 export function VersionControl({
@@ -25,11 +36,14 @@ export function VersionControl({
   projectId,
   currentFileId,
   currentFileName,
+  currentCode,
+  projectFiles = [],
   onRestore,
+  onSnapshotCreated,
 }: VersionControlProps) {
   const [activeTab, setActiveTab] = useState<'history' | 'diff'>('history');
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [projectFiles, setProjectFiles] = useState<FileVersionInfo[]>([]);
+  const [versionedFiles, setVersionedFiles] = useState<FileVersionInfo[]>([]);
   const [selectedSnapshot, setSelectedSnapshot] = useState<Snapshot | null>(null);
   const [compareSnapshot1, setCompareSnapshot1] = useState<string | null>(null);
   const [compareSnapshot2, setCompareSnapshot2] = useState<string | null>(null);
@@ -37,6 +51,9 @@ export function VersionControl({
   const [loading, setLoading] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [showSnapshotInput, setShowSnapshotInput] = useState(false);
+  const [snapshotMessage, setSnapshotMessage] = useState('');
+  const [creating, setCreating] = useState(false);
 
   // Load snapshots when file changes
   useEffect(() => {
@@ -65,7 +82,7 @@ export function VersionControl({
     setLoading(true);
     try {
       const data = await getProjectVersions(projectId);
-      setProjectFiles(data);
+      setVersionedFiles(data);
     } catch (error) {
       console.error('Failed to load project versions:', error);
     } finally {
@@ -116,6 +133,43 @@ export function VersionControl({
     });
   };
 
+  const handleCreateSnapshot = async () => {
+    if (!projectId || !currentFileId || !currentFileName) {
+      console.error('Missing required data:', { projectId, currentFileId, currentFileName });
+      alert('Please select a file first');
+      return;
+    }
+    
+    setCreating(true);
+    try {
+      console.log('Creating snapshot:', { projectId, currentFileId, currentFileName, codeLength: currentCode?.length });
+      const result = await createSnapshot(
+        projectId,
+        currentFileId,
+        currentFileName,
+        currentCode,
+        snapshotMessage || 'Manual snapshot'
+      );
+      console.log('Snapshot result:', result);
+      
+      if (result.unchanged) {
+        alert('No changes detected - snapshot not created');
+      } else {
+        // Refresh the snapshots list
+        await loadFileSnapshots();
+        onSnapshotCreated?.('📸 Snapshot created');
+      }
+      
+      setSnapshotMessage('');
+      setShowSnapshotInput(false);
+    } catch (error: any) {
+      console.error('Failed to create snapshot:', error);
+      alert(`Failed to create snapshot: ${error.message || error}`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const isDark = theme === 'dark';
 
   if (!projectId) {
@@ -140,7 +194,57 @@ export function VersionControl({
             {currentFileName}
           </span>
         )}
+        {currentFileId && (
+          <button
+            onClick={() => setShowSnapshotInput(!showSnapshotInput)}
+            className={`ml-auto p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 ${
+              isDark 
+                ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30' 
+                : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+            }`}
+            title="Create Snapshot"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>Snapshot</span>
+          </button>
+        )}
       </div>
+
+      {/* Create Snapshot Input */}
+      {showSnapshotInput && currentFileId && (
+        <div className={`px-3 py-2 border-b ${isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50'}`}>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={snapshotMessage}
+              onChange={(e) => setSnapshotMessage(e.target.value)}
+              placeholder="Snapshot message (optional)"
+              className={`flex-1 text-xs px-2 py-1.5 rounded border ${
+                isDark 
+                  ? 'bg-gray-900 border-gray-600 text-gray-100 placeholder-gray-500' 
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateSnapshot()}
+            />
+            <button
+              onClick={handleCreateSnapshot}
+              disabled={creating}
+              className={`px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 ${
+                creating
+                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                  : 'bg-purple-500 hover:bg-purple-600 text-white'
+              }`}
+            >
+              {creating ? (
+                <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <Plus className="w-3 h-3" />
+              )}
+              Create
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className={`flex border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
@@ -180,7 +284,7 @@ export function VersionControl({
                 <div className={`text-center py-8 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                   <Clock className="w-6 h-6 mx-auto mb-2 opacity-50" />
                   <p className="text-xs">No snapshots yet</p>
-                  <p className="text-xs opacity-75">Save the file to create a snapshot</p>
+                  <p className="text-xs opacity-75">Click "Snapshot" to create one</p>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -230,14 +334,14 @@ export function VersionControl({
               )
             ) : (
               // Project overview
-              projectFiles.length === 0 ? (
+              versionedFiles.length === 0 ? (
                 <div className={`text-center py-8 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                   <FileCode className="w-6 h-6 mx-auto mb-2 opacity-50" />
                   <p className="text-xs">No version history</p>
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {projectFiles.map((file) => (
+                  {versionedFiles.map((file) => (
                     <div
                       key={file.fileId}
                       className={`rounded-lg ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}

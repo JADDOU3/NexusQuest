@@ -30,7 +30,7 @@ export interface DiffLine {
     lineNum: number;
 }
 
-// Create a snapshot when saving a file
+// Create a snapshot for a single file
 export async function createSnapshot(
     projectId: string,
     fileId: string,
@@ -49,6 +49,25 @@ export async function createSnapshot(
         throw new Error(data.error || 'Failed to create snapshot');
     }
     return { snapshot: data.snapshot, unchanged: data.unchanged };
+}
+
+// Create snapshots for all files in a project
+export async function createProjectSnapshot(
+    projectId: string,
+    files: { fileId: string; fileName: string; content: string }[],
+    message?: string
+): Promise<{ results: { fileId: string; fileName: string; created: boolean }[]; createdCount: number }> {
+    const response = await fetch(`${API_URL}/snapshot-all`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ projectId, files, message }),
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+        throw new Error(data.error || 'Failed to create project snapshot');
+    }
+    return { results: data.results, createdCount: data.createdCount };
 }
 
 // Get snapshots for a specific file
