@@ -177,6 +177,7 @@ export interface TaskTestResultsSummary {
   total: number;
   passed: number;
   results: TaskTestResultItem[];
+  completed: boolean; // true if all tests passed and task was marked completed
 }
 
 export async function runTaskTests(taskId: string, code: string): Promise<TaskTestResultsSummary> {
@@ -187,4 +188,33 @@ export async function runTaskTests(taskId: string, code: string): Promise<TaskTe
   const data = await res.json();
   if (!data.success) throw new Error(data.error);
   return data.data as TaskTestResultsSummary;
+}
+
+// Get current user stats (totalPoints, etc.)
+export interface UserStats {
+  totalPoints: number;
+  completedTasks: number;
+  startedTasks: number;
+}
+
+export async function getUserStats(): Promise<UserStats> {
+  // Get completed tasks count
+  const completedProgress = await getMyProgress('completed');
+  const startedProgress = await getMyProgress('started');
+
+  // Get user info for totalPoints
+  const token = getStoredToken();
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+
+  return {
+    totalPoints: data.success ? (data.user?.totalPoints || 0) : 0,
+    completedTasks: completedProgress.length,
+    startedTasks: startedProgress.length,
+  };
 }
