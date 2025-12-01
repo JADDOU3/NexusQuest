@@ -197,20 +197,41 @@ export interface UserStats {
   startedTasks: number;
 }
 
+export async function syncUserPoints(): Promise<number> {
+  const res = await authFetch(`${API_URL}/api/auth/sync-points`, {
+    method: 'POST',
+  });
+  const data = await res.json();
+  return data.success ? data.totalPoints : 0;
+}
+
 export async function getUserStats(): Promise<UserStats> {
   // Get completed tasks count
   const completedProgress = await getMyProgress('completed');
   const startedProgress = await getMyProgress('started');
 
-  // Get user info for totalPoints
+  // Sync points first if user has completed tasks but might have 0 points (migration)
   const token = getStoredToken();
-  const res = await fetch(`${API_URL}/api/auth/me`, {
+  let res = await fetch(`${API_URL}/api/auth/me`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
-  const data = await res.json();
+  let data = await res.json();
+
+  // If user has completed tasks but 0 points, sync them
+  if (data.success && completedProgress.length > 0 && (data.user?.totalPoints || 0) === 0) {
+    await syncUserPoints();
+    // Re-fetch user data after sync
+    res = await fetch(`${API_URL}/api/auth/me`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    data = await res.json();
+  }
 
   return {
     totalPoints: data.success ? (data.user?.totalPoints || 0) : 0,
