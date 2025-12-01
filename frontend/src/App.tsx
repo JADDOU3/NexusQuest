@@ -240,10 +240,10 @@ function App({ user, onLogout }: AppProps) {
     }
   }, [currentProject, currentFile, code]);
 
-  // Keyboard shortcut: Shift+S to save
+  // Keyboard shortcut: Ctrl+S to save
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.shiftKey && e.key.toLowerCase() === 's') {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
         saveFile();
       }
@@ -530,6 +530,7 @@ function App({ user, onLogout }: AppProps) {
                 language={language}
                 height="100%"
                 theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                onSave={saveFile}
               />
             </div>
           </div>
