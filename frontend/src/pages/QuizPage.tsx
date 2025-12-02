@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Trophy, RefreshCw, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Trophy, RefreshCw } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
 import { Quiz, getQuiz, startQuiz, submitQuiz, QuizSubmitResponse } from '../services/quizService';
@@ -248,32 +248,34 @@ export default function QuizPage() {
               </div>
             )}
 
-            {/* Show grade status for ended quizzes */}
-            {isEnded && (
+            {/* Show grade status for ended quizzes or when submission has grade */}
+            {(isEnded || quiz?.submission?.teacherGrade !== undefined) && (
               <div className={`mb-4 p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-100'}`}>
                 {quiz?.submission?.teacherGrade !== undefined ? (
                   <div>
                     <p className="text-xl font-bold text-green-400 mb-2">
-                      Teacher Grade: {quiz.submission.teacherGrade}%
+                      📊 Teacher Grade: {quiz.submission.teacherGrade}%
                     </p>
-                    <p className={`text-lg ${result.pointsAwarded > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                    <p className={`text-lg ${quiz.submission.pointsAwarded > 0 ? 'text-green-400' : 'text-gray-400'}`}>
                       +{quiz.submission.pointsAwarded} points earned
                     </p>
                     {quiz.submission.teacherFeedback && (
-                      <div className="mt-3 text-left">
-                        <p className="text-sm text-gray-400 flex items-start gap-2">
-                          <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                          <span>{quiz.submission.teacherFeedback}</span>
+                      <div className={`mt-4 p-3 rounded-lg text-left ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-white'}`}>
+                        <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                          💬 Teacher Feedback:
+                        </p>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {quiz.submission.teacherFeedback}
                         </p>
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : isEnded ? (
                   <div>
                     <p className="text-lg text-yellow-400 mb-1">⏳ Pending Teacher Review</p>
                     <p className="text-sm text-gray-400">Your submission is being reviewed by the teacher.</p>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
 

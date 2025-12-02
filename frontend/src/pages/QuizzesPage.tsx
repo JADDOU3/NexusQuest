@@ -154,18 +154,28 @@ export default function QuizzesPage() {
 
         {/* Grade display for completed quizzes */}
         {isCompleted && quiz.submission && (
-          <div className="mt-3">
+          <div className="mt-3 space-y-2">
             {hasGrade ? (
-              <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100'
-              }`}>
-                <span className="text-sm font-medium text-green-400">
-                  Grade: {quiz.submission.teacherGrade}%
-                </span>
-                <span className="text-sm text-green-400">
-                  +{quiz.submission.pointsAwarded} pts
-                </span>
-              </div>
+              <>
+                <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${
+                  theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100'
+                }`}>
+                  <span className="text-sm font-medium text-green-400">
+                    Grade: {quiz.submission.teacherGrade}%
+                  </span>
+                  <span className="text-sm text-green-400">
+                    +{quiz.submission.pointsAwarded} pts
+                  </span>
+                </div>
+                {quiz.submission.teacherFeedback && (
+                  <div className={`py-2 px-3 rounded-lg text-sm ${
+                    theme === 'dark' ? 'bg-gray-800/50 text-gray-300' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    <span className="font-medium">Feedback: </span>
+                    {quiz.submission.teacherFeedback}
+                  </div>
+                )}
+              </>
             ) : quiz.submission.status === 'passed' ? (
               <div className={`flex items-center justify-center gap-2 py-2 rounded-lg ${
                 theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100'
