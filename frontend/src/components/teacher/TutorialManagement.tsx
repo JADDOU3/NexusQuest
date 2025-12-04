@@ -9,10 +9,10 @@ import { Button } from '../ui/button';
 import { useTheme } from '../../context/ThemeContext';
 import {
   getTeacherTutorials,
-import {
-  getTeacherTutorials,
   Tutorial,
-} from '../../services/tutorialService';nt() {
+} from '../../services/tutorialService';
+
+export default function TutorialManagement() {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
