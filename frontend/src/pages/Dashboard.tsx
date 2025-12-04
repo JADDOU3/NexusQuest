@@ -175,6 +175,12 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           </div>
           <div className="flex gap-3">
             <Button
+              onClick={() => navigate('/tutorials')}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 text-lg"
+            >
+              📚 Tutorials
+            </Button>
+            <Button
               onClick={() => navigate('/quizzes')}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 text-lg"
             >

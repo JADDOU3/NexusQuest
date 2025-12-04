@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, BookOpen, Award, BarChart3, User, Moon, Sun, Clock, Calendar, Users } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, Award, BarChart3, User, Moon, Sun, Clock, Calendar, Users, Book } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Task, getMyTasks, deleteTask } from '../services/taskService';
 import { Quiz, getMyQuizzes, deleteQuiz } from '../services/quizService';
 import CreateTaskModal from '../components/teacher/CreateTaskModal';
 import CreateQuizModal from '../components/teacher/CreateQuizModal';
+import TutorialManagement from '../components/teacher/TutorialManagement';
 import { UserSidebar } from '../components/UserSidebar';
 import { useTheme } from '../context/ThemeContext';
 import { NotificationsBell } from '../components/NotificationsBell';
@@ -26,7 +27,8 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
-    const { theme, setTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'tasks' | 'quizzes' | 'tutorials'>('tasks');
+  const { theme, setTheme } = useTheme();
 
   
   const loadTasks = async () => {
@@ -220,11 +222,61 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
           </div>
         </div>
 
-        {/* Tasks List */}
-        <div className={`rounded-xl border ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'}`}>
-          <div className="p-4 border-b border-gray-800">
-            <h2 className="text-lg font-semibold">Your Tasks</h2>
-          </div>
+        {/* Tabs */}
+        <div className={`flex gap-2 mb-6 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'tasks'
+                ? theme === 'dark'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-blue-600 border-b-2 border-blue-600'
+                : theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <BookOpen className="w-4 h-4 inline mr-2" />
+            Tasks
+          </button>
+          <button
+            onClick={() => setActiveTab('quizzes')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'quizzes'
+                ? theme === 'dark'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-blue-600 border-b-2 border-blue-600'
+                : theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <Award className="w-4 h-4 inline mr-2" />
+            Quizzes
+          </button>
+          <button
+            onClick={() => setActiveTab('tutorials')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'tutorials'
+                ? theme === 'dark'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-blue-600 border-b-2 border-blue-600'
+                : theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <Book className="w-4 h-4 inline mr-2" />
+            Tutorials
+          </button>
+        </div>
+
+        {/* Tasks Tab */}
+        {activeTab === 'tasks' && (
+          <div className={`rounded-xl border ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'}`}>
+            <div className="p-4 border-b border-gray-800">
+              <h2 className="text-lg font-semibold">Your Tasks</h2>
+            </div>
           {loading ? (
             <div className="p-8 text-center text-gray-400">Loading tasks...</div>
           ) : tasks.length === 0 ? (
@@ -261,10 +313,12 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
               ))}
             </div>
           )}
-        </div>
+          </div>
+        )}
 
-        {/* Quizzes List */}
-        <div className={`rounded-xl border mt-6 ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'}`}>
+        {/* Quizzes Tab */}
+        {activeTab === 'quizzes' && (
+          <div className={`rounded-xl border ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'}`}>
           <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -336,7 +390,13 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
               ))}
             </div>
           )}
-        </div>
+          </div>
+        )}
+
+        {/* Tutorials Tab */}
+        {activeTab === 'tutorials' && (
+          <TutorialManagement />
+        )}
       </div>
 
       {/* Create/Edit Task Modal */}

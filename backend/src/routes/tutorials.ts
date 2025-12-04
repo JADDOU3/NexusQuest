@@ -1,0 +1,190 @@
+import { Router, Request, Response } from 'express';
+import { authenticateToken, requireTeacher } from '../middleware/auth';
+import Tutorial from '../models/Tutorial.js';
+import User from '../models/User.js';
+
+const router = Router();
+
+// Get all tutorials (public or for students)
+router.get('/', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { language, difficulty } = req.query;
+    
+    const filter: any = { isPublished: true };
+    
+    if (language) {
+      filter.language = language;
+    }
+    
+    if (difficulty) {
+      filter.difficulty = difficulty;
+    }
+
+    const tutorials = await Tutorial.find(filter)
+      .populate('createdBy', 'name email')
+      .sort({ language: 1, order: 1 });
+
+    res.json(tutorials);
+  } catch (error: any) {
+    console.error('Error fetching tutorials:', error);
+    res.status(500).json({ error: 'Failed to fetch tutorials' });
+  }
+});
+
+// Get tutorials by language
+router.get('/language/:language', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { language } = req.params;
+
+    const tutorials = await Tutorial.find({
+      language,
+      isPublished: true,
+    })
+      .populate('createdBy', 'name email')
+      .sort({ order: 1 });
+
+    res.json(tutorials);
+  } catch (error: any) {
+    console.error('Error fetching tutorials by language:', error);
+    res.status(500).json({ error: 'Failed to fetch tutorials' });
+  }
+});
+
+// Get single tutorial by ID
+router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const tutorial = await Tutorial.findOne({
+      _id: id,
+      isPublished: true,
+    }).populate('createdBy', 'name email');
+
+    if (!tutorial) {
+      return res.status(404).json({ error: 'Tutorial not found' });
+    }
+
+    res.json(tutorial);
+  } catch (error: any) {
+    console.error('Error fetching tutorial:', error);
+    res.status(500).json({ error: 'Failed to fetch tutorial' });
+  }
+});
+
+// Get all tutorials for teacher (including unpublished)
+router.get('/teacher/all', authenticateToken, requireTeacher, async (req: Request, res: Response) => {
+  try {
+    const tutorials = await Tutorial.find({
+      createdBy: req.user!.userId,
+    })
+      .populate('createdBy', 'name email')
+      .sort({ language: 1, order: 1 });
+
+    res.json(tutorials);
+  } catch (error: any) {
+    console.error('Error fetching teacher tutorials:', error);
+    res.status(500).json({ error: 'Failed to fetch tutorials' });
+  }
+});
+
+// Create new tutorial (teacher only)
+router.post('/', authenticateToken, requireTeacher, async (req: Request, res: Response) => {
+  try {
+    const { title, description, language, content, difficulty, order, isPublished } = req.body;
+
+    if (!title || !description || !language || !content) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const tutorial = await Tutorial.create({
+      title,
+      description,
+      language,
+      content,
+      difficulty: difficulty || 'beginner',
+      order: order || 0,
+      isPublished: isPublished || false,
+      createdBy: req.user!.userId,
+    });
+
+    const createdTutorial = await Tutorial.findById(tutorial._id)
+      .populate('createdBy', 'name email');
+
+    res.status(201).json(createdTutorial);
+  } catch (error: any) {
+    console.error('Error creating tutorial:', error);
+    res.status(500).json({ error: 'Failed to create tutorial' });
+  }
+});
+
+// Update tutorial (teacher only)
+router.put('/:id', authenticateToken, requireTeacher, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, description, language, content, difficulty, order, isPublished } = req.body;
+
+    const tutorial = await Tutorial.findOne({
+      _id: id,
+      createdBy: req.user!.userId,
+    });
+
+    if (!tutorial) {
+      return res.status(404).json({ error: 'Tutorial not found or unauthorized' });
+    }
+
+    if (title !== undefined) tutorial.title = title;
+    if (description !== undefined) tutorial.description = description;
+    if (language !== undefined) tutorial.language = language;
+    if (content !== undefined) tutorial.content = content;
+    if (difficulty !== undefined) tutorial.difficulty = difficulty;
+    if (order !== undefined) tutorial.order = order;
+    if (isPublished !== undefined) tutorial.isPublished = isPublished;
+
+    await tutorial.save();
+
+    const updatedTutorial = await Tutorial.findById(tutorial._id)
+      .populate('createdBy', 'name email');
+
+    res.json(updatedTutorial);
+  } catch (error: any) {
+    console.error('Error updating tutorial:', error);
+    res.status(500).json({ error: 'Failed to update tutorial' });
+  }
+});
+
+// Delete tutorial (teacher only)
+router.delete('/:id', authenticateToken, requireTeacher, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const tutorial = await Tutorial.findOne({
+      _id: id,
+      createdBy: req.user!.userId,
+    });
+
+    if (!tutorial) {
+      return res.status(404).json({ error: 'Tutorial not found or unauthorized' });
+    }
+
+    await tutorial.deleteOne();
+
+    res.json({ message: 'Tutorial deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting tutorial:', error);
+    res.status(500).json({ error: 'Failed to delete tutorial' });
+  }
+});
+
+// Get available languages
+router.get('/meta/languages', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const languages = await Tutorial.distinct('language', { isPublished: true });
+
+    res.json(languages);
+  } catch (error: any) {
+    console.error('Error fetching languages:', error);
+    res.status(500).json({ error: 'Failed to fetch languages' });
+  }
+});
+
+export default router;
