@@ -14,6 +14,7 @@ export interface Tutorial {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   order: number;
   sections: TutorialSection[];
+  nextTutorialId?: string; // ID of the next tutorial to take
 }
 
 export const defaultTutorials: Tutorial[] = [
@@ -25,6 +26,7 @@ export const defaultTutorials: Tutorial[] = [
     language: "javascript",
     difficulty: "beginner",
     order: 1,
+    nextTutorialId: 'js-functions',
     sections: [
       {
         id: 'intro',
@@ -148,6 +150,7 @@ console.log(\`GPA: \${studentGPA}\`);`,
     language: "javascript",
     difficulty: "beginner",
     order: 2,
+    nextTutorialId: 'js-arrays',
     sections: [
       {
         id: 'intro',
@@ -422,6 +425,7 @@ console.log("Highest:", max);`,
     language: "python",
     difficulty: "beginner",
     order: 1,
+    nextTutorialId: 'python-functions',
     sections: [
       {
         id: 'intro',

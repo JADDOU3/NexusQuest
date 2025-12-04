@@ -13,11 +13,6 @@ const getTutorialCustomizations = (): Record<string, Partial<Tutorial>> => {
   return customizations ? JSON.parse(customizations) : {};
 };
 
-// Save tutorial customizations
-const saveTutorialCustomizations = (customizations: Record<string, Partial<Tutorial>>) => {
-  localStorage.setItem('tutorial-customizations', JSON.stringify(customizations));
-};
-
 // Get all tutorials (students) - all visible
 export const getTutorials = async (language?: string, difficulty?: string): Promise<Tutorial[]> => {
   const customizations = getTutorialCustomizations();
