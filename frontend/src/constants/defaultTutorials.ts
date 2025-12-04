@@ -284,6 +284,7 @@ console.log(calcArea(4, 6)); // 24`,
     language: "javascript",
     difficulty: "beginner",
     order: 3,
+    nextTutorialId: 'js-objects',
     sections: [
       {
         id: 'intro',
@@ -412,6 +413,450 @@ console.log("High scores:", highScores);
 // Highest score
 let max = Math.max(...scores);
 console.log("Highest:", max);`,
+        language: 'javascript'
+      }
+    ]
+  },
+
+  // JavaScript Objects
+  {
+    id: 'js-objects',
+    title: "JavaScript Objects",
+    description: "Understanding JavaScript objects, properties, methods, and object-oriented concepts",
+    language: "javascript",
+    difficulty: "intermediate",
+    order: 4,
+    nextTutorialId: 'js-loops',
+    sections: [
+      {
+        id: 'intro',
+        title: "What is an Object?",
+        content: `Objects are collections of key-value pairs that allow you to store multiple related values together. They are one of JavaScript's fundamental data structures.
+
+Objects can contain properties (data) and methods (functions that operate on that data).`,
+        codeExample: `let person = {
+  name: "John",
+  age: 30,
+  city: "New York"
+};
+
+console.log(person.name); // "John"`,
+        language: 'javascript'
+      },
+      {
+        id: 'creation',
+        title: "Creating Objects",
+        content: `There are multiple ways to create objects in JavaScript:
+
+**Object Literal** - Most common way
+**Constructor Function** - Using new keyword
+**Object.create()** - Creating with prototype
+**Class Syntax** - Modern ES6+ way`,
+        codeExample: `// Object Literal
+let car = {
+  brand: "Toyota",
+  model: "Camry",
+  year: 2023
+};
+
+// Constructor Function
+function Person(name, age) {
+  this.name = name;
+  this.age = age;
+}
+let john = new Person("John", 30);
+
+// Class Syntax (ES6+)
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+}
+let dog = new Animal("Rex");`,
+        language: 'javascript'
+      },
+      {
+        id: 'properties',
+        title: "Object Properties",
+        content: `You can access and modify object properties using dot notation or bracket notation.
+
+Properties can be added, modified, or deleted dynamically.`,
+        codeExample: `let user = {
+  name: "Alice",
+  age: 25
+};
+
+// Dot notation
+console.log(user.name); // "Alice"
+user.age = 26;
+
+// Bracket notation
+console.log(user["name"]); // "Alice"
+user["email"] = "alice@example.com";
+
+// Add new property
+user.country = "USA";
+
+// Delete property
+delete user.age;`,
+        language: 'javascript'
+      },
+      {
+        id: 'methods',
+        title: "Object Methods",
+        content: `Methods are functions stored as object properties. They can access the object's data using the 'this' keyword.`,
+        codeExample: `let calculator = {
+  value: 0,
+  add: function(num) {
+    this.value += num;
+    return this;
+  },
+  subtract: function(num) {
+    this.value -= num;
+    return this;
+  },
+  result: function() {
+    return this.value;
+  }
+};
+
+calculator.add(10).subtract(3);
+console.log(calculator.result()); // 7`,
+        language: 'javascript'
+      },
+      {
+        id: 'iteration',
+        title: "Iterating Objects",
+        content: `You can loop through object properties using for...in, Object.keys(), Object.values(), or Object.entries().`,
+        codeExample: `let student = {
+  name: "Bob",
+  grade: "A",
+  score: 95
+};
+
+// for...in loop
+for (let key in student) {
+  console.log(key + ": " + student[key]);
+}
+
+// Object.keys()
+Object.keys(student).forEach(key => {
+  console.log(key);
+});
+
+// Object.entries()
+Object.entries(student).forEach(([key, value]) => {
+  console.log(\`\${key}: \${value}\`);
+});`,
+        language: 'javascript'
+      },
+      {
+        id: 'practice',
+        title: "Practice Exercise",
+        content: `Create a book object with properties and methods to demonstrate your understanding.`,
+        codeExample: `// Create a book object with:
+// - title, author, pages, read (boolean)
+// - method: info() returns string description
+// - method: markAsRead() sets read to true
+
+let book = {
+  title: "The Great Gatsby",
+  author: "F. Scott Fitzgerald",
+  pages: 180,
+  read: false,
+  info: function() {
+    return \`\${this.title} by \${this.author}, \${this.pages} pages\`;
+  },
+  markAsRead: function() {
+    this.read = true;
+  }
+};
+
+console.log(book.info());
+book.markAsRead();`,
+        language: 'javascript'
+      }
+    ]
+  },
+
+  // JavaScript Loops
+  {
+    id: 'js-loops',
+    title: "JavaScript Loops and Iteration",
+    description: "Master loops in JavaScript including for, while, do-while, and array iteration methods",
+    language: "javascript",
+    difficulty: "beginner",
+    order: 5,
+    nextTutorialId: 'js-conditionals',
+    sections: [
+      {
+        id: 'intro',
+        title: "What are Loops?",
+        content: `Loops allow you to execute a block of code repeatedly. They are essential for iterating through arrays, processing data, and automating repetitive tasks.
+
+JavaScript provides several types of loops, each suited for different scenarios.`,
+        codeExample: `// Basic loop example
+for (let i = 0; i < 5; i++) {
+  console.log("Count: " + i);
+}`,
+        language: 'javascript'
+      },
+      {
+        id: 'for-loop',
+        title: "For Loop",
+        content: `The for loop is the most common loop type. It has three parts: initialization, condition, and increment/decrement.
+
+**Syntax:** for (initialization; condition; increment) { code }`,
+        codeExample: `// Basic for loop
+for (let i = 0; i < 5; i++) {
+  console.log(i); // 0, 1, 2, 3, 4
+}
+
+// Looping backwards
+for (let i = 5; i > 0; i--) {
+  console.log(i); // 5, 4, 3, 2, 1
+}
+
+// Skip iteration with continue
+for (let i = 0; i < 10; i++) {
+  if (i % 2 === 0) continue; // Skip even numbers
+  console.log(i); // 1, 3, 5, 7, 9
+}
+
+// Exit early with break
+for (let i = 0; i < 10; i++) {
+  if (i === 5) break;
+  console.log(i); // 0, 1, 2, 3, 4
+}`,
+        language: 'javascript'
+      },
+      {
+        id: 'while-loop',
+        title: "While Loop",
+        content: `The while loop continues executing as long as its condition is true. It checks the condition before each iteration.
+
+Be careful to avoid infinite loops by ensuring the condition eventually becomes false.`,
+        codeExample: `// Basic while loop
+let count = 0;
+while (count < 5) {
+  console.log(count);
+  count++;
+}
+
+// User input simulation
+let password = "";
+let attempts = 0;
+while (password !== "secret" && attempts < 3) {
+  password = getUserInput(); // Hypothetical function
+  attempts++;
+}`,
+        language: 'javascript'
+      },
+      {
+        id: 'do-while',
+        title: "Do-While Loop",
+        content: `The do-while loop executes the code block at least once before checking the condition. The condition is checked after each iteration.`,
+        codeExample: `// Basic do-while loop
+let num = 0;
+do {
+  console.log(num);
+  num++;
+} while (num < 5);
+
+// Guaranteed to run at least once
+let value = 10;
+do {
+  console.log("This runs once");
+  value++;
+} while (value < 5); // Condition is false, but code ran`,
+        language: 'javascript'
+      },
+      {
+        id: 'foreach',
+        title: "Array Iteration",
+        content: `Modern JavaScript provides several methods for iterating through arrays: forEach(), map(), filter(), and for...of.`,
+        codeExample: `let fruits = ["apple", "banana", "orange"];
+
+// forEach - execute function for each element
+fruits.forEach(fruit => {
+  console.log(fruit);
+});
+
+// for...of - iterate over values
+for (let fruit of fruits) {
+  console.log(fruit);
+}
+
+// map - transform array elements
+let upper = fruits.map(f => f.toUpperCase());
+console.log(upper); // ["APPLE", "BANANA", "ORANGE"]
+
+// filter - select elements
+let long = fruits.filter(f => f.length > 5);
+console.log(long); // ["banana", "orange"]`,
+        language: 'javascript'
+      },
+      {
+        id: 'practice',
+        title: "Practice Exercise",
+        content: `Practice using different loop types to solve common programming challenges.`,
+        codeExample: `// 1. Sum numbers from 1 to 100
+let sum = 0;
+for (let i = 1; i <= 100; i++) {
+  sum += i;
+}
+console.log("Sum:", sum); // 5050
+
+// 2. Find even numbers in array
+let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+let evens = numbers.filter(n => n % 2 === 0);
+console.log(evens); // [2, 4, 6, 8, 10]
+
+// 3. Multiplication table
+for (let i = 1; i <= 10; i++) {
+  console.log(\`5 x \${i} = \${5 * i}\`);
+}`,
+        language: 'javascript'
+      }
+    ]
+  },
+
+  // JavaScript Conditionals
+  {
+    id: 'js-conditionals',
+    title: "JavaScript Conditionals",
+    description: "Learn conditional statements: if, else, else if, switch, and ternary operators",
+    language: "javascript",
+    difficulty: "beginner",
+    order: 6,
+    sections: [
+      {
+        id: 'intro',
+        title: "What are Conditionals?",
+        content: `Conditional statements allow your code to make decisions and execute different blocks of code based on conditions.
+
+They are fundamental to creating dynamic, responsive programs that can handle different scenarios.`,
+        codeExample: `let age = 18;
+if (age >= 18) {
+  console.log("Adult");
+} else {
+  console.log("Minor");
+}`,
+        language: 'javascript'
+      },
+      {
+        id: 'if-else',
+        title: "If-Else Statements",
+        content: `The if statement executes code when a condition is true. The else statement provides an alternative when the condition is false.
+
+You can chain multiple conditions using else if.`,
+        codeExample: `let score = 85;
+
+if (score >= 90) {
+  console.log("Grade: A");
+} else if (score >= 80) {
+  console.log("Grade: B");
+} else if (score >= 70) {
+  console.log("Grade: C");
+} else if (score >= 60) {
+  console.log("Grade: D");
+} else {
+  console.log("Grade: F");
+}
+
+// Single line if (no braces needed)
+if (score >= 60) console.log("Passed");`,
+        language: 'javascript'
+      },
+      {
+        id: 'comparison',
+        title: "Comparison Operators",
+        content: `Comparison operators are used in conditionals to compare values.
+
+**Operators:** == (equal), === (strict equal), != (not equal), !== (strict not equal), > (greater), < (less), >= (greater or equal), <= (less or equal)`,
+        codeExample: `let x = 5;
+let y = "5";
+
+// Loose equality (converts types)
+console.log(x == y);   // true
+
+// Strict equality (no conversion)
+console.log(x === y);  // false
+
+// Other comparisons
+console.log(x > 3);    // true
+console.log(x <= 10);  // true
+console.log(x !== y);  // true`,
+        language: 'javascript'
+      },
+      {
+        id: 'logical',
+        title: "Logical Operators",
+        content: `Logical operators combine multiple conditions: && (AND), || (OR), ! (NOT).
+
+These allow you to create complex conditional logic.`,
+        codeExample: `let age = 25;
+let hasLicense = true;
+
+// AND - both must be true
+if (age >= 18 && hasLicense) {
+  console.log("Can drive");
+}
+
+// OR - at least one must be true
+let isWeekend = true;
+let isHoliday = false;
+if (isWeekend || isHoliday) {
+  console.log("Day off!");
+}
+
+// NOT - inverts boolean
+if (!hasLicense) {
+  console.log("Cannot drive");
+}`,
+        language: 'javascript'
+      },
+      {
+        id: 'switch',
+        title: "Switch Statement",
+        content: `The switch statement is useful when you have multiple conditions based on the same variable. It's often cleaner than multiple if-else statements.`,
+        codeExample: `let day = "Monday";
+
+switch (day) {
+  case "Monday":
+    console.log("Start of work week");
+    break;
+  case "Friday":
+    console.log("TGIF!");
+    break;
+  case "Saturday":
+  case "Sunday":
+    console.log("Weekend!");
+    break;
+  default:
+    console.log("Midweek day");
+}`,
+        language: 'javascript'
+      },
+      {
+        id: 'ternary',
+        title: "Ternary Operator",
+        content: `The ternary operator is a shorthand for simple if-else statements. Syntax: condition ? valueIfTrue : valueIfFalse`,
+        codeExample: `let age = 20;
+
+// Traditional if-else
+let status;
+if (age >= 18) {
+  status = "adult";
+} else {
+  status = "minor";
+}
+
+// Ternary operator (same result)
+let status2 = age >= 18 ? "adult" : "minor";
+
+// Can be nested (but be careful with readability)
+let grade = score >= 90 ? "A" : score >= 80 ? "B" : "C";`,
         language: 'javascript'
       }
     ]
@@ -570,6 +1015,7 @@ print(f"BMI: {bmi:.2f}")`,
     language: "python",
     difficulty: "beginner",
     order: 2,
+    nextTutorialId: 'python-lists',
     sections: [
       {
         id: 'intro',
@@ -702,6 +1148,455 @@ print(fahrenheit_to_celsius(77))   # 25.0
 is_even = lambda x: x % 2 == 0
 print(is_even(4))   # True
 print(is_even(7))   # False`,
+        language: 'python'
+      }
+    ]
+  },
+
+  // Python Lists
+  {
+    id: 'python-lists',
+    title: "Python Lists and Collections",
+    description: "Master Python lists, tuples, sets, and dictionaries",
+    language: "python",
+    difficulty: "beginner",
+    order: 3,
+    nextTutorialId: 'python-loops',
+    sections: [
+      {
+        id: 'intro',
+        title: "Python Lists",
+        content: `Lists are ordered, mutable collections that can store multiple items. They are one of the most versatile data structures in Python.
+
+Lists can contain different data types and can be modified after creation.`,
+        codeExample: `# Creating lists
+fruits = ["apple", "banana", "orange"]
+numbers = [1, 2, 3, 4, 5]
+mixed = [1, "hello", 3.14, True]
+
+# Accessing elements
+print(fruits[0])   # "apple"
+print(fruits[-1])  # "orange" (last item)
+
+# Slicing
+print(numbers[1:4])  # [2, 3, 4]`,
+        language: 'python'
+      },
+      {
+        id: 'methods',
+        title: "List Methods",
+        content: `Python lists come with many built-in methods for adding, removing, and manipulating elements.`,
+        codeExample: `fruits = ["apple", "banana"]
+
+# Adding elements
+fruits.append("orange")        # Add to end
+fruits.insert(1, "mango")     # Insert at index
+fruits.extend(["grape", "kiwi"])  # Add multiple
+
+# Removing elements
+fruits.remove("banana")        # Remove by value
+popped = fruits.pop()         # Remove last item
+fruits.pop(0)                 # Remove by index
+
+# Other operations
+fruits.sort()                 # Sort in place
+fruits.reverse()              # Reverse in place
+print(len(fruits))            # Length`,
+        language: 'python'
+      },
+      {
+        id: 'comprehension',
+        title: "List Comprehension",
+        content: `List comprehension provides a concise way to create lists based on existing lists or ranges.`,
+        codeExample: `# Basic list comprehension
+squares = [x**2 for x in range(10)]
+print(squares)  # [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+
+# With condition
+evens = [x for x in range(20) if x % 2 == 0]
+print(evens)  # [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]
+
+# Transform strings
+fruits = ["apple", "banana", "orange"]
+upper = [fruit.upper() for fruit in fruits]
+print(upper)  # ['APPLE', 'BANANA', 'ORANGE']`,
+        language: 'python'
+      },
+      {
+        id: 'tuples',
+        title: "Tuples",
+        content: `Tuples are immutable sequences. Once created, they cannot be modified. They're useful for data that shouldn't change.`,
+        codeExample: `# Creating tuples
+point = (10, 20)
+rgb = (255, 0, 128)
+person = ("John", 30, "Engineer")
+
+# Accessing elements
+print(point[0])   # 10
+
+# Tuple unpacking
+x, y = point
+name, age, job = person
+print(name)  # "John"
+
+# Tuples are immutable
+# point[0] = 15  # This would raise an error`,
+        language: 'python'
+      },
+      {
+        id: 'dictionaries',
+        title: "Dictionaries",
+        content: `Dictionaries store key-value pairs. They are unordered, mutable collections that allow fast lookup by key.`,
+        codeExample: `# Creating dictionaries
+student = {
+    "name": "Alice",
+    "age": 20,
+    "grade": "A"
+}
+
+# Accessing values
+print(student["name"])      # "Alice"
+print(student.get("age"))   # 20
+
+# Adding/modifying
+student["email"] = "alice@example.com"
+student["age"] = 21
+
+# Iterating
+for key, value in student.items():
+    print(f"{key}: {value}")
+
+# Dictionary methods
+keys = student.keys()
+values = student.values()`,
+        language: 'python'
+      },
+      {
+        id: 'practice',
+        title: "Practice Exercise",
+        content: `Practice working with different Python collection types.`,
+        codeExample: `# 1. Create list of squares using comprehension
+squares = [x**2 for x in range(1, 11)]
+print(squares)
+
+# 2. Dictionary for student grades
+grades = {
+    "Alice": 95,
+    "Bob": 87,
+    "Charlie": 92
+}
+
+# Calculate average
+average = sum(grades.values()) / len(grades)
+print(f"Average grade: {average}")
+
+# 3. Filter and transform
+numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+even_squares = [x**2 for x in numbers if x % 2 == 0]
+print(even_squares)  # [4, 16, 36, 64, 100]`,
+        language: 'python'
+      }
+    ]
+  },
+
+  // Python Loops
+  {
+    id: 'python-loops',
+    title: "Python Loops and Iteration",
+    description: "Learn Python for loops, while loops, and iteration techniques",
+    language: "python",
+    difficulty: "beginner",
+    order: 4,
+    nextTutorialId: 'python-conditionals',
+    sections: [
+      {
+        id: 'intro',
+        title: "Python Loops Overview",
+        content: `Loops allow you to repeat code multiple times. Python provides for loops and while loops for different iteration scenarios.`,
+        codeExample: `# Basic for loop
+for i in range(5):
+    print(i)  # 0, 1, 2, 3, 4
+
+# Loop through list
+fruits = ["apple", "banana", "orange"]
+for fruit in fruits:
+    print(fruit)`,
+        language: 'python'
+      },
+      {
+        id: 'for-loop',
+        title: "For Loops",
+        content: `Python's for loop iterates over sequences (lists, tuples, strings, ranges). It's the most commonly used loop type.`,
+        codeExample: `# Range with start, stop, step
+for i in range(0, 10, 2):
+    print(i)  # 0, 2, 4, 6, 8
+
+# Enumerate - get index and value
+fruits = ["apple", "banana", "orange"]
+for index, fruit in enumerate(fruits):
+    print(f"{index}: {fruit}")
+
+# Iterate string
+for char in "Hello":
+    print(char)
+
+# Break and continue
+for i in range(10):
+    if i == 5:
+        break  # Exit loop
+    if i % 2 == 0:
+        continue  # Skip even numbers
+    print(i)  # 1, 3`,
+        language: 'python'
+      },
+      {
+        id: 'while-loop',
+        title: "While Loops",
+        content: `While loops continue executing as long as a condition is true. They're useful when you don't know how many iterations you need.`,
+        codeExample: `# Basic while loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+# User input loop
+password = ""
+while password != "secret":
+    password = input("Enter password: ")
+    
+# Infinite loop with break
+while True:
+    user_input = input("Enter 'quit' to exit: ")
+    if user_input == "quit":
+        break
+    print(f"You entered: {user_input}")`,
+        language: 'python'
+      },
+      {
+        id: 'nested',
+        title: "Nested Loops",
+        content: `You can place loops inside other loops. This is useful for working with multi-dimensional data or generating patterns.`,
+        codeExample: `# Multiplication table
+for i in range(1, 6):
+    for j in range(1, 6):
+        print(f"{i} x {j} = {i*j}")
+    print()  # Blank line
+
+# Pattern printing
+for i in range(1, 6):
+    print("* " * i)
+
+# 2D list iteration
+matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+for row in matrix:
+    for num in row:
+        print(num, end=" ")
+    print()`,
+        language: 'python'
+      },
+      {
+        id: 'comprehensions',
+        title: "Loop Alternatives",
+        content: `Python offers concise alternatives to loops: list comprehensions, map(), filter(), and generator expressions.`,
+        codeExample: `# List comprehension vs loop
+numbers = [1, 2, 3, 4, 5]
+
+# Traditional loop
+squares = []
+for n in numbers:
+    squares.append(n**2)
+
+# List comprehension (better)
+squares = [n**2 for n in numbers]
+
+# map() function
+squares = list(map(lambda x: x**2, numbers))
+
+# filter() function
+evens = list(filter(lambda x: x % 2 == 0, numbers))
+
+# Generator expression (memory efficient)
+sum_of_squares = sum(n**2 for n in range(1000000))`,
+        language: 'python'
+      },
+      {
+        id: 'practice',
+        title: "Practice Exercise",
+        content: `Practice using loops to solve common problems.`,
+        codeExample: `# 1. Sum of numbers 1 to 100
+total = sum(range(1, 101))
+print(f"Sum: {total}")  # 5050
+
+# 2. Fibonacci sequence
+fib = [0, 1]
+for i in range(8):
+    fib.append(fib[-1] + fib[-2])
+print(fib)  # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+
+# 3. Count vowels in string
+text = "Hello World"
+vowels = "aeiouAEIOU"
+count = sum(1 for char in text if char in vowels)
+print(f"Vowels: {count}")  # 3`,
+        language: 'python'
+      }
+    ]
+  },
+
+  // Python Conditionals
+  {
+    id: 'python-conditionals',
+    title: "Python Conditional Statements",
+    description: "Master if, elif, else statements and conditional expressions in Python",
+    language: "python",
+    difficulty: "beginner",
+    order: 5,
+    sections: [
+      {
+        id: 'intro',
+        title: "Conditional Statements",
+        content: `Conditional statements allow your program to make decisions and execute different code based on conditions.
+
+Python uses if, elif, and else for conditional logic.`,
+        codeExample: `age = 18
+
+if age >= 18:
+    print("Adult")
+else:
+    print("Minor")`,
+        language: 'python'
+      },
+      {
+        id: 'if-elif-else',
+        title: "If-Elif-Else",
+        content: `Use if for the first condition, elif for additional conditions, and else for when no conditions are met.
+
+Note: Python uses indentation (usually 4 spaces) instead of braces.`,
+        codeExample: `score = 85
+
+if score >= 90:
+    print("Grade: A")
+elif score >= 80:
+    print("Grade: B")
+elif score >= 70:
+    print("Grade: C")
+elif score >= 60:
+    print("Grade: D")
+else:
+    print("Grade: F")
+
+# Multiple conditions
+age = 25
+has_license = True
+
+if age >= 18 and has_license:
+    print("Can drive")`,
+        language: 'python'
+      },
+      {
+        id: 'comparison',
+        title: "Comparison Operators",
+        content: `Python supports all standard comparison operators: == (equal), != (not equal), > (greater), < (less), >= (greater or equal), <= (less or equal)
+
+Python also has 'is' for identity comparison and 'in' for membership testing.`,
+        codeExample: `# Comparison operators
+x = 5
+print(x == 5)   # True
+print(x != 3)   # True
+print(x > 3)    # True
+print(x <= 10)  # True
+
+# Identity (same object)
+a = [1, 2, 3]
+b = a
+c = [1, 2, 3]
+print(a is b)   # True
+print(a is c)   # False (different objects)
+print(a == c)   # True (same values)
+
+# Membership
+fruits = ["apple", "banana"]
+print("apple" in fruits)  # True`,
+        language: 'python'
+      },
+      {
+        id: 'logical',
+        title: "Logical Operators",
+        content: `Python uses 'and', 'or', and 'not' for logical operations. These are more readable than symbolic operators.`,
+        codeExample: `# AND - both must be True
+age = 25
+income = 50000
+if age >= 18 and income > 30000:
+    print("Eligible for loan")
+
+# OR - at least one must be True
+is_weekend = True
+is_holiday = False
+if is_weekend or is_holiday:
+    print("Day off!")
+
+# NOT - inverts boolean
+is_raining = False
+if not is_raining:
+    print("Go outside!")
+
+# Combining operators
+x = 15
+if (x > 10 and x < 20) or x == 5:
+    print("Condition met")`,
+        language: 'python'
+      },
+      {
+        id: 'ternary',
+        title: "Conditional Expressions",
+        content: `Python's ternary operator (conditional expression) provides a concise way to write simple if-else statements in one line.
+
+Syntax: value_if_true if condition else value_if_false`,
+        codeExample: `# Traditional if-else
+age = 20
+if age >= 18:
+    status = "adult"
+else:
+    status = "minor"
+
+# Ternary operator (same result)
+status = "adult" if age >= 18 else "minor"
+
+# Useful in assignments
+max_value = x if x > y else y
+
+# Can be nested (but be careful)
+score = 85
+grade = "A" if score >= 90 else "B" if score >= 80 else "C"
+
+# In function returns
+def abs_value(num):
+    return num if num >= 0 else -num`,
+        language: 'python'
+      },
+      {
+        id: 'practice',
+        title: "Practice Exercise",
+        content: `Practice using conditional statements to solve problems.`,
+        codeExample: `# 1. Check if number is positive, negative, or zero
+num = 5
+if num > 0:
+    print("Positive")
+elif num < 0:
+    print("Negative")
+else:
+    print("Zero")
+
+# 2. Leap year checker
+year = 2024
+is_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+print(f"{year} is leap year: {is_leap}")
+
+# 3. Grade calculator with ternary
+def get_grade(score):
+    return "A" if score >= 90 else "B" if score >= 80 else "C" if score >= 70 else "D" if score >= 60 else "F"
+
+print(get_grade(85))  # B`,
         language: 'python'
       }
     ]
