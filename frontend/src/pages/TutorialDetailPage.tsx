@@ -135,7 +135,7 @@ export default function TutorialDetailPage() {
                 },
               }}
             >
-              {tutorial.content}
+              {tutorial.sections.map(section => section.content).join('\n\n')}
             </ReactMarkdown>
           </div>
         </div>

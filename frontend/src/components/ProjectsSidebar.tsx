@@ -1,7 +1,7 @@
 import { useState , useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, X, FolderOpen, Trophy, Settings, ChevronRight, Moon, Sun, Minus, Plus, LogOut, Play } from 'lucide-react';
-import type { Theme, User as UserType } from '../types';
+import { FolderOpen, Play } from 'lucide-react';
+import type { Theme } from '../types';
 import { Button } from './ui/button';
 import * as projectService from '../services/projectService';
 import type { Project } from '../services/projectService';
@@ -11,11 +11,8 @@ interface ProjectsSidebarProps {
   setTheme: (theme: Theme) => void;
 }
 
-
-
 export function ProjectsSidebar({ 
-  theme,
-  setTheme 
+  theme
 }: ProjectsSidebarProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);

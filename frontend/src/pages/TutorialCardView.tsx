@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, BookOpen, Code, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
-import { getTutorial, Tutorial, TutorialSection } from '../services/tutorialService';
+import { getTutorial, Tutorial } from '../services/tutorialService';
+import type { TutorialSection } from '../services/tutorialService';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -150,7 +151,7 @@ export default function TutorialCardView() {
               Sections
             </h3>
             <div className="space-y-2">
-              {tutorial.sections.map((section, index) => (
+              {tutorial.sections.map((section: TutorialSection, index: number) => (
                 <button
                   key={section.id}
                   onClick={() => handleSectionClick(index)}

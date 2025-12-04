@@ -7,7 +7,6 @@ import {
   restoreSnapshot,
   compareSnapshots,
   createSnapshot,
-  createProjectSnapshot,
   formatRelativeTime,
   Snapshot,
   FileVersionInfo,
@@ -37,7 +36,7 @@ export function VersionControl({
   currentFileId,
   currentFileName,
   currentCode,
-  projectFiles = [],
+  projectFiles: _projectFiles,
   onRestore,
   onSnapshotCreated,
 }: VersionControlProps) {

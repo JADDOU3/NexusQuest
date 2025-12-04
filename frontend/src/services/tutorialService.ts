@@ -1,6 +1,6 @@
-import { defaultTutorials, type Tutorial as DefaultTutorial, type TutorialSection } from '../constants/defaultTutorials';
+import { defaultTutorials, type Tutorial as BaseTutorial, type TutorialSection } from '../constants/defaultTutorials';
 
-export interface Tutorial extends DefaultTutorial {
+export interface Tutorial extends BaseTutorial {
   isPublished: boolean;
   isCustom?: boolean;
 }
@@ -34,7 +34,7 @@ export const getTutorials = async (language?: string, difficulty?: string): Prom
   const settings = getTutorialSettings();
   const customizations = getTutorialCustomizations();
   
-  let tutorials: Tutorial[] = defaultTutorials.map((tutorial: DefaultTutorial) => ({
+  let tutorials: Tutorial[] = defaultTutorials.map((tutorial: BaseTutorial) => ({
     ...tutorial,
     ...customizations[tutorial.id],
     isPublished: settings[tutorial.id] !== false, // default to true
@@ -66,7 +66,7 @@ export const getTutorial = async (id: string): Promise<Tutorial> => {
   const settings = getTutorialSettings();
   const customizations = getTutorialCustomizations();
   
-  const tutorial = defaultTutorials.find((t: DefaultTutorial) => t.id === id);
+  const tutorial = defaultTutorials.find((t: BaseTutorial) => t.id === id);
   
   if (!tutorial) {
     throw new Error('Tutorial not found');
@@ -84,7 +84,7 @@ export const getTeacherTutorials = async (): Promise<Tutorial[]> => {
   const settings = getTutorialSettings();
   const customizations = getTutorialCustomizations();
   
-  return defaultTutorials.map((tutorial: DefaultTutorial): Tutorial => ({
+  return defaultTutorials.map((tutorial: BaseTutorial): Tutorial => ({
     ...tutorial,
     ...customizations[tutorial.id],
     isPublished: settings[tutorial.id] !== false,

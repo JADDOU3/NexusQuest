@@ -51,19 +51,7 @@ export default function TutorialManagement() {
     }
   };
 
-  const handleReset = async (tutorial: Tutorial) => {
-    if (!confirm('Are you sure you want to reset this tutorial to default? All custom changes will be lost.')) {
-      return;
-    }
-    
-    try {
-      await resetTutorial(tutorial.id);
-      await loadTutorials();
-    } catch (error) {
-      console.error('Error resetting tutorial:', error);
-      alert('Failed to reset tutorial');
-    }
-  };
+
 
 
 

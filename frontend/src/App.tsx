@@ -8,7 +8,6 @@ import { ProjectExplorer } from './components/ProjectExplorer';
 import { UserSidePanel } from './components/UserSidePanel';
 import { AiAgent } from './components/AiAgent';
 import { VersionControl } from './components/VersionControl';
-import * as aiService from './services/aiService';
 import * as projectService from './services/projectService';
 import {
   defaultCode,
