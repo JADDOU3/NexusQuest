@@ -1,16 +1,11 @@
-import { defaultTutorials } from '../constants/defaultTutorials';
+import { defaultTutorials, type Tutorial as DefaultTutorial, type TutorialSection } from '../constants/defaultTutorials';
 
-export interface Tutorial {
-  id: string;
-  title: string;
-  description: string;
-  language: string;
-  content: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  order: number;
+export interface Tutorial extends DefaultTutorial {
   isPublished: boolean;
   isCustom?: boolean;
 }
+
+export type { TutorialSection };
 
 // Get tutorial visibility settings from localStorage
 const getTutorialSettings = (): Record<string, boolean> => {
@@ -39,23 +34,23 @@ export const getTutorials = async (language?: string, difficulty?: string): Prom
   const settings = getTutorialSettings();
   const customizations = getTutorialCustomizations();
   
-  let tutorials = defaultTutorials.map(tutorial => ({
+  let tutorials: Tutorial[] = defaultTutorials.map((tutorial: DefaultTutorial) => ({
     ...tutorial,
     ...customizations[tutorial.id],
     isPublished: settings[tutorial.id] !== false, // default to true
   }));
 
   // Filter by published status
-  tutorials = tutorials.filter(t => t.isPublished);
+  tutorials = tutorials.filter((t: Tutorial) => t.isPublished);
 
   // Filter by language
   if (language) {
-    tutorials = tutorials.filter(t => t.language === language);
+    tutorials = tutorials.filter((t: Tutorial) => t.language === language);
   }
 
   // Filter by difficulty
   if (difficulty) {
-    tutorials = tutorials.filter(t => t.difficulty === difficulty);
+    tutorials = tutorials.filter((t: Tutorial) => t.difficulty === difficulty);
   }
 
   return tutorials;
@@ -71,7 +66,7 @@ export const getTutorial = async (id: string): Promise<Tutorial> => {
   const settings = getTutorialSettings();
   const customizations = getTutorialCustomizations();
   
-  const tutorial = defaultTutorials.find(t => t.id === id);
+  const tutorial = defaultTutorials.find((t: DefaultTutorial) => t.id === id);
   
   if (!tutorial) {
     throw new Error('Tutorial not found');
@@ -89,7 +84,7 @@ export const getTeacherTutorials = async (): Promise<Tutorial[]> => {
   const settings = getTutorialSettings();
   const customizations = getTutorialCustomizations();
   
-  return defaultTutorials.map(tutorial => ({
+  return defaultTutorials.map((tutorial: DefaultTutorial): Tutorial => ({
     ...tutorial,
     ...customizations[tutorial.id],
     isPublished: settings[tutorial.id] !== false,
@@ -140,6 +135,6 @@ export const resetTutorial = async (id: string): Promise<Tutorial> => {
 // Get available languages
 export const getAvailableLanguages = async (): Promise<string[]> => {
   const tutorials = await getTutorials();
-  const languages = [...new Set(tutorials.map(t => t.language))];
+  const languages = [...new Set(tutorials.map((t: Tutorial) => t.language))];
   return languages.sort();
 };

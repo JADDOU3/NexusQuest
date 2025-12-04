@@ -17,7 +17,7 @@ import QuizPage from './pages/QuizPage.tsx'
 import QuizzesPage from './pages/QuizzesPage.tsx'
 import QuizResultsPage from './pages/QuizResultsPage.tsx'
 import TutorialsPage from './pages/TutorialsPage.tsx'
-import TutorialDetailPage from './pages/TutorialDetailPage.tsx'
+import TutorialCardView from './pages/TutorialCardView.tsx'
 import { ThemeProvider } from './context/ThemeContext.tsx'
 import './index.css'
 
@@ -60,7 +60,7 @@ function Root() {
         <Route path="/quiz/:id" element={user ? <QuizPage /> : <Navigate to="/" />} />
         <Route path="/quiz/:id/results" element={user ? <QuizResultsPage /> : <Navigate to="/" />} />
         <Route path="/tutorials" element={user ? <TutorialsPage /> : <Navigate to="/" />} />
-        <Route path="/tutorials/:id" element={user ? <TutorialDetailPage /> : <Navigate to="/" />} />
+        <Route path="/tutorials/:id" element={user ? <TutorialCardView /> : <Navigate to="/" />} />
         <Route path="/login" element={<Login onLogin={handleAuth} />} />
         <Route path="/signup" element={<Signup onSignup={handleAuth} />} />
       </Routes>
