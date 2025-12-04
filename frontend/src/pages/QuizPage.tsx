@@ -376,6 +376,8 @@ export default function QuizPage() {
               <textarea
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
+                onPaste={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
                 className={`w-full h-[500px] p-4 font-mono text-sm resize-none outline-none ${
                   theme === 'dark'
                     ? 'bg-gray-950 text-white'
