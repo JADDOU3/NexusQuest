@@ -7,6 +7,7 @@ import { getStoredUser } from '../services/authService';
 import { Button } from '../components/ui/button';
 import { NotificationsBell } from '../components/NotificationsBell';
 import { UserSidePanel } from '../components/UserSidePanel';
+import { connectChat, getChatSocket, type ChatMessage } from '../services/chatService';
 
 interface LanguageFolder {
   language: string;
@@ -27,6 +28,7 @@ export default function TutorialsHomePage() {
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
   const [fontSize, setFontSize] = useState(14);
+  const [newMessageCount, setNewMessageCount] = useState(0);
 
   useEffect(() => {
     loadFolders();
@@ -51,6 +53,27 @@ export default function TutorialsHomePage() {
       }
     };
     loadUserAvatar();
+  }, []);
+
+  // Subscribe to chat for unread messages
+  useEffect(() => {
+    const storedUser = getStoredUser();
+    const s = connectChat();
+    if (!s || !storedUser) return;
+
+    const handleReceived = (_msg: ChatMessage) => {
+      if (_msg.recipientId !== storedUser.id) return;
+      setNewMessageCount((prev) => prev + 1);
+    };
+
+    s.on('dm:received', handleReceived as any);
+
+    return () => {
+      const existing = getChatSocket();
+      if (existing) {
+        existing.off('dm:received', handleReceived as any);
+      }
+    };
   }, []);
 
   const loadFolders = async () => {
@@ -178,12 +201,17 @@ export default function TutorialsHomePage() {
             </div>
             <button
               type="button"
-              onClick={() => navigate('/users')}
+              onClick={() => { setNewMessageCount(0); navigate('/users'); }}
               className={`relative rounded-full p-2 border text-gray-300 hover:text-emerald-300 hover:border-emerald-500 transition-colors ${
                 theme === 'dark' ? 'border-gray-700 bg-gray-900/70' : 'border-gray-300 bg-white/70'
               }`}
             >
               <MessageCircle className="w-4 h-4" />
+              {newMessageCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white flex items-center justify-center">
+                  {newMessageCount > 9 ? '9+' : newMessageCount}
+                </span>
+              )}
             </button>
             <NotificationsBell theme={theme} />
             <Button

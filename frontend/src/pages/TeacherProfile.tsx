@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
 import { getMyTasks, Task } from '../services/taskService';
 import { UserSidebar } from '../components/UserSidebar';
+import { connectChat, getChatSocket, type ChatMessage } from '../services/chatService';
 import { useProfileImages } from '../hooks/useProfileImages';
 
 export function TeacherProfile() {
@@ -15,6 +16,7 @@ export function TeacherProfile() {
   const [showSidebar, setShowSidebar] = useState(false);
   const { avatarImage, coverImage, handleAvatarChange, handleCoverChange } = useProfileImages();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [newMessageCount, setNewMessageCount] = useState(0);
   const [stats, setStats] = useState({
     totalTasks: 0,
     totalStudents: 0,
@@ -25,6 +27,26 @@ export function TeacherProfile() {
   useEffect(() => {
     loadTasks();
   }, []);
+
+  // Subscribe to chat for unread messages
+  useEffect(() => {
+    const s = connectChat();
+    if (!s || !user) return;
+
+    const handleReceived = (_msg: ChatMessage) => {
+      if (_msg.recipientId !== user.id) return;
+      setNewMessageCount((prev) => prev + 1);
+    };
+
+    s.on('dm:received', handleReceived as any);
+
+    return () => {
+      const existing = getChatSocket();
+      if (existing) {
+        existing.off('dm:received', handleReceived as any);
+      }
+    };
+  }, [user]);
 
   const loadTasks = async () => {
     try {
@@ -65,10 +87,15 @@ export function TeacherProfile() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate('/users')}
-              className="rounded-full"
+              onClick={() => { setNewMessageCount(0); navigate('/users'); }}
+              className="rounded-full relative"
             >
               <MessageCircle className="h-5 w-5" />
+              {newMessageCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white flex items-center justify-center">
+                  {newMessageCount > 9 ? '9+' : newMessageCount}
+                </span>
+              )}
             </Button>
 
             <Button
