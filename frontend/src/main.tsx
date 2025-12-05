@@ -5,6 +5,7 @@ import App from './App.tsx'
 import Home from './pages/Home.tsx'
 import { Dashboard } from './pages/Dashboard.tsx'
 import { Profile } from './pages/Profile.tsx'
+import UserProfilePage from './pages/UserProfilePage.tsx'
 import { Login } from './pages/Login.tsx'
 import { Signup } from './pages/Signup.tsx'
 import { Projects } from './pages/Projects.tsx'
@@ -18,6 +19,9 @@ import QuizzesPage from './pages/QuizzesPage.tsx'
 import QuizResultsPage from './pages/QuizResultsPage.tsx'
 import TutorialCardView from './pages/TutorialCardView.tsx'
 import TutorialsHomePage from './pages/TutorialsHomePage.tsx'
+import { ChatPage } from './pages/ChatPage.tsx'
+import { UsersPage } from './pages/UsersPage.tsx'
+
 import { ThemeProvider } from './context/ThemeContext.tsx'
 import './index.css'
 
@@ -48,6 +52,7 @@ function Root() {
         <Route path="/" element={getDefaultRoute()} />
         <Route path="/dashboard" element={user ? <Dashboard user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
         <Route path="/profile" element={user ? <Profile user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
+        <Route path="/user/:userId" element={user ? <UserProfilePage /> : <Navigate to="/" />} />
         <Route path="/teacher-profile" element={user ? <TeacherProfile /> : <Navigate to="/" />} />
         <Route path="/playground" element={user ? <Playground /> : <Navigate to="/" />} />
         <Route path="/editor" element={user ? <App user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
@@ -61,6 +66,8 @@ function Root() {
         <Route path="/quiz/:id/results" element={user ? <QuizResultsPage /> : <Navigate to="/" />} />
         <Route path="/tutorials" element={user ? <TutorialsHomePage /> : <Navigate to="/" />} />
         <Route path="/tutorials/:id" element={user ? <TutorialCardView /> : <Navigate to="/" />} />
+        <Route path="/users" element={user ? <UsersPage /> : <Navigate to="/" />} />
+        <Route path="/chat/:userId" element={user ? <ChatPage /> : <Navigate to="/" />} />
         <Route path="/login" element={<Login onLogin={handleAuth} />} />
         <Route path="/signup" element={<Signup onSignup={handleAuth} />} />
       </Routes>

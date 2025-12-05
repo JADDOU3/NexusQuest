@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -14,6 +15,7 @@ import versionsRouter from './routes/versions.js';
 import dailyChallengeRouter from './routes/daily-challenge.js';
 import quizzesRouter from './routes/quizzes.js';
 import notificationRouter from './routes/notification.js';
+import chatRouter from './routes/chat.js';
 import { streamExecutionRouter } from './routes/stream-execution.js';
 import { playgroundExecutionRouter } from './routes/playground-execution.js';
 import { projectExecutionRouter } from './routes/project-execution.js';
@@ -21,11 +23,15 @@ import { taskExecutionRouter } from './routes/task-execution.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
 import { connectDatabase } from './config/database.js';
+import { Server } from 'socket.io';
+import { setupChat } from './services/chatService.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+
 // Use the container-forwarded port by default and bind to 0.0.0.0 so Docker can route traffic
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
@@ -75,11 +81,22 @@ app.use('/api/versions', versionsRouter);
 app.use('/api/daily-challenge', dailyChallengeRouter);
 app.use('/api/quizzes', quizzesRouter);
 app.use('/api/notifications', notificationRouter);
+app.use('/api/chat', chatRouter);
 
 // Error handling
 app.use(errorHandler);
 
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+  },
+});
+
+setupChat(io);
+
 // Start server with database connection
+
 async function startServer() {
   // Try to connect to MongoDB (optional - IDE features work without it)
   try {
@@ -90,7 +107,7 @@ async function startServer() {
   }
 
   // Start server regardless of database connection
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     logger.info(`NexusQuest Backend API running on port ${PORT}`);
     logger.info(`Health check: http://localhost:${PORT}/health`);
   });
