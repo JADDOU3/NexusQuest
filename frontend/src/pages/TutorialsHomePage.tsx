@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FolderOpen, CheckCircle, Circle, ChevronRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getTutorials, Tutorial } from '../services/tutorialService';
+import { getStoredUser } from '../services/authService';
 
 interface LanguageFolder {
   language: string;
@@ -60,8 +61,13 @@ export default function TutorialsHomePage() {
     }
   };
 
+  const getTutorialProgressKey = (tutorialId: string): string => {
+    const user = getStoredUser();
+    return user ? `tutorial-progress-${user.id}-${tutorialId}` : `tutorial-progress-${tutorialId}`;
+  };
+
   const isCompleted = (tutorialId: string): boolean => {
-    const progress = localStorage.getItem(`tutorial-progress-${tutorialId}`);
+    const progress = localStorage.getItem(getTutorialProgressKey(tutorialId));
     if (!progress) return false;
     
     const data = JSON.parse(progress);

@@ -7,6 +7,7 @@ import { getTutorial, getTutorials, Tutorial } from '../services/tutorialService
 import type { TutorialSection } from '../services/tutorialService';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { getStoredUser } from '../services/authService';
 
 export default function TutorialCardView() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,11 @@ export default function TutorialCardView() {
     loadTutorial();
   }, [id]);
 
+  const getTutorialProgressKey = (tutorialId: string): string => {
+    const user = getStoredUser();
+    return user ? `tutorial-progress-${user.id}-${tutorialId}` : `tutorial-progress-${tutorialId}`;
+  };
+
   const loadTutorial = async () => {
     if (!id) return;
     try {
@@ -35,7 +41,7 @@ export default function TutorialCardView() {
       setTutorial(data);
       
       // Load completed sections from localStorage
-      const saved = localStorage.getItem(`tutorial-progress-${id}`);
+      const saved = localStorage.getItem(getTutorialProgressKey(id));
       if (saved) {
         const progress = JSON.parse(saved);
         if (progress.sections) {
@@ -86,7 +92,7 @@ export default function TutorialCardView() {
       
       // Save progress
       localStorage.setItem(
-        `tutorial-progress-${id}`,
+        getTutorialProgressKey(id!),
         JSON.stringify(Array.from(newCompleted))
       );
       
@@ -385,7 +391,7 @@ export default function TutorialCardView() {
                         newCompleted.add(currentSection);
                         setCompletedSections(newCompleted);
                         localStorage.setItem(
-                          `tutorial-progress-${id}`,
+                          getTutorialProgressKey(id!),
                           JSON.stringify({ completed: true, sections: Array.from(newCompleted) })
                         );
                         // Show completion with next suggestion
