@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Code, Loader2, CheckCircle, Trophy, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Code, Loader2, CheckCircle, Trophy, ChevronRight, Code2, MessageCircle, User } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
 import { getTutorial, getTutorials, Tutorial } from '../services/tutorialService';
@@ -8,6 +8,8 @@ import type { TutorialSection } from '../services/tutorialService';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { getStoredUser } from '../services/authService';
+import { NotificationsBell } from '../components/NotificationsBell';
+import { UserSidePanel } from '../components/UserSidePanel';
 
 export default function TutorialCardView() {
   const { id } = useParams<{ id: string }>();
@@ -20,10 +22,33 @@ export default function TutorialCardView() {
   const [error, setError] = useState<string | null>(null);
   const [completedSections, setCompletedSections] = useState<Set<number>>(new Set());
   const [nextTutorial, setNextTutorial] = useState<Tutorial | null>(null);
+  const [showSidePanel, setShowSidePanel] = useState(false);
+  const [avatarImage, setAvatarImage] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState('');
+  const [fontSize, setFontSize] = useState(14);
 
   useEffect(() => {
     loadTutorial();
   }, [id]);
+
+  // Load user avatar
+  useEffect(() => {
+    const loadUserAvatar = async () => {
+      try {
+        const token = localStorage.getItem('nexusquest-token');
+        const response = await fetch('http://localhost:9876/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success && data.user) {
+          setAvatarImage(data.user.avatarImage || null);
+        }
+      } catch (error) {
+        console.error('Failed to load user avatar:', error);
+      }
+    };
+    loadUserAvatar();
+  }, []);
 
   const getTutorialProgressKey = (tutorialId: string): string => {
     const user = getStoredUser();
@@ -152,11 +177,65 @@ export default function TutorialCardView() {
   const currentSectionData = isCompletionScreen ? null : tutorial.sections[currentSection];
   const progress = ((currentSection + 1) / tutorial.sections.length) * 100;
 
+  const user = getStoredUser();
+
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
-      {/* Header */}
-      <header className={`border-b sticky top-0 z-50 ${theme === 'dark' ? 'border-gray-800 bg-gray-900/95' : 'border-gray-200 bg-white/95'} backdrop-blur-sm`}>
-        <div className="container mx-auto px-4 py-4">
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' : 'bg-gradient-to-br from-gray-100 via-white to-gray-100'}`}>
+      {/* Main Header */}
+      <header className={`border-b sticky top-0 z-50 ${theme === 'dark' ? 'border-gray-800 bg-gray-950/80' : 'border-gray-200 bg-white/80'} backdrop-blur-md`}>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Code2 className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-500 bg-clip-text text-transparent">
+              NexusQuest
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:block">
+              <form onSubmit={(e) => { e.preventDefault(); const term = userSearch.trim(); if (term) navigate(`/users?q=${encodeURIComponent(term)}`); }}>
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Search users by name..."
+                  className={`w-64 pl-3 pr-3 py-2 rounded-full text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500/60 shadow-sm transition-colors ${
+                    theme === 'dark' ? 'bg-gray-900/80 border-gray-700 text-gray-100 placeholder:text-gray-500' : 'bg-white/80 border-gray-300 text-gray-800 placeholder:text-gray-400'
+                  }`}
+                />
+              </form>
+            </div>
+            <button type="button" onClick={() => navigate('/users')} className={`relative rounded-full p-2 border hover:text-emerald-300 hover:border-emerald-500 transition-colors ${theme === 'dark' ? 'border-gray-700 bg-gray-900/70 text-gray-300' : 'border-gray-300 bg-white/70 text-gray-600'}`}>
+              <MessageCircle className="w-4 h-4" />
+            </button>
+            <NotificationsBell theme={theme} />
+            <Button onClick={() => setShowSidePanel(true)} variant="outline" className={`flex items-center gap-2 ${theme === 'dark' ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-100'}`}>
+              {avatarImage ? <img src={avatarImage} alt="Avatar" className="w-6 h-6 rounded-full object-cover" /> : <User className="w-4 h-4" />}
+              {user?.name}
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* User Side Panel */}
+      {showSidePanel && (
+        <UserSidePanel
+          theme={theme}
+          setTheme={() => {}}
+          user={user}
+          avatarImage={avatarImage}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          isOpen={showSidePanel}
+          onClose={() => setShowSidePanel(false)}
+          onLogout={() => { localStorage.removeItem('nexusquest-token'); localStorage.removeItem('nexusquest-user'); navigate('/login'); }}
+        />
+      )}
+
+      {/* Tutorial Sub-Header */}
+      <div className={`border-b ${theme === 'dark' ? 'border-gray-800 bg-gray-900/50' : 'border-gray-200 bg-white/50'} backdrop-blur-sm`}>
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => navigate('/tutorials')}>
               <ArrowLeft className="w-4 h-4 mr-2" /> Back to Learning Paths
@@ -170,26 +249,21 @@ export default function TutorialCardView() {
               </span>
             </div>
           </div>
-          
-          {/* Progress Bar */}
           {!isCompletionScreen && (
-            <div className="mt-4">
+            <div className="mt-3">
               <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-gray-400">
+                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                   Section {currentSection + 1} of {tutorial.sections.length}
                 </span>
-                <span className="text-gray-400">{Math.round(progress)}% Complete</span>
+                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{Math.round(progress)}% Complete</span>
               </div>
               <div className={`h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
+                <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300" style={{ width: `${progress}%` }} />
               </div>
             </div>
           )}
         </div>
-      </header>
+      </div>
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {isCompletionScreen ? (
