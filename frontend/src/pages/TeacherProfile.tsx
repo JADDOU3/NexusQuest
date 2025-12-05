@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { BookOpen, Users, TrendingUp, Award, Camera, User, Moon, Sun, ArrowLeft } from 'lucide-react';
+import { BookOpen, Users, TrendingUp, Award, Camera, User, Moon, Sun, ArrowLeft, MessageCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
 import { getMyTasks, Task } from '../services/taskService';
@@ -62,6 +62,15 @@ export function TeacherProfile() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/users')}
+              className="rounded-full"
+            >
+              <MessageCircle className="h-5 w-5" />
+            </Button>
+
             <Button
               variant="ghost"
               size="icon"

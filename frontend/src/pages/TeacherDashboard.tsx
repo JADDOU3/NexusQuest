@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, BookOpen, Award, BarChart3, User, Moon, Sun, Clock, Calendar, Users, Book } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, Award, BarChart3, User, Moon, Sun, Clock, Calendar, Users, Book, MessageCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Task, getMyTasks, deleteTask } from '../services/taskService';
 import { Quiz, getMyQuizzes, deleteQuiz } from '../services/quizService';
@@ -154,6 +154,16 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
             </Button>
             <Button onClick={() => setShowQuizModal(true)} className="bg-purple-600 hover:bg-purple-700">
               <Plus className="w-4 h-4 mr-2" /> Create Quiz
+            </Button>
+
+            {/* Chat Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/users')}
+              className="rounded-full relative"
+            >
+              <MessageCircle className="h-5 w-5" />
             </Button>
 
             {/* Theme Toggle */}
