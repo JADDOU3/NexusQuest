@@ -17,7 +17,7 @@ export function UserProfilePage() {
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [fontSize, setFontSize] = useState(14);
 
-  const viewer = getStoredUser();
+  const [viewer] = useState(() => getStoredUser());
 
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'achievements' | 'settings'>('overview');
 
