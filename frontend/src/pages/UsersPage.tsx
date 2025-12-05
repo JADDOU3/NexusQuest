@@ -130,7 +130,8 @@ export function UsersPage() {
               {conversations.map((u) => (
                 <Link
                   key={u.id}
-                  to={`/user/${u.id}`}
+                  to={`/chat/${u.id}`}
+                  state={{ userName: u.name, userEmail: u.email }}
                   onClick={() => clearUnread(u.id)}
                   className="group relative rounded-2xl border border-gray-800/50 bg-gradient-to-br from-gray-900/80 to-gray-900/40 hover:border-emerald-500/50 hover:from-gray-900 hover:to-gray-800/80 transition-all px-5 py-4 flex flex-col justify-between shadow-lg hover:shadow-emerald-500/10"
                 >
@@ -164,7 +165,8 @@ export function UsersPage() {
             {filteredUsers.map((u) => (
               <Link
                 key={u.id}
-                to={`/user/${u.id}`}
+                to={`/chat/${u.id}`}
+                state={{ userName: u.name, userEmail: u.email }}
                 onClick={() => clearUnread(u.id)}
                 className="group relative rounded-2xl border border-gray-800/50 bg-gradient-to-r from-gray-900/70 to-gray-900/40 hover:border-emerald-500/50 hover:from-gray-900/90 hover:to-gray-900/70 transition-all px-5 py-4 flex items-center justify-between shadow-lg hover:shadow-emerald-500/10"
               >

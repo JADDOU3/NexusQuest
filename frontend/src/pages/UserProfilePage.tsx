@@ -2,17 +2,30 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchUserProfile, type UserProfile } from '../services/userService';
 import { getStoredUser } from '../services/authService';
+import { useTheme } from '../context/ThemeContext';
+import { UserSidePanel } from '../components/UserSidePanel';
+import { ProfileHeader, ProfileCard, StatsGrid, ProfileTabs } from '../components/profile';
+import { Star, CheckCircle, Trophy, Zap } from 'lucide-react';
 
 export function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSidePanel, setShowSidePanel] = useState(false);
+  const [fontSize, setFontSize] = useState(14);
+
+  const viewer = getStoredUser();
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'achievements' | 'settings'>('overview');
+
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
 
   useEffect(() => {
-    const currentUser = getStoredUser();
-    if (!currentUser) {
+    if (!viewer) {
       navigate('/login');
       return;
     }
@@ -29,6 +42,9 @@ export function UserProfilePage() {
           setError('User not found');
         } else {
           setProfile(data);
+          if (typeof data.totalPoints === 'number') {
+            setTotalPoints(data.totalPoints);
+          }
         }
       } catch (e) {
         console.error('Failed to load user profile', e);
@@ -39,11 +55,15 @@ export function UserProfilePage() {
     };
 
     load();
-  }, [userId, navigate]);
+  }, [userId, navigate, viewer]);
+
+  useEffect(() => {
+    setCompletedCount(0);
+  }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
+      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
         <p className="text-sm text-gray-400">Loading profile...</p>
       </div>
     );
@@ -51,7 +71,7 @@ export function UserProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-950 text-white px-4">
+      <div className={`min-h-screen flex flex-col items-center justify-center px-4 ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
         <p className="text-sm text-red-400 mb-4">{error || 'User not found'}</p>
         <button
           type="button"
@@ -64,59 +84,86 @@ export function UserProfilePage() {
     );
   }
 
-  const initials = profile.name ? profile.name.charAt(0).toUpperCase() : '?';
+  const otherUser = { name: profile.name, email: profile.email };
+
+  const profileData = {
+    joinDate: profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Unknown',
+    location: 'Unknown',
+    bio: 'NexusQuest learner',
+    level: 1,
+    experience: totalPoints,
+    nextLevelXP: Math.max(totalPoints + 100, 1000),
+    github: 'github.com/username',
+    linkedin: 'linkedin.com/in/username',
+    website: 'myportfolio.com'
+  };
+
+  const stats = [
+    { label: 'Total Points', value: totalPoints.toLocaleString(), icon: Star, color: 'yellow' },
+    { label: 'Problems Solved', value: completedCount.toString(), icon: CheckCircle, color: 'green' },
+    { label: 'Global Rank', value: '#156', icon: Trophy, color: 'purple' },
+    { label: 'Current Streak', value: '7 days', icon: Zap, color: 'blue' }
+  ];
+
+  const skills = [
+    { name: 'Python', level: 80, color: 'blue' },
+    { name: 'JavaScript', level: 70, color: 'yellow' },
+    { name: 'C++', level: 60, color: 'purple' },
+    { name: 'Data Structures', level: 75, color: 'green' },
+    { name: 'Algorithms', level: 65, color: 'red' }
+  ];
+
+  const recentActivity = [] as { id: number; type: string; title: string; time: string; points: number }[];
+
+  const achievements = [
+    { id: 1, title: 'First Steps', description: 'Solve your first problem', earned: true, icon: '🎯' },
+    { id: 2, title: 'Speed Demon', description: 'Solve 5 problems in one day', earned: false, icon: '⚡' },
+    { id: 3, title: 'Week Warrior', description: 'Maintain 7-day streak', earned: false, icon: '🔥' },
+  ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-950 text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-10 px-6 py-4 border-b border-gray-800/50 flex items-center justify-between bg-gray-900/95 backdrop-blur-xl shadow-lg">
-        <button
-          type="button"
-          className="text-sm text-gray-400 hover:text-white transition-colors font-medium"
-          onClick={() => navigate(-1)}
-        >
-          2 Back
-        </button>
-        <h1 className="text-base font-semibold truncate max-w-xs sm:max-w-md">{profile.name}</h1>
-        <div className="w-16" />
-      </header>
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' : 'bg-gradient-to-br from-gray-50 via-white to-gray-50'}`}>
+      <ProfileHeader
+        user={viewer ? { name: viewer.name, email: viewer.email } : null}
+        avatarImage={null}
+        onShowSidePanel={() => setShowSidePanel(true)}
+      />
 
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8 w-full max-w-4xl mx-auto space-y-8">
-        <section className="rounded-2xl border border-gray-800/60 bg-gradient-to-br from-gray-900/90 to-gray-900/60 p-6 shadow-xl">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500/30 to-emerald-600/30 flex items-center justify-center text-emerald-300 text-2xl font-semibold border border-emerald-500/40 overflow-hidden">
-              {profile.avatarImage ? (
-                <img
-                  src={profile.avatarImage}
-                  alt={profile.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span>{initials}</span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-semibold truncate">{profile.name}</h2>
-              <p className="text-sm text-gray-400 truncate">{profile.email}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                <span className="px-2 py-0.5 rounded-full bg-gray-800/80 border border-gray-700">
-                  Role: {profile.role}
-                </span>
-                {typeof profile.totalPoints === 'number' && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/40">
-                    {profile.totalPoints} pts
-                  </span>
-                )}
-                {profile.createdAt && (
-                  <span className="px-2 py-0.5 rounded-full bg-gray-800/80 border border-gray-700">
-                    Joined {new Date(profile.createdAt).toLocaleDateString()}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+      <UserSidePanel
+        user={viewer ? { name: viewer.name, email: viewer.email } : null}
+        avatarImage={null}
+        isOpen={showSidePanel}
+        onClose={() => setShowSidePanel(false)}
+        onLogout={() => {
+          navigate('/login');
+        }}
+        theme={theme}
+        setTheme={setTheme}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+      />
+
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <ProfileCard
+          user={otherUser}
+          avatarImage={profile.avatarImage || null}
+          coverImage={profile.coverImage || null}
+          profileData={profileData}
+          onAvatarChange={() => {}}
+          onCoverChange={() => {}}
+          onEditProfile={() => {}}
+        />
+
+        <StatsGrid stats={stats} />
+
+        <ProfileTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          skills={skills}
+          recentActivity={recentActivity}
+          achievements={achievements}
+        />
+      </div>
     </div>
   );
 }
