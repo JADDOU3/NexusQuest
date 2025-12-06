@@ -25,6 +25,11 @@ export default function SignupScreen({ navigation }: any) {
       return;
     }
 
+    if (name.trim().length < 2) {
+      Alert.alert('Error', 'Name must be at least 2 characters');
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
@@ -43,7 +48,18 @@ export default function SignupScreen({ navigation }: any) {
       // For now both roles go to Dashboard; you can later add a TeacherDashboard route
       navigation.replace('Dashboard');
     } else {
-      Alert.alert('Signup Failed', result.error || 'Could not create account');
+      const raw = result.error || '';
+      let msg = raw;
+
+      if (!msg) {
+        msg = 'Could not create your account. Please try again in a moment.';
+      } else if (/email/i.test(msg) && /registered|exists/i.test(msg)) {
+        msg = 'This email is already registered. Try logging in instead.';
+      } else if (/password/i.test(msg) && /6/i.test(msg)) {
+        msg = 'Password must be at least 6 characters.';
+      }
+
+      Alert.alert('Signup failed', msg);
     }
   };
 

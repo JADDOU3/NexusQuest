@@ -20,7 +20,16 @@ export default function LoginScreen({ navigation }: any) {
     if (result.success) {
       navigation.replace('Dashboard');
     } else {
-      Alert.alert('Login Failed', result.error || 'Invalid credentials');
+      const raw = result.error || '';
+      let msg = raw;
+
+      if (!msg) {
+        msg = 'Could not log you in. Please check your email and password.';
+      } else if (/invalid/i.test(msg) && /email|password/i.test(msg)) {
+        msg = 'Email or password is incorrect.';
+      }
+
+      Alert.alert('Login failed', msg);
     }
   };
 
