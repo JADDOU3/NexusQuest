@@ -1,0 +1,64 @@
+import api from './api';
+import { Quiz } from '../types/quiz';
+
+export const quizService = {
+  // Get all quizzes (public endpoint)
+  async getAllQuizzes(language?: string, difficulty?: string): Promise<Quiz[]> {
+    try {
+      const params: any = {};
+      if (language) params.language = language;
+      if (difficulty) params.difficulty = difficulty;
+
+      const response = await api.get('/api/quizzes', { params });
+      
+      // Add status to each quiz based on startTime and endTime
+      const quizzes = response.data.map((quiz: any) => ({
+        ...quiz,
+        status: getQuizStatus(quiz.startTime, quiz.endTime),
+      }));
+      
+      return quizzes;
+    } catch (error) {
+      console.error('Error fetching quizzes:', error);
+      throw error;
+    }
+  },
+
+  // Get quiz by ID
+  async getQuizById(quizId: string): Promise<Quiz> {
+    try {
+      const response = await api.get(`/api/quizzes/${quizId}`);
+      return {
+        ...response.data,
+        status: getQuizStatus(response.data.startTime, response.data.endTime),
+      };
+    } catch (error) {
+      console.error('Error fetching quiz:', error);
+      throw error;
+    }
+  },
+
+  // Get available languages
+  async getLanguages(): Promise<string[]> {
+    try {
+      const response = await api.get('/api/quizzes/languages');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching languages:', error);
+      return ['python', 'javascript', 'java', 'cpp'];
+    }
+  },
+};
+
+// Helper function to determine quiz status
+function getQuizStatus(startTime: string, endTime: string): 'scheduled' | 'active' | 'ended' {
+  const now = new Date();
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+
+  if (now < start) return 'scheduled';
+  if (now > end) return 'ended';
+  return 'active';
+}
+
+export default quizService;
