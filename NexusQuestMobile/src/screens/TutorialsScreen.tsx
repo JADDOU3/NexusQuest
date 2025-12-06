@@ -38,13 +38,20 @@ export default function TutorialsScreen({ navigation }: any) {
 
   const loadTutorials = async () => {
     try {
-      const response = await api.get('/api/tutorials');
-      if (response.data) {
-        setTutorials(response.data);
-        setFilteredTutorials(response.data);
-      }
-    } catch (error) {
+      console.log('Loading tutorials...');
+      const response = await api.get('/api/tutorials/public');
+      console.log('Tutorials response:', response.data);
+      
+      // Handle both array response and object with data property
+      const tutorialsData = Array.isArray(response.data) 
+        ? response.data 
+        : response.data?.tutorials || [];
+      
+      setTutorials(tutorialsData);
+      setFilteredTutorials(tutorialsData);
+    } catch (error: any) {
       console.error('Failed to load tutorials:', error);
+      console.error('Error details:', error.response?.data || error.message);
     } finally {
       setLoading(false);
     }

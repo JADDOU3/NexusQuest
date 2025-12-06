@@ -18,6 +18,33 @@ const requireTeacher = async (req: AuthRequest, res: Response, next: Function) =
 
 const router = Router();
 
+// Public endpoint for mobile - Get all tutorials without auth
+router.get('/public', async (req: AuthRequest, res: Response) => {
+  console.log('👉 GET /api/tutorials/public hit');
+  try {
+    const { language, difficulty } = req.query;
+    
+    const filter: any = { isPublished: true };
+    
+    if (language) {
+      filter.language = language;
+    }
+    
+    if (difficulty) {
+      filter.difficulty = difficulty;
+    }
+
+    const tutorials = await Tutorial.find(filter)
+      .populate('createdBy', 'name email')
+      .sort({ language: 1, order: 1 });
+
+    res.json(tutorials);
+  } catch (error: any) {
+    console.error('❌ Error fetching public tutorials:', error);
+    res.status(500).json({ error: 'Failed to fetch tutorials' });
+  }
+});
+
 // Get tutorial visibility settings (MUST be before /:id route)
 router.get('/settings/visibility', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -66,8 +93,8 @@ router.post('/settings/:tutorialId/toggle', authMiddleware, requireTeacher, asyn
   }
 });
 
-// Get all tutorials (public or for students)
-router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+// Get all tutorials - Public endpoint for mobile (no auth required)
+router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { language, difficulty } = req.query;
     
@@ -92,8 +119,8 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Get tutorials by language
-router.get('/language/:language', authMiddleware, async (req: AuthRequest, res: Response) => {
+// Get tutorials by language (public - no auth required)
+router.get('/language/:language', async (req: AuthRequest, res: Response) => {
   try {
     const { language } = req.params;
 
@@ -111,8 +138,8 @@ router.get('/language/:language', authMiddleware, async (req: AuthRequest, res: 
   }
 });
 
-// Get single tutorial by ID
-router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+// Get single tutorial by ID (public - no auth required)
+router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 

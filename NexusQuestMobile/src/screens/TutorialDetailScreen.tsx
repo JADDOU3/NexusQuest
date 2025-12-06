@@ -8,20 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import api from '../services/api';
-
-interface Task {
-  _id: string;
-  title: string;
-  description: string;
-  points: number;
-}
-
-interface Section {
-  _id: string;
-  title: string;
-  content: string;
-  tasks: Task[];
-}
+import Markdown from 'react-native-markdown-display';
 
 interface Tutorial {
   _id: string;
@@ -29,14 +16,13 @@ interface Tutorial {
   description: string;
   language: string;
   difficulty: string;
-  sections: Section[];
+  content?: string;
 }
 
 export default function TutorialDetailScreen({ route, navigation }: any) {
   const { tutorialId } = route.params;
   const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadTutorial();
@@ -53,16 +39,6 @@ export default function TutorialDetailScreen({ route, navigation }: any) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const toggleSection = (sectionId: string) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(sectionId)) {
-      newExpanded.delete(sectionId);
-    } else {
-      newExpanded.add(sectionId);
-    }
-    setExpandedSections(newExpanded);
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -120,50 +96,21 @@ export default function TutorialDetailScreen({ route, navigation }: any) {
           </View>
         </View>
 
-        <View style={styles.sectionsContainer}>
-          <Text style={styles.sectionsTitle}>Sections ({tutorial.sections?.length || 0})</Text>
-          
-          {tutorial.sections?.map((section, index) => (
-            <View key={section._id} style={styles.sectionCard}>
-              <TouchableOpacity
-                style={styles.sectionHeader}
-                onPress={() => toggleSection(section._id)}
-              >
-                <View style={styles.sectionTitleContainer}>
-                  <View style={styles.sectionNumber}>
-                    <Text style={styles.sectionNumberText}>{index + 1}</Text>
-                  </View>
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
-                </View>
-                <Text style={styles.expandIcon}>
-                  {expandedSections.has(section._id) ? '▼' : '▶'}
-                </Text>
-              </TouchableOpacity>
-
-              {expandedSections.has(section._id) && (
-                <View style={styles.sectionContent}>
-                  <Text style={styles.sectionText}>{section.content}</Text>
-                  
-                  {section.tasks && section.tasks.length > 0 && (
-                    <View style={styles.tasksContainer}>
-                      <Text style={styles.tasksTitle}>Tasks:</Text>
-                      {section.tasks.map((task) => (
-                        <View key={task._id} style={styles.taskItem}>
-                          <View style={styles.taskHeader}>
-                            <Text style={styles.taskTitle}>{task.title}</Text>
-                            <View style={styles.pointsBadge}>
-                              <Text style={styles.pointsText}>{task.points} pts</Text>
-                            </View>
-                          </View>
-                          <Text style={styles.taskDescription}>{task.description}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          ))}
+        <View style={styles.markdownContainer}>
+          <Markdown
+            style={{
+              body: { color: '#cbd5e1', fontSize: 16, lineHeight: 24 },
+              heading1: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 20, marginBottom: 10 },
+              heading2: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: 15, marginBottom: 10 },
+              heading3: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 10, marginBottom: 5 },
+              code_block: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, color: '#e2e8f0', fontFamily: 'monospace' },
+              code_inline: { backgroundColor: '#1e293b', padding: 2, borderRadius: 4, color: '#e2e8f0', fontFamily: 'monospace' },
+              link: { color: '#3b82f6' },
+              list_item: { color: '#cbd5e1', marginBottom: 5 },
+            }}
+          >
+            {tutorial.content || ''}
+          </Markdown>
         </View>
       </ScrollView>
     </View>
@@ -258,114 +205,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'capitalize',
   },
-  sectionsContainer: {
+  markdownContainer: {
     padding: 15,
-  },
-  sectionsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 15,
-  },
-  sectionCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-    overflow: 'hidden',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-  },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  sectionNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  sectionNumberText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  sectionTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  expandIcon: {
-    color: '#64748b',
-    fontSize: 12,
-    marginLeft: 10,
-  },
-  sectionContent: {
-    padding: 15,
-    paddingTop: 0,
-    borderTopWidth: 1,
-    borderTopColor: '#334155',
-  },
-  sectionText: {
-    color: '#cbd5e1',
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 15,
-  },
-  tasksContainer: {
-    marginTop: 10,
-  },
-  tasksTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  taskItem: {
-    backgroundColor: '#0f172a',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  taskHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  taskTitle: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  pointsBadge: {
-    backgroundColor: '#10b981',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  pointsText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  taskDescription: {
-    color: '#94a3b8',
-    fontSize: 13,
-    lineHeight: 18,
+    paddingBottom: 40,
   },
 });
