@@ -21,6 +21,13 @@ export interface UserProfile {
     createdAt?: string;
 }
 
+export interface LeaderboardMe {
+    rank: number;
+    totalUsers: number;
+    totalPoints: number;
+}
+export interface LeaderboardUser extends LeaderboardMe { }
+
 export async function fetchUsers(): Promise<ChatUser[]> {
     const token = getStoredToken();
     if (!token) return [];
@@ -90,3 +97,48 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
     return data.user as UserProfile;
 }
 
+export async function getMyLeaderboardRank(): Promise<LeaderboardMe | null> {
+    const token = getStoredToken();
+    if (!token) return null;
+
+    const response = await fetch(`${API_URL}/api/auth/leaderboard/me`, {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    const data = await response.json();
+    if (!data.success || !data.data) {
+        return null;
+    }
+
+    return data.data as LeaderboardMe;
+}
+
+export async function getUserLeaderboardRank(userId: string): Promise<LeaderboardUser | null> {
+    const token = getStoredToken();
+    if (!token) return null;
+
+    const response = await fetch(`${API_URL}/api/auth/leaderboard/user/${userId}`, {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    const data = await response.json();
+    if (!data.success || !data.data) {
+        return null;
+    }
+
+    return data.data as LeaderboardUser;
+}
