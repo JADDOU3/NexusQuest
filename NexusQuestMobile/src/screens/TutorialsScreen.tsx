@@ -77,7 +77,7 @@ export default function TutorialsScreen({ navigation }: any) {
   const renderTutorial = ({ item }: { item: Tutorial }) => (
     <TouchableOpacity
       style={styles.tutorialCard}
-      onPress={() => navigation.navigate('TutorialDetail', { tutorialId: item._id })}
+      onPress={() => navigation.navigate('TutorialDetail', { tutorialId: item.id })}
     >
       <View style={styles.tutorialHeader}>
         <Text style={styles.tutorialTitle}>{item.title}</Text>
