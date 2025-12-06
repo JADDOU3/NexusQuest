@@ -60,11 +60,20 @@ export function LeaderboardPage() {
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' : 'bg-gradient-to-br from-gray-50 via-white to-gray-50'}`}>
       <header className="border-b border-gray-800/60 bg-black/40 backdrop-blur-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-8 h-8 text-yellow-400" />
-            <div>
-              <h1 className="text-2xl font-bold text-white">Global Leaderboard</h1>
-              <p className="text-xs text-gray-400">Top 50 learners by total points</p>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="text-xs px-3 py-1.5 rounded-full border border-gray-700 text-gray-300 hover:bg-gray-900/70 hover:text-white"
+            >
+              ← Back
+            </button>
+            <div className="flex items-center gap-2">
+              <Trophy className="w-8 h-8 text-yellow-400" />
+              <div>
+                <h1 className="text-2xl font-bold text-white">Global Leaderboard</h1>
+                <p className="text-xs text-gray-400">Top 50 learners by total points</p>
+              </div>
             </div>
           </div>
           <button
@@ -152,7 +161,6 @@ export function LeaderboardPage() {
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-gray-500 truncate">{entry.email}</div>
                             </div>
                           </div>
                         </td>
