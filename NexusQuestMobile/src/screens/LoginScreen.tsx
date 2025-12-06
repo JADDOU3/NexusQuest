@@ -57,6 +57,10 @@ export default function LoginScreen({ navigation }: any) {
         >
           <Text style={styles.buttonText}>{loading ? 'Loading...' : 'Login'}</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+          <Text style={styles.link}>Don&apos;t have an account? Sign up</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
