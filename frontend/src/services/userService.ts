@@ -28,6 +28,14 @@ export interface LeaderboardMe {
 }
 export interface LeaderboardUser extends LeaderboardMe { }
 
+export interface LeaderboardEntry {
+    id: string;
+    name: string;
+    email: string;
+    totalPoints: number;
+    rank: number;
+}
+
 export async function fetchUsers(): Promise<ChatUser[]> {
     const token = getStoredToken();
     if (!token) return [];
@@ -141,4 +149,28 @@ export async function getUserLeaderboardRank(userId: string): Promise<Leaderboar
     }
 
     return data.data as LeaderboardUser;
+}
+
+export async function getTopLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+    const token = getStoredToken();
+    if (!token) return [];
+
+    const url = `${API_URL}/api/auth/leaderboard/top?limit=${encodeURIComponent(String(limit))}`;
+    const response = await fetch(url, {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        return [];
+    }
+
+    const data = await response.json();
+    if (!data.success || !Array.isArray(data.data)) {
+        return [];
+    }
+
+    return data.data as LeaderboardEntry[];
 }

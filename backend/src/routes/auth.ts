@@ -80,6 +80,44 @@ router.post('/signup', async (req: AuthRequest, res: Response) => {
 });
 
 /**
+ * GET /api/auth/leaderboard/top
+ * Get top users by totalPoints (default top 50)
+ */
+router.get('/leaderboard/top', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const limit = Math.min(parseInt((req.query.limit as string) || '50', 10) || 50, 100);
+
+    const users = await User.find({}, {
+      name: 1,
+      email: 1,
+      totalPoints: 1,
+    })
+      .sort({ totalPoints: -1, createdAt: 1 })
+      .limit(limit)
+      .lean();
+
+    const leaderboard = users.map((u, index) => ({
+      id: u._id,
+      name: u.name,
+      email: u.email,
+      totalPoints: u.totalPoints || 0,
+      rank: index + 1,
+    }));
+
+    res.json({
+      success: true,
+      data: leaderboard,
+    });
+  } catch (error) {
+    logger.error('Get top leaderboard error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get leaderboard',
+    });
+  }
+});
+
+/**
  * GET /api/auth/leaderboard/user/:id
  * Get a specific user's global leaderboard rank based on totalPoints
  */
