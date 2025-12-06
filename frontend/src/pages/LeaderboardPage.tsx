@@ -9,7 +9,7 @@ import { Trophy, Star, User as UserIcon } from 'lucide-react';
 export function LeaderboardPage() {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
-  const viewer = getStoredUser();
+  const [viewer] = useState(() => getStoredUser());
 
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
@@ -47,9 +47,8 @@ export function LeaderboardPage() {
         setLoading(false);
       }
     };
-
     load();
-  }, [viewer, navigate]);
+  }, [navigate, viewer]);
 
   if (!viewer) {
     return null;
