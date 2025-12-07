@@ -254,7 +254,7 @@ export default function TeacherDashboardScreen({ navigation }: any) {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>📝 Your Quizzes</Text>
-              <TouchableOpacity style={styles.addButton}>
+              <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateQuiz')}>
                 <Text style={styles.addButtonText}>+ Create</Text>
               </TouchableOpacity>
             </View>

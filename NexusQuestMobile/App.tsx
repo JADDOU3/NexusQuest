@@ -11,10 +11,12 @@ import TutorialDetailScreen from './src/screens/TutorialDetailScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import ChatDetailScreen from './src/screens/ChatDetailScreen';
 import PlaygroundScreen from './src/screens/PlaygroundScreen';
+
 import QuizzesScreen from './src/screens/QuizzesScreen';
 import QuizDetailScreen from './src/screens/QuizDetailScreen';
 import TeacherDashboardScreen from './src/screens/TeacherDashboardScreen';
 import CreateTaskScreen from './src/screens/CreateTaskScreen';
+import CreateQuizScreen from './src/screens/CreateQuizScreen';
 
 const Stack = createStackNavigator();
 
@@ -42,6 +44,7 @@ function AppNavigator() {
         <Stack.Screen name="Playground" component={PlaygroundScreen} />
         <Stack.Screen name="Quizzes" component={QuizzesScreen} />
         <Stack.Screen name="QuizDetail" component={QuizDetailScreen} />
+        <Stack.Screen name="CreateQuiz" component={CreateQuizScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
