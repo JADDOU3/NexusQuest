@@ -14,6 +14,7 @@ import PlaygroundScreen from './src/screens/PlaygroundScreen';
 import QuizzesScreen from './src/screens/QuizzesScreen';
 import QuizDetailScreen from './src/screens/QuizDetailScreen';
 import TeacherDashboardScreen from './src/screens/TeacherDashboardScreen';
+import CreateTaskScreen from './src/screens/CreateTaskScreen';
 
 const Stack = createStackNavigator();
 
@@ -33,6 +34,7 @@ function AppNavigator() {
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="TeacherDashboard" component={TeacherDashboardScreen} />
+        <Stack.Screen name="CreateTask" component={CreateTaskScreen} />
         <Stack.Screen name="Tutorials" component={TutorialsScreen} />
         <Stack.Screen name="TutorialDetail" component={TutorialDetailScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />

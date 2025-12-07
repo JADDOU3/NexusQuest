@@ -232,7 +232,7 @@ export default function TeacherDashboardScreen({ navigation }: any) {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>📚 Your Tasks</Text>
-              <TouchableOpacity style={styles.addButton}>
+              <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateTask')}>
                 <Text style={styles.addButtonText}>+ Create</Text>
               </TouchableOpacity>
             </View>
@@ -242,7 +242,7 @@ export default function TeacherDashboardScreen({ navigation }: any) {
               <Text style={styles.emptyStateSubtext}>
                 Create tasks for your students to practice coding
               </Text>
-              <TouchableOpacity style={styles.createButton}>
+              <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('CreateTask')}>
                 <Text style={styles.createButtonText}>Create Task</Text>
               </TouchableOpacity>
             </View>
