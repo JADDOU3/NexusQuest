@@ -19,6 +19,8 @@ import {
   QuizSubmission 
 } from '../services/teacherService';
 
+type TabType = 'overview' | 'tasks' | 'quizzes' | 'students';
+
 export default function TeacherDashboardScreen({ navigation }: any) {
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<TeacherStats | null>(null);
@@ -26,6 +28,7 @@ export default function TeacherDashboardScreen({ navigation }: any) {
   const [pendingSubmissions, setPendingSubmissions] = useState<QuizSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const { theme, toggleTheme, colors } = useTheme();
 
   useEffect(() => {
@@ -102,15 +105,53 @@ export default function TeacherDashboardScreen({ navigation }: any) {
         </View>
       </View>
 
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
+          onPress={() => setActiveTab('overview')}
+        >
+          <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
+            Overview
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'tasks' && styles.tabActive]}
+          onPress={() => setActiveTab('tasks')}
+        >
+          <Text style={[styles.tabText, activeTab === 'tasks' && styles.tabTextActive]}>
+            Tasks
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'quizzes' && styles.tabActive]}
+          onPress={() => setActiveTab('quizzes')}
+        >
+          <Text style={[styles.tabText, activeTab === 'quizzes' && styles.tabTextActive]}>
+            Quizzes
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'students' && styles.tabActive]}
+          onPress={() => setActiveTab('students')}
+        >
+          <Text style={[styles.tabText, activeTab === 'students' && styles.tabTextActive]}>
+            Students
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView 
         style={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Stats Overview */}
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>📊 Overview</Text>
+          <Text style={styles.cardTitle}>📊 Statistics</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{stats?.totalStudents || 0}</Text>
@@ -211,12 +252,60 @@ export default function TeacherDashboardScreen({ navigation }: any) {
             )}
           </View>
         )}
+          </>
+        )}
 
-        {/* Top Students */}
-        {students.length > 0 && (
+        {/* Tasks Tab */}
+        {activeTab === 'tasks' && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>🏆 Top Students</Text>
-            {students.slice(0, 5).map((student, index) => (
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>📚 Your Tasks</Text>
+              <TouchableOpacity style={styles.addButton}>
+                <Text style={styles.addButtonText}>+ Create</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>📝</Text>
+              <Text style={styles.emptyStateTitle}>No Tasks Yet</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Create tasks for your students to practice coding
+              </Text>
+              <TouchableOpacity style={styles.createButton}>
+                <Text style={styles.createButtonText}>Create Task</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Quizzes Tab */}
+        {activeTab === 'quizzes' && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>📝 Your Quizzes</Text>
+              <TouchableOpacity style={styles.addButton}>
+                <Text style={styles.addButtonText}>+ Create</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>🎯</Text>
+              <Text style={styles.emptyStateTitle}>No Quizzes Yet</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Create quizzes to assess your students' knowledge
+              </Text>
+              <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('Quizzes')}>
+                <Text style={styles.createButtonText}>Browse Quizzes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Students Tab */}
+        {activeTab === 'students' && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>👥 Your Students</Text>
+        {students.length > 0 ? (
+          <>
+            {students.map((student, index) => (
               <TouchableOpacity 
                 key={student.id}
                 style={styles.studentItem}
@@ -236,17 +325,16 @@ export default function TeacherDashboardScreen({ navigation }: any) {
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
-        )}
-
-        {/* Empty State */}
-        {students.length === 0 && pendingSubmissions.length === 0 && (
+          </>
+        ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>📚</Text>
+            <Text style={styles.emptyStateText}>👥</Text>
             <Text style={styles.emptyStateTitle}>No Students Yet</Text>
             <Text style={styles.emptyStateSubtext}>
               Students will appear here once they start taking your courses
             </Text>
+          </View>
+        )}
           </View>
         )}
       </ScrollView>
@@ -315,6 +403,30 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  tabTextActive: {
+    color: colors.primary,
+  },
   content: {
     flex: 1,
     padding: 20,
@@ -327,11 +439,40 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: 15,
+  },
+  addButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  createButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -508,14 +649,14 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 40,
   },
   emptyStateText: {
     fontSize: 64,
     marginBottom: 15,
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.text,
     marginBottom: 8,
@@ -524,6 +665,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 30,
+    lineHeight: 20,
   },
 });
