@@ -51,12 +51,29 @@ const CreateQuizScreen = ({ navigation, route }: any) => {
     }
     setSaving(true);
     try {
-      // TODO: Replace with actual API call to create quiz
-      // await quizService.createQuiz({ ... });
+      // Prepare payload
+      const now = new Date();
+      const start = startTime ? new Date(startTime) : new Date(now.getTime() + 60 * 60 * 1000);
+      const end = endTime ? new Date(endTime) : new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      const payload = {
+        title,
+        description,
+        points,
+        difficulty,
+        language,
+        starterCode,
+        solution,
+        testCases,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        duration,
+        assignedTo: [], // TODO: add assignment UI if needed
+      };
+      await quizService.createQuiz(payload);
       setSaving(false);
       navigation.goBack();
-    } catch (e) {
-      setError('Failed to create quiz.');
+    } catch (e: any) {
+      setError(e.message || 'Failed to create quiz.');
       setSaving(false);
     }
   };
