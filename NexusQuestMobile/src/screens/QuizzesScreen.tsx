@@ -24,6 +24,7 @@ const QuizzesScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<QuizLanguage | 'all'>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<QuizDifficulty | 'all'>('all');
+  const [showEnded, setShowEnded] = useState(false);
 
   const languages: Array<QuizLanguage | 'all'> = ['all', 'python', 'javascript', 'java', 'cpp'];
   const difficulties: Array<QuizDifficulty | 'all'> = ['all', 'easy', 'medium', 'hard'];
@@ -50,7 +51,7 @@ const QuizzesScreen = () => {
 
   useEffect(() => {
     filterQuizzes();
-  }, [searchQuery, selectedLanguage, selectedDifficulty, quizzes]);
+  }, [searchQuery, selectedLanguage, selectedDifficulty, showEnded, quizzes]);
 
   const filterQuizzes = () => {
     let filtered = [...quizzes];
@@ -72,6 +73,11 @@ const QuizzesScreen = () => {
     // Filter by difficulty
     if (selectedDifficulty !== 'all') {
       filtered = filtered.filter((quiz) => quiz.difficulty === selectedDifficulty);
+    }
+
+    // Optionally exclude ended quizzes
+    if (!showEnded) {
+      filtered = filtered.filter((quiz) => quiz.status !== 'ended');
     }
 
     setFilteredQuizzes(filtered);
@@ -346,6 +352,31 @@ const QuizzesScreen = () => {
         />
       </View>
 
+      {/* Ended Filter Toggle */}
+      <View
+        style={[
+          styles.endedFilterContainer,
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        ]}
+      >
+        <TouchableOpacity
+          style={[
+            styles.endedFilterButton,
+            { borderColor: colors.border, backgroundColor: showEnded ? colors.primary : 'transparent' },
+          ]}
+          onPress={() => setShowEnded((prev) => !prev)}
+        >
+          <Text
+            style={[
+              styles.endedFilterText,
+              { color: showEnded ? '#ffffff' : colors.textSecondary },
+            ]}
+          >
+            {showEnded ? 'Hide ended quizzes' : 'Show ended quizzes'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Quiz List */}
       {filteredQuizzes.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -391,7 +422,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    textAlign: 'right',
+    textAlign: 'left',
   },
   filterContainer: {
     paddingHorizontal: 16,
@@ -405,7 +436,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
-    textAlign: 'right',
+    textAlign: 'left',
   },
   filterButton: {
     paddingHorizontal: 16,
@@ -427,6 +458,26 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+  },
+  endedFilterContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    alignItems: 'flex-start',
+  },
+  endedFilterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  endedFilterText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   quizCard: {
     backgroundColor: '#ffffff',
@@ -450,7 +501,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     flex: 1,
-    textAlign: 'right',
+    textAlign: 'left',
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -467,7 +518,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     marginBottom: 12,
-    textAlign: 'right',
+    textAlign: 'left',
   },
   quizInfo: {
     flexDirection: 'row',
@@ -513,13 +564,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     marginBottom: 2,
-    textAlign: 'right',
+    textAlign: 'left',
   },
   dateValue: {
     fontSize: 12,
     fontWeight: '600',
     color: '#111827',
-    textAlign: 'right',
+    textAlign: 'left',
   },
   durationContainer: {
     backgroundColor: '#f3f4f6',

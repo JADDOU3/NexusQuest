@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { useTheme } from '../context/ThemeContext';
+import EventSource from 'react-native-sse';
+import 'react-native-url-polyfill/auto';
 
 const DEFAULT_CODE: Record<string, string> = {
   python: `# Python Playground
@@ -58,12 +61,14 @@ int main() {
 type Language = 'python' | 'javascript' | 'java' | 'cpp';
 
 export default function PlaygroundScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [language, setLanguage] = useState<Language>('python');
   const [code, setCode] = useState(DEFAULT_CODE.python);
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const handleLanguageChange = (newLanguage: Language) => {
     setLanguage(newLanguage);
@@ -77,41 +82,73 @@ export default function PlaygroundScreen({ navigation }: any) {
       return;
     }
 
+    // Close any previous stream
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
     setIsRunning(true);
     setOutput('Running...\n');
 
     try {
       const token = await AsyncStorage.getItem('nexusquest-token');
-      const API_URL = 'http://192.168.1.100:9876';
-      
-      // Use simple endpoint that returns all output at once
-      const response = await fetch(`${API_URL}/api/simple-playground/execute`, {
-        method: 'POST',
+      const baseURL = (api.defaults.baseURL as string) ?? '';
+
+      if (!baseURL) {
+        setOutput('Error: Playground base URL is not configured.');
+        setIsRunning(false);
+        return;
+      }
+
+      const url = `${baseURL}/api/playground/execute`;
+
+      // Use GET with query params for EventSource compatibility
+      const params = new URLSearchParams({
+        code,
+        language,
+        sessionId,
+      }).toString();
+
+      const es = new EventSource(`${url}?${params}`, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          code: code,
-          language: language,
-          sessionId: sessionId,
-        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to execute code');
-      }
+      eventSourceRef.current = es;
 
-      const result = await response.json();
-      
-      if (result.success) {
-        setOutput(result.output || 'Code executed (no output)');
-      } else {
-        setOutput(`Error: ${result.error || 'Execution failed'}`);
-      }
+      es.addEventListener('message', (event: any) => {
+        if (!event.data) return;
+
+        try {
+          const evt = JSON.parse(event.data);
+
+          if (evt.type === 'stdout' && evt.data) {
+            setOutput((prev) => prev + String(evt.data));
+          } else if (evt.type === 'stderr' && evt.data) {
+            setOutput((prev) => prev + '\n[stderr] ' + String(evt.data));
+          } else if (evt.type === 'error' && evt.content) {
+            setOutput((prev) => prev + '\n[error] ' + String(evt.content));
+          } else if (evt.type === 'end') {
+            // execution finished
+            es.close();
+            eventSourceRef.current = null;
+            setIsRunning(false);
+          }
+        } catch {
+          // ignore malformed chunks
+        }
+      });
+
+      es.addEventListener('error', (e: any) => {
+        setOutput((prev) => prev + '\n\nStream error occurred.');
+        es.close();
+        eventSourceRef.current = null;
+        setIsRunning(false);
+      });
     } catch (error: any) {
       setOutput(`Error: ${error.message || 'Failed to execute code'}`);
-    } finally {
       setIsRunning(false);
     }
   };
@@ -122,7 +159,7 @@ export default function PlaygroundScreen({ navigation }: any) {
     try {
       await api.post('/api/playground/input', {
         sessionId: sessionId,
-        input: inputValue + '\n',
+        input: inputValue,
       });
       setInputValue('');
     } catch (error: any) {
@@ -130,12 +167,24 @@ export default function PlaygroundScreen({ navigation }: any) {
     }
   };
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
+
   const languageButtons = [
     { value: 'python' as Language, label: 'Python', color: '#3b82f6' },
     { value: 'javascript' as Language, label: 'JavaScript', color: '#eab308' },
     { value: 'java' as Language, label: 'Java', color: '#ef4444' },
     { value: 'cpp' as Language, label: 'C++', color: '#a855f7' },
   ];
+
+  const styles = getStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -225,140 +274,153 @@ export default function PlaygroundScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 15,
-    paddingTop: 60,
-    backgroundColor: '#1e293b',
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  backButton: {
-    width: 40,
-  },
-  backText: {
-    color: '#3b82f6',
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  runButton: {
-    backgroundColor: '#10b981',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  runButtonDisabled: {
-    opacity: 0.6,
-  },
-  runButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  languageSelector: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    backgroundColor: '#1e293b',
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  languageButton: {
-    backgroundColor: '#334155',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  languageButtonText: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  languageButtonTextActive: {
-    color: '#fff',
-  },
-  editorContainer: {
-    flex: 1,
-    padding: 15,
-  },
-  sectionTitle: {
-    color: '#cbd5e1',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  codeInput: {
-    flex: 1,
-    backgroundColor: '#1e293b',
-    color: '#e2e8f0',
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 14,
-    fontFamily: 'monospace',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  outputContainer: {
-    height: 200,
-    padding: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#334155',
-  },
-  outputScroll: {
-    flex: 1,
-    backgroundColor: '#1e293b',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  outputText: {
-    color: '#10b981',
-    fontSize: 13,
-    fontFamily: 'monospace',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 15,
-    backgroundColor: '#1e293b',
-    borderTopWidth: 1,
-    borderTopColor: '#334155',
-    gap: 10,
-  },
-  inputField: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-    color: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  sendButton: {
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    justifyContent: 'center',
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+const getStyles = (colors: {
+  background: string;
+  surface: string;
+  card: string;
+  text: string;
+  textSecondary: string;
+  border: string;
+  primary: string;
+  success: string;
+  warning: string;
+  error: string;
+  info: string;
+}) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 15,
+      paddingTop: 60,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      width: 40,
+    },
+    backText: {
+      color: colors.primary,
+      fontSize: 24,
+      fontWeight: '600',
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    runButton: {
+      backgroundColor: colors.success,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+      minWidth: 70,
+      alignItems: 'center',
+    },
+    runButtonDisabled: {
+      opacity: 0.6,
+    },
+    runButtonText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    languageSelector: {
+      paddingHorizontal: 15,
+      paddingVertical: 10,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    languageButton: {
+      backgroundColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+      marginRight: 8,
+    },
+    languageButtonText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    languageButtonTextActive: {
+      color: '#fff',
+    },
+    editorContainer: {
+      flex: 1,
+      padding: 15,
+    },
+    sectionTitle: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    codeInput: {
+      flex: 1,
+      backgroundColor: colors.card,
+      color: colors.text,
+      padding: 12,
+      borderRadius: 8,
+      fontSize: 14,
+      fontFamily: 'monospace',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    outputContainer: {
+      height: 200,
+      padding: 15,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    outputScroll: {
+      flex: 1,
+      backgroundColor: colors.card,
+      padding: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    outputText: {
+      color: colors.success,
+      fontSize: 13,
+      fontFamily: 'monospace',
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      padding: 15,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      gap: 10,
+    },
+    inputField: {
+      flex: 1,
+      backgroundColor: colors.card,
+      color: colors.text,
+      padding: 10,
+      borderRadius: 8,
+      fontSize: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sendButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 8,
+      justifyContent: 'center',
+    },
+    sendButtonText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  });
