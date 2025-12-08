@@ -93,10 +93,14 @@ export async function getMyLeaderboardRank(): Promise<LeaderboardMe | null> {
     }
 }
 
-export async function getTopLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+export async function getTopLeaderboard(limit = 50, role?: 'user' | 'teacher'): Promise<LeaderboardEntry[]> {
     try {
         const token = await getStoredToken();
-        const response = await api.get(`/api/auth/leaderboard/top?limit=${limit}`, {
+        const params = new URLSearchParams();
+        params.set('limit', String(limit));
+        if (role) params.set('role', role);
+
+        const response = await api.get(`/api/auth/leaderboard/top?${params.toString()}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },

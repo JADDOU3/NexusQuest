@@ -105,7 +105,27 @@ export default function LeaderboardScreen({ navigation }: any) {
         <Text style={[styles.headerTitle, { color: colors.text }]}>🏆 Leaderboard</Text>
       </View>
 
-      {myRank && (
+      {/* Tab Selector */}
+      <View style={[styles.tabContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'user' && { borderBottomColor: colors.primary }]}
+          onPress={() => setSelectedTab('user')}
+        >
+          <Text style={[styles.tabText, { color: selectedTab === 'user' ? colors.primary : colors.textSecondary }]}>
+            👨‍🎓 Students
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'teacher' && { borderBottomColor: colors.primary }]}
+          onPress={() => setSelectedTab('teacher')}
+        >
+          <Text style={[styles.tabText, { color: selectedTab === 'teacher' ? colors.primary : colors.textSecondary }]}>
+            👨‍🏫 Teachers
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {myRank && selectedTab === currentUserRole && (
         <View style={[styles.myRankCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.myRankLabel, { color: colors.textSecondary }]}>Your Rank</Text>
           <View style={styles.myRankContent}>
@@ -166,6 +186,22 @@ const getStyles = (colors: any) =>
     headerTitle: {
       fontSize: 20,
       fontWeight: 'bold',
+    },
+    tabContainer: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      paddingHorizontal: 15,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 15,
+      alignItems: 'center',
+      borderBottomWidth: 3,
+      borderBottomColor: 'transparent',
+    },
+    tabText: {
+      fontSize: 16,
+      fontWeight: '600',
     },
     myRankCard: {
       margin: 15,
