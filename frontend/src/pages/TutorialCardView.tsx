@@ -15,7 +15,7 @@ import { connectChat, getChatSocket, type ChatMessage } from '../services/chatSe
 export default function TutorialCardView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const [currentSection, setCurrentSection] = useState(0);
@@ -250,7 +250,7 @@ export default function TutorialCardView() {
       {showSidePanel && (
         <UserSidePanel
           theme={theme}
-          setTheme={() => {}}
+          setTheme={setTheme}
           user={user}
           avatarImage={avatarImage}
           fontSize={fontSize}
