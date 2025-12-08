@@ -15,6 +15,7 @@ export interface Project {
   description?: string;
   language: string;
   files: ProjectFile[];
+  dependencies?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }

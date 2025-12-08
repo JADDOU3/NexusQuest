@@ -542,20 +542,37 @@ export async function executeProject(request: ProjectExecutionRequest): Promise<
       const base64Content = Buffer.from(file.content).toString('base64');
       const writeExec = await container.exec({
         Cmd: ['sh', '-c', `echo "${base64Content}" | base64 -d > ${baseDir}/${file.name}`],
-        AttachStdout: false,
-        AttachStderr: false,
+        AttachStdout: true,
+        AttachStderr: true,
       });
       const writeStream = await writeExec.start({ hijack: true });
       await new Promise((resolve) => {
         writeStream.on('end', resolve);
-        writeStream.on('error', resolve);
+        writeStream.on('error', (err: any) => {
+          logger.error(`[executeProject] Error writing file ${file.name}:`, err);
+          resolve(null);
+        });
       });
+      
+      // Add a small delay to ensure file is written
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
+
+    // Verify files were written
+    logger.info('[executeProject] Verifying files were written...');
+    const verifyExec = await container.exec({
+      Cmd: ['sh', '-c', `ls -la ${baseDir}`],
+      AttachStdout: true,
+      AttachStderr: true,
+    });
+    const verifyStream = await verifyExec.start({ hijack: true });
+    const { stdout: verifyOutput } = await demuxStream(verifyStream);
+    logger.info('[executeProject] Directory contents:\n' + verifyOutput);
 
     // Install dependencies if specified
     if (dependencies && Object.keys(dependencies).length > 0) {
       logger.info(`[executeProject] Installing dependencies for ${language}`);
-      
+
       if (language.toLowerCase() === 'javascript') {
         const depResult = await installJavaScriptDependencies(container, baseDir, dependencies);
         if (!depResult.success) {

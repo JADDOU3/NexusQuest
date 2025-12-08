@@ -47,7 +47,7 @@ function App({ user, onLogout }: AppProps) {
   // UI state
   const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal' | 'versions'>('console');
-  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string } | null>(null);
+  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string; dependencies?: Record<string, string> } | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [isAiAgentOpen, setIsAiAgentOpen] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
@@ -259,11 +259,39 @@ function App({ user, onLogout }: AppProps) {
           ? { ...p, files: p.files.map(f => f._id === currentFile._id ? { ...f, content: code } : f) }
           : p
       ));
+      
       // Update currentProject as well
-      setCurrentProject(prev => prev ? {
-        ...prev,
-        files: prev.files.map(f => f._id === currentFile._id ? { ...f, content: code } : f)
-      } : null);
+      let updatedProject = { ...currentProject };
+      updatedProject.files = updatedProject.files.map(f => 
+        f._id === currentFile._id ? { ...f, content: code } : f
+      );
+      
+      // If this is package.json, parse and update dependencies
+      if (currentFile.name === 'package.json' && currentProject.language === 'javascript') {
+        try {
+          const parsed = JSON.parse(code);
+          if (parsed.dependencies) {
+            updatedProject.dependencies = parsed.dependencies;
+            
+            // Also save dependencies to the backend
+            try {
+              await fetch(`http://localhost:9876/api/projects/${currentProject._id}/dependencies`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(parsed.dependencies)
+              });
+              addToConsole(`✓ Saved dependencies from package.json`, 'info');
+            } catch (saveErr) {
+              console.error('Failed to save dependencies to backend:', saveErr);
+              addToConsole(`⚠️ Dependencies updated locally but failed to save to backend`, 'info');
+            }
+          }
+        } catch (e) {
+          // Silently fail if package.json is invalid
+        }
+      }
+      
+      setCurrentProject(updatedProject);
     } catch (err) {
       console.error('Failed to save file:', err);
       addToConsole(`❌ Failed to save: ${err}`, 'error');
@@ -341,13 +369,16 @@ function App({ user, onLogout }: AppProps) {
         content: f._id === currentFile?._id ? code.trim() : f.content
       }));
 
-      const mainFileName = currentFile?.name || currentProject.files[0].name;
+      // Find the main file (first non-package.json file, or first file if all are package.json)
+      const mainFile = currentProject.files.find(f => f.name !== 'package.json') || currentProject.files[0];
+      const mainFileName = mainFile.name;
 
       setCodeToExecute({
         code: code.trim(),
         timestamp: Date.now(),
         files: filesForExecution,
-        mainFile: mainFileName
+        mainFile: mainFileName,
+        dependencies: currentProject.dependencies || {}
       });
 
       addToConsole(`⏳ Running project with ${filesForExecution.length} file(s)...`, 'info');
