@@ -34,26 +34,41 @@ const getDefaultFileName = (language: string): string => {
 };
 
 /**
- * POST /api/playground/execute
+ * POST/GET /api/playground/execute
  * Execute code from playground (simplified, single file only)
  */
-router.post('/execute', async (req: PlaygroundRequest, res: Response) => {
-  const { code, language, sessionId } = req.body;
-
-  if (!code || !language || !sessionId) {
-    return res.status(400).json({
-      success: false,
-      error: 'Missing required fields: code, language, sessionId',
-    });
-  }
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
-  const containerName = `nexusquest-playground-${sessionId}`;
-
+const handleExecute = async (req: Request, res: Response) => {
   try {
+    // Support both body (POST) and query (GET) params
+    const code = (req.body.code || req.query.code) as string;
+    const language = (req.body.language || req.query.language) as string;
+    const sessionId = (req.body.sessionId || req.query.sessionId) as string;
+
+    logger.info(`Playground execute request: language=${language}, sessionId=${sessionId}, codeLength=${code?.length}`);
+
+    if (!code || !language || !sessionId) {
+      logger.warn('Missing required fields');
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: code, language, sessionId',
+      });
+    }
+
+    // Validate language
+    if (!['python', 'java', 'javascript', 'cpp'].includes(language)) {
+      logger.warn(`Invalid language: ${language}`);
+      return res.status(400).json({
+        success: false,
+        error: `Invalid language: ${language}`,
+      });
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const containerName = `nexusquest-playground-${sessionId}`;
+
     // Check and remove existing container
     try {
       const existingContainer = docker.getContainer(containerName);
@@ -225,10 +240,17 @@ router.post('/execute', async (req: PlaygroundRequest, res: Response) => {
 
   } catch (error: any) {
     logger.error('Playground execution failed:', error);
-    res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
-    res.end();
+    try {
+      res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
+      res.end();
+    } catch (writeErr) {
+      logger.error('Failed to write error response:', writeErr);
+    }
   }
-});
+};
+
+router.post('/execute', handleExecute);
+router.get('/execute', handleExecute);
 
 /**
  * POST /api/playground/input
