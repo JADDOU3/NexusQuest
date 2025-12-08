@@ -98,14 +98,6 @@ export default function DashboardScreen({ navigation }: any) {
           ) : (
             <View style={styles.statsRow}>
               <View style={styles.stat}>
-                <Text style={styles.statValue}>{stats?.completedTasks || 0}</Text>
-                <Text style={styles.statLabel}>Completed</Text>
-              </View>
-              <View style={styles.stat}>
-                <Text style={styles.statValue}>{stats?.startedTasks || 0}</Text>
-                <Text style={styles.statLabel}>In Progress</Text>
-              </View>
-              <View style={styles.stat}>
                 <Text style={styles.statValue}>{stats?.totalPoints || 0}</Text>
                 <Text style={styles.statLabel}>Points</Text>
               </View>
