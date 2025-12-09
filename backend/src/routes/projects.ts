@@ -59,12 +59,22 @@ int main() {
 router.get('/', async (req: AuthRequest, res: Response) => {
     try {
         const projects = await Project.find({ owner: req.userId })
-            .select('name description language files createdAt updatedAt')
+            .select('name description language files dependencies createdAt updatedAt')
             .sort({ updatedAt: -1 });
+
+        // Convert Map types to plain objects for JSON serialization
+        const projectsData = projects.map(project => {
+            const projectObj = project.toObject();
+            // Convert dependencies Map to plain object if it exists
+            if (projectObj.dependencies && projectObj.dependencies instanceof Map) {
+                projectObj.dependencies = Object.fromEntries(projectObj.dependencies);
+            }
+            return projectObj;
+        });
 
         res.json({
             success: true,
-            data: projects,
+            data: projectsData,
         });
     } catch (error) {
         res.status(500).json({
@@ -90,9 +100,16 @@ router.get('/:projectId', async (req: AuthRequest, res: Response) => {
             return;
         }
 
+        // Convert Map types to plain objects for JSON serialization
+        const projectObj = project.toObject();
+        // Convert dependencies Map to plain object if it exists
+        if (projectObj.dependencies && projectObj.dependencies instanceof Map) {
+            projectObj.dependencies = Object.fromEntries(projectObj.dependencies);
+        }
+
         res.json({
             success: true,
-            data: project,
+            data: projectObj,
         });
     } catch (error) {
         res.status(500).json({
@@ -389,9 +406,15 @@ router.get('/:projectId/dependencies', async (req: AuthRequest, res: Response) =
             return;
         }
 
+        // Convert Map to plain object if needed
+        let deps = project.dependencies || {};
+        if (deps instanceof Map) {
+            deps = Object.fromEntries(deps);
+        }
+
         res.json({
             success: true,
-            dependencies: project.dependencies || {},
+            dependencies: deps,
         });
     } catch (error) {
         res.status(500).json({
@@ -428,15 +451,25 @@ router.post('/:projectId/dependencies', async (req: AuthRequest, res: Response) 
         }
 
         if (!project.dependencies) {
-            project.dependencies = {};
+            project.dependencies = new Map();
         }
 
-        project.dependencies[name] = version || '*';
+        // Ensure dependencies is a Map
+        if (!(project.dependencies instanceof Map)) {
+            project.dependencies = new Map(Object.entries(project.dependencies));
+        }
+
+        project.dependencies.set(name, version || '*');
         await project.save();
+
+        // Convert Map to plain object for response
+        const depsObj = project.dependencies instanceof Map
+            ? Object.fromEntries(project.dependencies)
+            : project.dependencies || {};
 
         res.status(201).json({
             success: true,
-            dependencies: project.dependencies,
+            dependencies: depsObj,
         });
     } catch (error) {
         res.status(500).json({
@@ -459,11 +492,11 @@ router.put('/:projectId/dependencies', async (req: AuthRequest, res: Response) =
             return;
         }
 
-        const project = await Project.findOneAndUpdate(
-            { _id: req.params.projectId, owner: req.userId },
-            { dependencies },
-            { new: true, runValidators: true }
-        );
+        // Find project first
+        const project = await Project.findOne({
+            _id: req.params.projectId,
+            owner: req.userId,
+        });
 
         if (!project) {
             res.status(404).json({
@@ -473,11 +506,22 @@ router.put('/:projectId/dependencies', async (req: AuthRequest, res: Response) =
             return;
         }
 
+        // Convert plain object to Map for Mongoose Map type
+        // Mongoose Map types need to be set as a Map object
+        project.dependencies = new Map(Object.entries(dependencies));
+        await project.save();
+
+        // Convert Map back to plain object for response
+        const depsObj = project.dependencies instanceof Map
+            ? Object.fromEntries(project.dependencies)
+            : project.dependencies || {};
+
         res.json({
             success: true,
-            dependencies: project.dependencies,
+            dependencies: depsObj,
         });
-    } catch (error) {
+    } catch (error: any) {
+        console.error('Error updating dependencies:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to update dependencies',

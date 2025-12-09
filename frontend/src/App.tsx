@@ -121,7 +121,7 @@ function App({ user, onLogout }: AppProps) {
       const targetProjectId = urlProjectId || localStorage.getItem('nexusquest-last-project');
       const lastFileId = localStorage.getItem('nexusquest-last-file');
 
-      if (targetProjectId) {
+      if (targetProjectId && projectsData) {
         let project = projectsData.find((p: Project) => p._id === targetProjectId);
         
         // If project not found in list but we have a URL project ID, fetch it directly
@@ -228,6 +228,43 @@ function App({ user, onLogout }: AppProps) {
     }
   }, [currentFile]);
 
+  // Parse dependencies from package.json when file is opened or content changes
+  useEffect(() => {
+    if (currentProject && currentFile && currentFile.name === 'package.json' && currentProject.language === 'javascript') {
+      try {
+        const parsed = JSON.parse(code);
+        if (parsed.dependencies) {
+          const currentDepsStr = JSON.stringify(currentProject.dependencies || {});
+          const newDepsStr = JSON.stringify(parsed.dependencies);
+          if (currentDepsStr !== newDepsStr) {
+            // Update dependencies in current project state
+            const projectId = currentProject._id;
+            setCurrentProject(prev => {
+              if (!prev || prev._id !== projectId) return prev;
+              return { ...prev, dependencies: parsed.dependencies };
+            });
+            
+            // Save dependencies to the backend
+            const token = localStorage.getItem('nexusquest-token');
+            fetch(`http://localhost:9876/api/projects/${projectId}/dependencies`, {
+              method: 'PUT',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ dependencies: parsed.dependencies })
+            }).catch(err => {
+              console.error('Failed to save dependencies to backend:', err);
+            });
+          }
+        }
+      } catch (e) {
+        // Silently fail if package.json is invalid JSON
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFile, code]); // Intentionally exclude currentProject to avoid update loops
+
   // Console helper - defined early so saveFile can use it
   const addToConsole = useCallback((message: string, type: ConsoleOutput['type'] = 'output') => {
     setOutput(prev => [...prev, {
@@ -275,10 +312,14 @@ function App({ user, onLogout }: AppProps) {
             
             // Also save dependencies to the backend
             try {
+              const token = localStorage.getItem('nexusquest-token');
               await fetch(`http://localhost:9876/api/projects/${currentProject._id}/dependencies`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(parsed.dependencies)
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ dependencies: parsed.dependencies })
               });
               addToConsole(`✓ Saved dependencies from package.json`, 'info');
             } catch (saveErr) {
