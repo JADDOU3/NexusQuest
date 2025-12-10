@@ -9,7 +9,7 @@ interface TerminalProps {
   height?: string;
   theme?: 'dark' | 'light';
   language: 'python' | 'java' | 'javascript' | 'cpp' | 'go';
-  codeToExecute?: { code: string; timestamp: number; files?: ProjectFileForExecution[]; mainFile?: string } | null;
+  codeToExecute?: { code: string; timestamp: number; files?: ProjectFileForExecution[]; mainFile?: string; dependencies?: Record<string, string> } | null;
 }
 
 interface TerminalLine {
@@ -74,6 +74,16 @@ export function Terminal({ height = '400px', theme = 'dark', language, codeToExe
     setIsExecutingCode(true);
 
     const isMultiFile = files && files.length > 1;
+    const { dependencies } = codeToExecute || {};
+    
+    console.log('[Terminal] Execute code:', { 
+      files: files?.length, 
+      mainFile, 
+      dependencies,
+      hasFiles: !!files,
+      dependenciesCount: dependencies ? Object.keys(dependencies).length : 0 
+    });
+    
     setLines(prev => [...prev, {
       type: 'output',
       content: `\n▶️ Running ${language} ${isMultiFile ? 'project' : 'program'} (interactive mode)...`,
@@ -85,49 +95,122 @@ export function Terminal({ height = '400px', theme = 'dark', language, codeToExe
       let endpoint: string;
       let requestBody: Record<string, unknown> = { language, sessionId };
 
-      // If we have files (project execution), use projects endpoint
+      // If we have files (project execution), use the streaming projects endpoint
       if (files && files.length > 0) {
+        console.log('[Terminal] Using streaming container endpoint');
         endpoint = 'http://localhost:9876/api/projects/execute';
         requestBody.files = files;
         requestBody.mainFile = mainFile || files[0].name;
+        // Pass dependencies if they exist
+        if (dependencies && Object.keys(dependencies).length > 0) {
+          requestBody.dependencies = dependencies;
+          console.log('[Terminal] Including dependencies:', dependencies);
+        }
       } else {
+        console.log('[Terminal] Using task endpoint (single code)');
         // Single code execution (task or playground) - use task endpoint which supports streaming
         endpoint = 'http://localhost:9876/api/tasks/execute';
         requestBody.code = code;
       }
 
-      const startRes = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
+      console.log('[Terminal] Request endpoint:', endpoint);
+      console.log('[Terminal] Request body:', requestBody);
 
-      if (!startRes.ok) throw new Error('Failed to start execution');
+      console.log('[Terminal] Sending request to:', endpoint);
+      console.log('[Terminal] Request body keys:', Object.keys(requestBody));
+      
+      // Create abort controller with timeout (300 seconds for heavy installs like Conan)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn('[Terminal] Request timeout after 300 seconds');
+        controller.abort();
+      }, 300000);
+      
+      try {
+        const startRes = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
 
-      // Handle the response stream directly
-      if (!startRes.body) throw new Error('No response body');
+        clearTimeout(timeoutId);
+        console.log('[Terminal] Response received:', startRes.status, startRes.statusText);
 
-      const reader = startRes.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+        if (!startRes.ok) {
+          console.error('[Terminal] Fetch failed:', startRes.status, startRes.statusText);
+          const errorText = await startRes.text();
+          console.error('[Terminal] Error response:', errorText);
+          throw new Error(`Failed to start execution: ${startRes.status} ${startRes.statusText}`);
+        }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        // Check content-type to determine if it's streaming or JSON
+        const contentType = startRes.headers.get('content-type') || '';
+        const isStreaming = contentType.includes('text/event-stream');
 
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split('\n\n');
-        
-        // Keep the last part in buffer as it might be incomplete
-        buffer = parts[parts.length - 1];
+        if (isStreaming) {
+          // Handle streaming response (SSE)
+          if (!startRes.body) throw new Error('No response body');
 
-        // Process all complete messages
-        for (let i = 0; i < parts.length - 1; i++) {
-          const message = parts[i];
-          if (message.startsWith('data: ')) {
+          const reader = startRes.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split('\n\n');
+            
+            // Keep the last part in buffer as it might be incomplete
+            buffer = parts[parts.length - 1];
+
+            // Process all complete messages
+            for (let i = 0; i < parts.length - 1; i++) {
+              const message = parts[i];
+              if (message.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(message.substring(6));
+                  
+                  if (data.type === 'end') {
+                    setLines(prev => [...prev, { 
+                      type: 'output', 
+                      content: '\n✓ Program finished', 
+                      timestamp: new Date() 
+                    }]);
+                    setIsExecutingCode(false);
+                    setCurrentSessionId(null);
+                  } else if (data.type === 'stdout' || data.type === 'output') {
+                    const content = data.data || data.content;
+                    if (content) {
+                      setLines(prev => [...prev, { 
+                        type: 'output', 
+                        content: content.trimEnd(), 
+                        timestamp: new Date() 
+                      }]);
+                    }
+                  } else if (data.type === 'stderr' || data.type === 'error') {
+                    const content = data.data || data.content;
+                    if (content) {
+                      setLines(prev => [...prev, { 
+                        type: 'error', 
+                        content: content.trimEnd(), 
+                        timestamp: new Date() 
+                      }]);
+                    }
+                  }
+                } catch (e) {
+                  // Ignore parse errors
+                }
+              }
+            }
+          }
+
+          // Process any remaining buffer content
+          if (buffer.startsWith('data: ')) {
             try {
-              const data = JSON.parse(message.substring(6));
-              
+              const data = JSON.parse(buffer.substring(6));
               if (data.type === 'end') {
                 setLines(prev => [...prev, { 
                   type: 'output', 
@@ -159,43 +242,40 @@ export function Terminal({ height = '400px', theme = 'dark', language, codeToExe
               // Ignore parse errors
             }
           }
-        }
-      }
-
-      // Process any remaining buffer content
-      if (buffer.startsWith('data: ')) {
-        try {
-          const data = JSON.parse(buffer.substring(6));
-          if (data.type === 'end') {
+        } else {
+          // Handle non-streaming JSON response (from /execution/run-project)
+          const result = await startRes.json();
+          
+          console.log('[Terminal] Execution result:', result);
+          
+          if (result.output) {
             setLines(prev => [...prev, { 
               type: 'output', 
-              content: '\n✓ Program finished', 
+              content: result.output.trimEnd(), 
               timestamp: new Date() 
             }]);
-            setIsExecutingCode(false);
-            setCurrentSessionId(null);
-          } else if (data.type === 'stdout' || data.type === 'output') {
-            const content = data.data || data.content;
-            if (content) {
-              setLines(prev => [...prev, { 
-                type: 'output', 
-                content: content.trimEnd(), 
-                timestamp: new Date() 
-              }]);
-            }
-          } else if (data.type === 'stderr' || data.type === 'error') {
-            const content = data.data || data.content;
-            if (content) {
-              setLines(prev => [...prev, { 
-                type: 'error', 
-                content: content.trimEnd(), 
-                timestamp: new Date() 
-              }]);
-            }
           }
-        } catch (e) {
-          // Ignore parse errors
+          
+          if (result.error) {
+            setLines(prev => [...prev, { 
+              type: 'error', 
+              content: result.error.trimEnd(), 
+              timestamp: new Date() 
+            }]);
+          }
+          
+          setLines(prev => [...prev, { 
+            type: 'output', 
+            content: '\n✓ Program finished', 
+            timestamp: new Date() 
+          }]);
+          setIsExecutingCode(false);
+          setCurrentSessionId(null);
         }
+      } catch (err) {
+        // Abort controller timeout or other fetch error
+        clearTimeout(timeoutId);
+        throw err;
       }
 
     } catch (error) {

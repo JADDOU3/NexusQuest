@@ -34,26 +34,41 @@ const getDefaultFileName = (language: string): string => {
 };
 
 /**
- * POST /api/playground/execute
+ * POST/GET /api/playground/execute
  * Execute code from playground (simplified, single file only)
  */
-router.post('/execute', async (req: PlaygroundRequest, res: Response) => {
-  const { code, language, sessionId } = req.body;
-
-  if (!code || !language || !sessionId) {
-    return res.status(400).json({
-      success: false,
-      error: 'Missing required fields: code, language, sessionId',
-    });
-  }
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
-  const containerName = `nexusquest-playground-${sessionId}`;
-
+const handleExecute = async (req: Request, res: Response) => {
   try {
+    // Support both body (POST) and query (GET) params
+    const code = (req.body.code || req.query.code) as string;
+    const language = (req.body.language || req.query.language) as string;
+    const sessionId = (req.body.sessionId || req.query.sessionId) as string;
+
+    logger.info(`Playground execute request: language=${language}, sessionId=${sessionId}, codeLength=${code?.length}`);
+
+    if (!code || !language || !sessionId) {
+      logger.warn('Missing required fields');
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: code, language, sessionId',
+      });
+    }
+
+    // Validate language
+    if (!['python', 'java', 'javascript', 'cpp'].includes(language)) {
+      logger.warn(`Invalid language: ${language}`);
+      return res.status(400).json({
+        success: false,
+        error: `Invalid language: ${language}`,
+      });
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const containerName = `nexusquest-playground-${sessionId}`;
+
     // Check and remove existing container
     try {
       const existingContainer = docker.getContainer(containerName);
@@ -178,10 +193,34 @@ router.post('/execute', async (req: PlaygroundRequest, res: Response) => {
       try {
         activeStreams.delete(sessionId);
         stream.end();
-        await container.remove({ force: true });
-        logger.info(`Container removed after client disconnect: ${containerName}`);
+        
+        // Wait a bit before removing container
+        setTimeout(async () => {
+          try {
+            // Stop container first if it's still running
+            try {
+              await container.stop();
+            } catch (stopErr: any) {
+              // Container might already be stopped, ignore
+              if (stopErr.statusCode !== 304 && stopErr.statusCode !== 404) {
+                logger.warn(`Error stopping container: ${stopErr.message}`);
+              }
+            }
+            
+            // Small delay before removal
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await container.remove({ force: true });
+            logger.info(`Container removed after client disconnect: ${containerName}`);
+          } catch (err: any) {
+            // Ignore "container not found" errors as they're expected after cleanup
+            if (err.statusCode !== 404 && !err.message?.includes('No such container')) {
+              logger.error(`Error cleaning up container: ${err}`);
+            }
+          }
+        }, 1000); // 1 second delay
       } catch (err) {
-        logger.error(`Error cleaning up container: ${err}`);
+        logger.error(`Error in client disconnect handler: ${err}`);
       }
     });
 
@@ -200,12 +239,31 @@ router.post('/execute', async (req: PlaygroundRequest, res: Response) => {
       // Clean up
       activeStreams.delete(sessionId);
 
-      try {
-        await container.remove({ force: true });
-        logger.info(`Container removed after execution: ${containerName}`);
-      } catch (err) {
-        logger.error(`Error removing container: ${err}`);
-      }
+      // Wait a bit for Docker to finish processing, then remove container
+      setTimeout(async () => {
+        try {
+          // Stop container first if it's still running
+          try {
+            await container.stop();
+          } catch (stopErr: any) {
+            // Container might already be stopped, ignore
+            if (stopErr.statusCode !== 304 && stopErr.statusCode !== 404) {
+              logger.warn(`Error stopping container: ${stopErr.message}`);
+            }
+          }
+          
+          // Small delay before removal
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          await container.remove({ force: true });
+          logger.info(`Container removed after execution: ${containerName}`);
+        } catch (err: any) {
+          // Ignore "container not found" errors as they're expected after cleanup
+          if (err.statusCode !== 404 && !err.message?.includes('No such container')) {
+            logger.error(`Error removing container: ${err}`);
+          }
+        }
+      }, 1000); // 1 second delay
     });
 
     stream.on('error', async (error: Error) => {
@@ -216,19 +274,45 @@ router.post('/execute', async (req: PlaygroundRequest, res: Response) => {
       // Clean up
       activeStreams.delete(sessionId);
 
-      try {
-        await container.remove({ force: true });
-      } catch (err) {
-        logger.error(`Error removing container after error: ${err}`);
-      }
+      // Wait a bit for Docker to finish processing, then remove container
+      setTimeout(async () => {
+        try {
+          // Stop container first if it's still running
+          try {
+            await container.stop();
+          } catch (stopErr: any) {
+            // Container might already be stopped, ignore
+            if (stopErr.statusCode !== 304 && stopErr.statusCode !== 404) {
+              logger.warn(`Error stopping container: ${stopErr.message}`);
+            }
+          }
+          
+          // Small delay before removal
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          await container.remove({ force: true });
+        } catch (err: any) {
+          // Ignore "container not found" errors as they're expected after cleanup
+          if (err.statusCode !== 404 && !err.message?.includes('No such container')) {
+            logger.error(`Error removing container after error: ${err}`);
+          }
+        }
+      }, 1000); // 1 second delay
     });
 
   } catch (error: any) {
     logger.error('Playground execution failed:', error);
-    res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
-    res.end();
+    try {
+      res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
+      res.end();
+    } catch (writeErr) {
+      logger.error('Failed to write error response:', writeErr);
+    }
   }
-});
+};
+
+router.post('/execute', handleExecute);
+router.get('/execute', handleExecute);
 
 /**
  * POST /api/playground/input

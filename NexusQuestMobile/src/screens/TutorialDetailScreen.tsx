@@ -9,9 +9,11 @@ import {
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { getTutorial, type Tutorial } from '../services/tutorialService';
+import { useTheme } from '../context/ThemeContext';
 
 export default function TutorialDetailScreen({ route, navigation }: any) {
   const { tutorialId } = route.params;
+  const { theme, colors } = useTheme();
   const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +44,8 @@ export default function TutorialDetailScreen({ route, navigation }: any) {
         return '#6b7280';
     }
   };
+
+  const styles = getStyles(colors);
 
   if (loading) {
     return (
@@ -101,14 +105,14 @@ export default function TutorialDetailScreen({ route, navigation }: any) {
         <View style={styles.markdownContainer}>
           <Markdown
             style={{
-              body: { color: '#cbd5e1', fontSize: 16, lineHeight: 24 },
-              heading1: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 20, marginBottom: 10 },
-              heading2: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: 15, marginBottom: 10 },
-              heading3: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 10, marginBottom: 5 },
-              code_block: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, color: '#e2e8f0', fontFamily: 'monospace' },
-              code_inline: { backgroundColor: '#1e293b', padding: 2, borderRadius: 4, color: '#e2e8f0', fontFamily: 'monospace' },
-              link: { color: '#3b82f6' },
-              list_item: { color: '#cbd5e1', marginBottom: 5 },
+              body: { color: colors.textSecondary, fontSize: 16, lineHeight: 24 },
+              heading1: { color: colors.text, fontSize: 24, fontWeight: 'bold', marginTop: 20, marginBottom: 10 },
+              heading2: { color: colors.text, fontSize: 20, fontWeight: 'bold', marginTop: 15, marginBottom: 10 },
+              heading3: { color: colors.text, fontSize: 18, fontWeight: 'bold', marginTop: 10, marginBottom: 5 },
+              code_block: { backgroundColor: colors.card, padding: 10, borderRadius: 8, color: colors.text, fontFamily: 'monospace' },
+              code_inline: { backgroundColor: colors.card, padding: 2, borderRadius: 4, color: colors.text, fontFamily: 'monospace' },
+              link: { color: colors.primary },
+              list_item: { color: colors.textSecondary, marginBottom: 5 },
             }}
           >
             {markdownContent}
@@ -119,96 +123,109 @@ export default function TutorialDetailScreen({ route, navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    paddingTop: 60,
-    backgroundColor: '#1e293b',
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  backText: {
-    color: '#3b82f6',
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 16,
-  },
-  content: {
-    flex: 1,
-  },
-  infoCard: {
-    backgroundColor: '#1e293b',
-    margin: 15,
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  description: {
-    fontSize: 15,
-    color: '#94a3b8',
-    lineHeight: 22,
-    marginBottom: 15,
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  languageBadge: {
-    backgroundColor: '#334155',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  languageText: {
-    color: '#3b82f6',
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  difficultyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  difficultyText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  markdownContainer: {
-    padding: 15,
-    paddingBottom: 40,
-  },
-});
+const getStyles = (colors: {
+  background: string;
+  surface: string;
+  card: string;
+  text: string;
+  textSecondary: string;
+  border: string;
+  primary: string;
+  success: string;
+  warning: string;
+  error: string;
+  info: string;
+}) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 15,
+      paddingTop: 60,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      marginRight: 15,
+    },
+    backText: {
+      color: colors.primary,
+      fontSize: 24,
+      fontWeight: '600',
+    },
+    headerTitle: {
+      flex: 1,
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: 16,
+    },
+    content: {
+      flex: 1,
+    },
+    infoCard: {
+      backgroundColor: colors.card,
+      margin: 15,
+      padding: 20,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 10,
+    },
+    description: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      lineHeight: 22,
+      marginBottom: 15,
+    },
+    badges: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    languageBadge: {
+      backgroundColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    languageText: {
+      color: colors.primary,
+      fontSize: 13,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+    },
+    difficultyBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    difficultyText: {
+      color: '#fff',
+      fontSize: 13,
+      fontWeight: '600',
+      textTransform: 'capitalize',
+    },
+    markdownContainer: {
+      padding: 15,
+      paddingBottom: 40,
+    },
+  });

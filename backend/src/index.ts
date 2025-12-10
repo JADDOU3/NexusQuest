@@ -73,6 +73,7 @@ app.use('/api', codeExecutionRouter);
 app.use('/api', terminalRouter);
 app.use('/api/stream', streamExecutionRouter);
 app.use('/api/playground', playgroundExecutionRouter);
+app.use('/api/simple-playground', simplePlaygroundRouter);
 app.use('/api/projects', projectExecutionRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/tasks', taskExecutionRouter);

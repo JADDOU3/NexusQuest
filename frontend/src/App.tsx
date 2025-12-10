@@ -47,7 +47,7 @@ function App({ user, onLogout }: AppProps) {
   // UI state
   const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal' | 'versions'>('console');
-  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string } | null>(null);
+  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string; dependencies?: Record<string, string> } | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [isAiAgentOpen, setIsAiAgentOpen] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
@@ -108,22 +108,48 @@ function App({ user, onLogout }: AppProps) {
   // Load projects and restore last session (or load project from URL)
   useEffect(() => {
     const initSession = async () => {
+      if (!user) {
+        if (urlProjectId) {
+          // Not logged in but trying to access a project - redirect to login
+          navigate('/login');
+        }
+        return;
+      }
+
       const projectsData = await loadProjects();
+      // Priority: URL project ID > localStorage last project
+      const targetProjectId = urlProjectId || localStorage.getItem('nexusquest-last-project');
+      const lastFileId = localStorage.getItem('nexusquest-last-file');
 
-      // If user is logged in, try to restore session
-      if (user && projectsData && projectsData.length > 0) {
-        // Priority: URL project ID > localStorage last project
-        const targetProjectId = urlProjectId || localStorage.getItem('nexusquest-last-project');
-        const lastFileId = localStorage.getItem('nexusquest-last-file');
+      if (targetProjectId && projectsData) {
+        let project = projectsData.find((p: Project) => p._id === targetProjectId);
+        
+        // If project not found in list but we have a URL project ID, fetch it directly
+        if (!project && urlProjectId) {
+          try {
+            project = await projectService.getProject(urlProjectId);
+          } catch (error) {
+            console.error('Failed to fetch project:', error);
+            navigate('/');
+            return;
+          }
+        }
 
-        if (targetProjectId) {
-          const project = projectsData.find((p: Project) => p._id === targetProjectId);
-          if (project) {
-            setCurrentProject(project);
+        if (project) {
+          setCurrentProject(project);
 
-            // Find the last file or default to first file
-            if (lastFileId && !urlProjectId) {
-              // Only use last file if not coming from URL (URL should show first file)
+          // When navigating from URL (newly created project), always open the main file (first file)
+          if (urlProjectId) {
+            // For newly created projects, open the main file (first file)
+            if (project.files.length > 0) {
+              const mainFile = project.files[0]; // Main file is always the first file
+              setCurrentFile(mainFile);
+              setCode(mainFile.content);
+              setLanguage(mainFile.language as 'python' | 'java' | 'javascript' | 'cpp');
+            }
+          } else {
+            // For returning users, try to restore last file or default to first file
+            if (lastFileId) {
               const file = project.files.find((f: ProjectFile) => f._id === lastFileId);
               if (file) {
                 setCurrentFile(file);
@@ -132,21 +158,18 @@ function App({ user, onLogout }: AppProps) {
                 return;
               }
             }
-            // If no file found but project has files, open the first one
+            // If no file found but project has files, open the first one (main file)
             if (project.files.length > 0) {
               const firstFile = project.files[0];
               setCurrentFile(firstFile);
               setCode(firstFile.content);
               setLanguage(firstFile.language as 'python' | 'java' | 'javascript' | 'cpp');
             }
-          } else if (urlProjectId) {
-            // Project from URL not found - redirect to home
-            navigate('/');
           }
+        } else if (urlProjectId) {
+          // Project from URL not found even after direct fetch - redirect to home
+          navigate('/');
         }
-      } else if (urlProjectId && !user) {
-        // Not logged in but trying to access a project - redirect to login
-        navigate('/login');
       }
     };
 
@@ -205,6 +228,103 @@ function App({ user, onLogout }: AppProps) {
     }
   }, [currentFile]);
 
+  // Helper function to parse requirements.txt format
+  const parseRequirementsTxt = useCallback((content: string): Record<string, string> => {
+    const dependencies: Record<string, string> = {};
+    const lines = content.split('\n');
+    
+    for (const line of lines) {
+      // Remove comments and whitespace
+      const trimmed = line.split('#')[0].trim();
+      if (!trimmed) continue;
+      
+      // Parse common formats: package==version, package>=version, package<=version, package~=version, package
+      // Match package name and optional version specifier
+      const match = trimmed.match(/^([a-zA-Z0-9_-]+[a-zA-Z0-9._-]*)(?:\s*(==|>=|<=|~=|>|<)\s*([0-9.]+[a-zA-Z0-9._-]*))?/);
+      if (match) {
+        const packageName = match[1];
+        const version = match[3] || '*';
+        dependencies[packageName] = version;
+      }
+    }
+    
+    return dependencies;
+  }, []);
+
+  // Parse dependencies from package.json when file is opened or content changes
+  useEffect(() => {
+    if (currentProject && currentFile) {
+      // Handle JavaScript package.json
+      if (currentFile.name === 'package.json' && currentProject.language === 'javascript') {
+        try {
+          const parsed = JSON.parse(code);
+          if (parsed.dependencies) {
+            const currentDepsStr = JSON.stringify(currentProject.dependencies || {});
+            const newDepsStr = JSON.stringify(parsed.dependencies);
+            if (currentDepsStr !== newDepsStr) {
+              // Update dependencies in current project state
+              const projectId = currentProject._id;
+              setCurrentProject(prev => {
+                if (!prev || prev._id !== projectId) return prev;
+                return { ...prev, dependencies: parsed.dependencies };
+              });
+              
+              // Save dependencies to the backend
+              const token = localStorage.getItem('nexusquest-token');
+              fetch(`http://localhost:9876/api/projects/${projectId}/dependencies`, {
+                method: 'PUT',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ dependencies: parsed.dependencies })
+              }).catch(err => {
+                console.error('Failed to save dependencies to backend:', err);
+              });
+            }
+          }
+        } catch (e) {
+          // Silently fail if package.json is invalid JSON
+        }
+      }
+      // Handle Python requirements.txt
+      else if (currentFile.name === 'requirements.txt' && currentProject.language === 'python') {
+        try {
+          const parsedDeps = parseRequirementsTxt(code);
+          if (Object.keys(parsedDeps).length > 0) {
+            const currentDepsStr = JSON.stringify(currentProject.dependencies || {});
+            const newDepsStr = JSON.stringify(parsedDeps);
+            if (currentDepsStr !== newDepsStr) {
+              // Update dependencies in current project state
+              const projectId = currentProject._id;
+              setCurrentProject(prev => {
+                if (!prev || prev._id !== projectId) return prev;
+                return { ...prev, dependencies: parsedDeps };
+              });
+              
+              // Save dependencies to the backend
+              const token = localStorage.getItem('nexusquest-token');
+              fetch(`http://localhost:9876/api/projects/${projectId}/dependencies`, {
+                method: 'PUT',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ dependencies: parsedDeps })
+              }).catch(err => {
+                console.error('Failed to save dependencies to backend:', err);
+              });
+            }
+          }
+        } catch (e) {
+          // Silently fail if requirements.txt parsing fails
+          console.error('Failed to parse requirements.txt:', e);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFile, code, parseRequirementsTxt]); // Intentionally exclude currentProject to avoid update loops
+
   // Console helper - defined early so saveFile can use it
   const addToConsole = useCallback((message: string, type: ConsoleOutput['type'] = 'output') => {
     setOutput(prev => [...prev, {
@@ -236,18 +356,79 @@ function App({ user, onLogout }: AppProps) {
           ? { ...p, files: p.files.map(f => f._id === currentFile._id ? { ...f, content: code } : f) }
           : p
       ));
+      
       // Update currentProject as well
-      setCurrentProject(prev => prev ? {
-        ...prev,
-        files: prev.files.map(f => f._id === currentFile._id ? { ...f, content: code } : f)
-      } : null);
+      let updatedProject = { ...currentProject };
+      updatedProject.files = updatedProject.files.map(f => 
+        f._id === currentFile._id ? { ...f, content: code } : f
+      );
+      
+      // If this is package.json, parse and update dependencies
+      if (currentFile.name === 'package.json' && currentProject.language === 'javascript') {
+        try {
+          const parsed = JSON.parse(code);
+          if (parsed.dependencies) {
+            updatedProject.dependencies = parsed.dependencies;
+            
+            // Also save dependencies to the backend
+            try {
+              const token = localStorage.getItem('nexusquest-token');
+              await fetch(`http://localhost:9876/api/projects/${currentProject._id}/dependencies`, {
+                method: 'PUT',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ dependencies: parsed.dependencies })
+              });
+              addToConsole(`✓ Saved dependencies from package.json`, 'info');
+            } catch (saveErr) {
+              console.error('Failed to save dependencies to backend:', saveErr);
+              addToConsole(`⚠️ Dependencies updated locally but failed to save to backend`, 'info');
+            }
+          }
+        } catch (e) {
+          // Silently fail if package.json is invalid
+        }
+      }
+      // If this is requirements.txt, parse and update dependencies
+      else if (currentFile.name === 'requirements.txt' && currentProject.language === 'python') {
+        try {
+          const parsedDeps = parseRequirementsTxt(code);
+          if (Object.keys(parsedDeps).length > 0) {
+            updatedProject.dependencies = parsedDeps;
+            
+            // Also save dependencies to the backend
+            try {
+              const token = localStorage.getItem('nexusquest-token');
+              await fetch(`http://localhost:9876/api/projects/${currentProject._id}/dependencies`, {
+                method: 'PUT',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ dependencies: parsedDeps })
+              });
+              addToConsole(`✓ Saved dependencies from requirements.txt`, 'info');
+            } catch (saveErr) {
+              console.error('Failed to save dependencies to backend:', saveErr);
+              addToConsole(`⚠️ Dependencies updated locally but failed to save to backend`, 'info');
+            }
+          }
+        } catch (e) {
+          // Silently fail if requirements.txt parsing fails
+          console.error('Failed to parse requirements.txt:', e);
+        }
+      }
+      
+      setCurrentProject(updatedProject);
     } catch (err) {
       console.error('Failed to save file:', err);
       addToConsole(`❌ Failed to save: ${err}`, 'error');
     } finally {
       setIsSaving(false);
     }
-  }, [currentProject, currentFile, code, addToConsole]);
+  }, [currentProject, currentFile, code, addToConsole, parseRequirementsTxt]);
 
   // Keyboard shortcut: Ctrl+S to save
   useEffect(() => {
@@ -318,13 +499,16 @@ function App({ user, onLogout }: AppProps) {
         content: f._id === currentFile?._id ? code.trim() : f.content
       }));
 
-      const mainFileName = currentFile?.name || currentProject.files[0].name;
+      // Find the main file (first non-package.json file, or first file if all are package.json)
+      const mainFile = currentProject.files.find(f => f.name !== 'package.json') || currentProject.files[0];
+      const mainFileName = mainFile.name;
 
       setCodeToExecute({
         code: code.trim(),
         timestamp: Date.now(),
         files: filesForExecution,
-        mainFile: mainFileName
+        mainFile: mainFileName,
+        dependencies: currentProject.dependencies || {}
       });
 
       addToConsole(`⏳ Running project with ${filesForExecution.length} file(s)...`, 'info');
