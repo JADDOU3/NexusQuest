@@ -124,6 +124,8 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                     f.name === 'conanfile.py' ||
                     (f.name === 'CMakeLists.txt' && /find_package\s*\(\s*(\w+)/.test(f.content))
                 );
+            } else if (language === 'java') {
+                needsNetwork = files.some(f => f.name === 'pom.xml');
             }
         }
 
@@ -208,8 +210,11 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
             return false;
         });
 
-        // Install dependencies if specified OR if C++ project has CMakeLists.txt with packages
-        if ((dependencies && Object.keys(dependencies).length > 0) || hasCppDependencies) {
+        // Check if Java project has pom.xml with dependencies
+        const hasJavaDependencies = language === 'java' && files.some(f => f.name === 'pom.xml');
+
+        // Install dependencies if specified OR if project has dependency files
+        if ((dependencies && Object.keys(dependencies).length > 0) || hasCppDependencies || hasJavaDependencies) {
             if (language === 'javascript') {
                 logger.info('[project-execution] Installing JavaScript dependencies');
 
@@ -865,6 +870,55 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                     logger.info('[project-execution] Conan install completed');
                 } else {
                     logger.info('[project-execution] No Conan dependencies to install for C++ project');
+                }
+            } else if (language === 'java') {
+                // Check if project has pom.xml
+                const hasPomXml = files.some(f => f.name === 'pom.xml');
+
+                if (hasPomXml) {
+                    logger.info('[project-execution] Installing Java dependencies with Maven');
+
+                    // Run mvn dependency:resolve to download dependencies
+                    logger.info('[project-execution] Running mvn dependency:resolve');
+                    const mvnExec = await container.exec({
+                        Cmd: ['sh', '-c', `cd ${baseDir} && mvn dependency:resolve 2>&1`],
+                        AttachStdout: true,
+                        AttachStderr: true
+                    });
+                    const mvnStream = await mvnExec.start({ hijack: true });
+
+                    let mvnOutput = '';
+                    await new Promise<void>((resolve) => {
+                        mvnStream.on('data', (chunk: Buffer) => {
+                            mvnOutput += chunk.toString();
+                        });
+                        mvnStream.on('end', () => {
+                            logger.info('[project-execution] Maven dependency resolution completed');
+                            resolve();
+                        });
+                        mvnStream.on('error', (err: any) => {
+                            logger.error('[project-execution] Maven error:', err);
+                            resolve();
+                        });
+                        // Timeout for Maven (can be slow on first run)
+                        setTimeout(() => {
+                            logger.warn('[project-execution] Maven dependency resolution timeout');
+                            resolve();
+                        }, 180000); // 3 minutes
+                    });
+
+                    if (mvnOutput.includes('BUILD FAILURE') || mvnOutput.includes('ERROR')) {
+                        logger.error('[project-execution] Maven dependency resolution failed:', mvnOutput.substring(0, 500));
+                        res.status(500).json({
+                            success: false,
+                            error: 'Dependency installation failed (Maven)',
+                            details: mvnOutput.substring(0, 1000)
+                        });
+                        return;
+                    }
+                    logger.info('[project-execution] Maven dependencies installed successfully');
+                } else {
+                    logger.info('[project-execution] No pom.xml found for Java project');
                 }
             }
         }
