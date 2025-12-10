@@ -2,65 +2,127 @@ import Groq from 'groq-sdk';
 
 interface ChatRequest { message: string; currentCode?: string; language: string; history?: Array<{ role: string; content: string }>; }
 
+// Initialize Groq client lazily to ensure env vars are loaded
 let groqClient: Groq | null = null;
-try {
-  if (process.env.GROQ_API_KEY) {
-    groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
-    console.log('✅ Groq AI ready');
-  } else {
-    console.warn('⚠️ GROQ_API_KEY missing (fallback only)');
+let groqInitialized = false;
+
+function initializeGroq(): void {
+  if (groqInitialized) return;
+  
+  groqInitialized = true;
+  
+  try {
+    const apiKey = process.env.GROQ_API_KEY;
+    
+    if (apiKey && apiKey.startsWith('gsk_')) {
+      groqClient = new Groq({ apiKey });
+      console.log('✅ Groq AI ready with key:', apiKey.substring(0, 10) + '...');
+      console.log('📊 Model:', process.env.GROQ_MODEL || 'llama-3.1-70b-versatile');
+    } else {
+      console.warn('⚠️ GROQ_API_KEY missing or invalid (fallback mode)');
+      console.warn('   Expected format: gsk_...');
+      console.warn('   Current value:', apiKey ? apiKey.substring(0, 10) + '...' : 'undefined');
+    }
+  } catch (e) {
+    console.error('❌ Groq init failed:', e);
+    groqClient = null;
   }
-} catch (e) {
-  console.error('❌ Groq init failed', e);
-  groqClient = null;
 }
 
 export async function getSimpleChatResponse(req: ChatRequest): Promise<string> {
   const { message, language, currentCode, history } = req;
   
+  console.log('🔍 getSimpleChatResponse called');
+  console.log('🔑 GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
+  console.log('🔑 Key starts with gsk_:', process.env.GROQ_API_KEY?.startsWith('gsk_'));
+  
+  // Initialize Groq on first use
+  initializeGroq();
+  
+  console.log('🤖 groqClient initialized:', !!groqClient);
+  
   if (groqClient) {
     try {
-      const systemPrompt = `You are an expert coding assistant that helps students learn programming.
+      const systemPrompt = `You are an advanced AI coding assistant - smart, friendly, and helpful like ChatGPT.
 
-Key Guidelines:
-- Detect if the user writes in Arabic or English and respond in the same language
-- If user writes in Arabic, respond in Arabic. If English, respond in English
-- Be concise and educational
-- When explaining code, break it down step by step
-- When writing code, add helpful comments
-- Support these languages: Python, Java, JavaScript, C++
-- Format code blocks with triple backticks and language name
-- If asked to fix bugs, explain what was wrong and why
-- Encourage best practices and clean code
+🎯 Core Capabilities:
+- Understand ANY question or request in Arabic or English
+- Detect the user's language automatically and respond in the same language
+- Have natural, conversational interactions
+- Remember context from previous messages in the conversation
+- Explain concepts in simple, clear terms
+- Be creative and helpful with ANY coding-related question
 
-Current programming language context: ${language}`;
+💬 Communication Style:
+- Be friendly and encouraging
+- Use emojis when appropriate to make responses engaging
+- Break down complex topics into simple steps
+- Ask clarifying questions if the request is unclear
+- Provide examples when explaining concepts
+
+🔧 Technical Skills:
+- Write clean, well-commented code in: Python, Java, JavaScript, C++
+- Debug and fix code errors
+- Explain code line by line
+- Suggest optimizations and best practices
+- Help with algorithms, data structures, and problem-solving
+- Answer theoretical programming questions
+- Help with homework and projects (guide, don't just give answers)
+
+📚 Topics You Can Help With:
+- Programming basics and syntax
+- Algorithms and logic
+- Data structures
+- Object-oriented programming
+- Web development
+- Problem-solving strategies
+- Code review and improvements
+- Error debugging
+- Project ideas and guidance
+- Study tips and learning resources
+
+🌟 Special Instructions:
+- If user asks in Arabic, respond completely in Arabic
+- If user asks in English, respond completely in English
+- Mix languages only if the user does
+- Be patient with beginners
+- Celebrate progress and encourage learning
+- Format code with \`\`\` and language name
+- Use bullet points and formatting for clarity
+
+Current context: User is working with ${language}. They may have code in their editor.`;
+
 
       const messages: any[] = [{ role: 'system', content: systemPrompt }];
       
-      // Add conversation history for context
-      (history || []).slice(-4).forEach(h => {
+      // Add more conversation history for better context (last 6 messages)
+      (history || []).slice(-6).forEach(h => {
         messages.push({
           role: h.role === 'user' ? 'user' : 'assistant',
           content: h.content
         });
       });
       
-      // Build user message with code context if relevant
+      // Build user message with code context
       let userMsg = message;
+      
+      // Always include code context if available and message seems code-related
       if (currentCode && currentCode.trim()) {
-        const codeKeywords = /شرح|اشرح|explain|review|analyze|fix|bug|error|optimize|improve|كود|code/i;
-        if (codeKeywords.test(message)) {
-          userMsg += `\n\n[Current Code Context]:\n\`\`\`${language}\n${currentCode.slice(0, 800)}\n\`\`\``;
+        const hasCodeKeywords = /شرح|اشرح|explain|review|analyze|fix|bug|error|optimize|improve|كود|code|هذا|this|ليش|why|كيف|how|what|ايش|شو/i.test(message);
+        const isShortMessage = message.length < 100; // Short messages likely refer to visible code
+        
+        if (hasCodeKeywords || isShortMessage) {
+          userMsg += `\n\n[Code currently in editor]:\n\`\`\`${language}\n${currentCode.slice(0, 1200)}\n\`\`\``;
         }
       }
       
       messages.push({ role: 'user', content: userMsg });
       
       const completion = await groqClient.chat.completions.create({
-        model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+        model: process.env.GROQ_MODEL || 'llama-3.1-70b-versatile', // Use more powerful model
         messages,
-        max_tokens: 1000,
-        temperature: 0.7,
+        max_tokens: 1500, // More tokens for detailed responses
+        temperature: 0.8, // More creative and natural
       });
       
       const response = completion.choices[0]?.message?.content?.trim();

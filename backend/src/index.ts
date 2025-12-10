@@ -17,6 +17,7 @@ import quizzesRouter from './routes/quizzes.js';
 import tutorialsRouter from './routes/tutorials.js';
 import notificationRouter from './routes/notification.js';
 import chatRouter from './routes/chat.js';
+import collaborationRouter from './routes/collaboration.js';
 import { streamExecutionRouter } from './routes/stream-execution.js';
 import { playgroundExecutionRouter } from './routes/playground-execution.js';
 import { projectExecutionRouter } from './routes/project-execution.js';
@@ -26,6 +27,7 @@ import { logger } from './utils/logger.js';
 import { connectDatabase } from './config/database.js';
 import { Server } from 'socket.io';
 import { setupChat } from './services/chatService.js';
+import { setupCollaboration } from './services/collaborationService.js';
 
 // Load environment variables
 dotenv.config();
@@ -84,6 +86,7 @@ app.use('/api/quizzes', quizzesRouter);
 app.use('/api/tutorials', tutorialsRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/collaboration', collaborationRouter);
 
 // Error handling
 app.use(errorHandler);
@@ -96,6 +99,7 @@ const io = new Server(server, {
 });
 
 setupChat(io);
+setupCollaboration(io);
 
 // Start server with database connection
 
