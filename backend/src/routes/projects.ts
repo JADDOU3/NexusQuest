@@ -214,6 +214,75 @@ endif()`;
             });
         }
 
+        // For Java projects, create a pom.xml file
+        if (projectLanguage === 'java') {
+            const pomXml = `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.nexusquest</groupId>
+    <artifactId>${name.toLowerCase().replace(/\s+/g, '-')}</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>${name}</name>
+    <description>${description || 'A NexusQuest Java project'}</description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Add your dependencies here -->
+        <!-- Example: -->
+        <!--
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+        -->
+    </dependencies>
+
+    <build>
+        <sourceDirectory>.</sourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>Main</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>`;
+
+            files.push({
+                _id: new mongoose.Types.ObjectId(),
+                name: 'pom.xml',
+                content: pomXml,
+                language: 'xml',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            });
+        }
+
         const project = await Project.create({
             name,
             description,
