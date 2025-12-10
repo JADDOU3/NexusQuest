@@ -216,7 +216,12 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
         const hasCppDependencies = language === 'cpp' && files.some(f => {
             if (f.name === 'CMakeLists.txt') {
                 const findPackageRegex = /find_package\s*\(\s*(\w+)(?:\s+REQUIRED|\s+QUIET)?\s*\)/gi;
-                return findPackageRegex.test(f.content);
+                const hasPackages = findPackageRegex.test(f.content);
+                logger.info(`[project-execution] CMakeLists.txt found, has find_package: ${hasPackages}`);
+                if (hasPackages) {
+                    logger.info(`[project-execution] CMakeLists.txt content preview: ${f.content.substring(0, 200)}`);
+                }
+                return hasPackages;
             }
             return false;
         });
