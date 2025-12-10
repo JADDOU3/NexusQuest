@@ -8,6 +8,8 @@ import {
   Edit,
   Trash2,
   X,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useTheme } from '../../context/ThemeContext';
@@ -36,6 +38,13 @@ export default function TutorialManagement() {
     order: 1,
     sections: [],
   });
+  
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [customOnly, setCustomOnly] = useState(false);
 
   useEffect(() => {
     loadTutorials();
@@ -158,13 +167,52 @@ export default function TutorialManagement() {
     setFormData({ ...formData, sections });
   };
 
-  const groupedTutorials = tutorials.reduce((acc, tutorial) => {
+  // Filter tutorials based on search and filters
+  const filteredTutorials = tutorials.filter(tutorial => {
+    // Text search (title, description, sections content)
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = !searchQuery || 
+      tutorial.title.toLowerCase().includes(searchLower) ||
+      tutorial.description.toLowerCase().includes(searchLower) ||
+      tutorial.sections.some(section => 
+        section.title.toLowerCase().includes(searchLower) ||
+        section.content.toLowerCase().includes(searchLower)
+      );
+    
+    // Language filter
+    const matchesLanguage = selectedLanguage === 'all' || tutorial.language === selectedLanguage;
+    
+    // Difficulty filter
+    const matchesDifficulty = selectedDifficulty === 'all' || tutorial.difficulty === selectedDifficulty;
+    
+    // Custom only filter
+    const matchesCustom = !customOnly || tutorial.isCustom;
+    
+    return matchesSearch && matchesLanguage && matchesDifficulty && matchesCustom;
+  });
+
+  const groupedTutorials = filteredTutorials.reduce((acc, tutorial) => {
     if (!acc[tutorial.language]) {
       acc[tutorial.language] = [];
     }
     acc[tutorial.language].push(tutorial);
     return acc;
   }, {} as Record<string, Tutorial[]>);
+  
+  // Get unique languages and difficulties for filters
+  const availableLanguages = [...new Set(tutorials.map(t => t.language))].sort();
+  const availableDifficulties: Array<'beginner' | 'intermediate' | 'advanced'> = ['beginner', 'intermediate', 'advanced'];
+  
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedLanguage('all');
+    setSelectedDifficulty('all');
+    setCustomOnly(false);
+  };
+  
+  // Check if any filters are active
+  const hasActiveFilters = searchQuery || selectedLanguage !== 'all' || selectedDifficulty !== 'all' || customOnly;
 
   if (loading) {
     return (
@@ -187,6 +235,153 @@ export default function TutorialManagement() {
         </Button>
       </div>
 
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tutorials by title, description, or content..."
+            className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
+              theme === 'dark'
+                ? 'bg-gray-900 border-gray-800 focus:border-blue-500'
+                : 'bg-white border-gray-200 focus:border-blue-500'
+            } outline-none transition-colors`}
+          />
+        </div>
+
+        {/* Filter Toggle and Active Filters */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className={showFilters ? 'bg-blue-500/20 text-blue-500' : ''}
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filters
+            </Button>
+            
+            {hasActiveFilters && (
+              <>
+                <span className="text-sm text-gray-400">
+                  {filteredTutorials.length} of {tutorials.length} tutorials
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-red-500 hover:text-red-400"
+                >
+                  Clear Filters
+                </Button>
+              </>
+            )}
+          </div>
+          
+          {/* Active Filter Tags */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {searchQuery && (
+              <span className="px-3 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 flex items-center gap-2">
+                Search: "{searchQuery}"
+                <X className="w-3 h-3 cursor-pointer" onClick={() => setSearchQuery('')} />
+              </span>
+            )}
+            {selectedLanguage !== 'all' && (
+              <span className="px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400 flex items-center gap-2">
+                {selectedLanguage}
+                <X className="w-3 h-3 cursor-pointer" onClick={() => setSelectedLanguage('all')} />
+              </span>
+            )}
+            {selectedDifficulty !== 'all' && (
+              <span className="px-3 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 flex items-center gap-2">
+                {selectedDifficulty}
+                <X className="w-3 h-3 cursor-pointer" onClick={() => setSelectedDifficulty('all')} />
+              </span>
+            )}
+            {customOnly && (
+              <span className="px-3 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400 flex items-center gap-2">
+                Custom Only
+                <X className="w-3 h-3 cursor-pointer" onClick={() => setCustomOnly(false)} />
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Options */}
+        {showFilters && (
+          <div
+            className={`p-4 rounded-lg border ${
+              theme === 'dark'
+                ? 'bg-gray-900 border-gray-800'
+                : 'bg-gray-50 border-gray-200'
+            }`}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Language Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Language</label>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700'
+                      : 'bg-white border-gray-300'
+                  }`}
+                >
+                  <option value="all">All Languages</option>
+                  {availableLanguages.map(lang => (
+                    <option key={lang} value={lang}>
+                      {lang.charAt(0).toUpperCase() + lang.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Difficulty Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Difficulty</label>
+                <select
+                  value={selectedDifficulty}
+                  onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700'
+                      : 'bg-white border-gray-300'
+                  }`}
+                >
+                  <option value="all">All Difficulties</option>
+                  {availableDifficulties.map(diff => (
+                    <option key={diff} value={diff}>
+                      {diff.charAt(0).toUpperCase() + diff.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Custom Only Toggle */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Type</label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={customOnly}
+                    onChange={(e) => setCustomOnly(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-sm">Show Custom Only</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
 
 
       {/* Tutorials List */}
@@ -194,6 +389,22 @@ export default function TutorialManagement() {
         <div className="text-center py-12">
           <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <p className="text-gray-400">Loading tutorials...</p>
+        </div>
+      ) : filteredTutorials.length === 0 ? (
+        <div className="text-center py-12">
+          <Search className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+          <p className="text-gray-400 mb-2">No tutorials found</p>
+          <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="mt-4"
+            >
+              Clear All Filters
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
