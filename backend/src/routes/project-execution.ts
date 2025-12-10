@@ -110,7 +110,22 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
         }
 
         // Check if dependencies need to be installed (requires network access)
-        const needsNetwork = dependencies && Object.keys(dependencies).length > 0;
+        let needsNetwork = dependencies && Object.keys(dependencies).length > 0;
+
+        // Also check files for dependency definitions
+        if (!needsNetwork && files) {
+            if (language === 'javascript') {
+                needsNetwork = files.some(f => f.name === 'package.json');
+            } else if (language === 'python') {
+                needsNetwork = files.some(f => f.name === 'requirements.txt');
+            } else if (language === 'cpp') {
+                needsNetwork = files.some(f =>
+                    f.name === 'conanfile.txt' ||
+                    f.name === 'conanfile.py' ||
+                    (f.name === 'CMakeLists.txt' && /find_package\s*\(\s*(\w+)/.test(f.content))
+                );
+            }
+        }
 
         // Create container
         const container = await docker.createContainer({
@@ -184,8 +199,17 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
             });
         }
 
-        // Install dependencies if specified
-        if (dependencies && Object.keys(dependencies).length > 0) {
+        // Check if C++ project has CMakeLists.txt with find_package() calls
+        const hasCppDependencies = language === 'cpp' && files.some(f => {
+            if (f.name === 'CMakeLists.txt') {
+                const findPackageRegex = /find_package\s*\(\s*(\w+)(?:\s+REQUIRED|\s+QUIET)?\s*\)/gi;
+                return findPackageRegex.test(f.content);
+            }
+            return false;
+        });
+
+        // Install dependencies if specified OR if C++ project has CMakeLists.txt with packages
+        if ((dependencies && Object.keys(dependencies).length > 0) || hasCppDependencies) {
             if (language === 'javascript') {
                 logger.info('[project-execution] Installing JavaScript dependencies');
 
@@ -715,15 +739,57 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                 // Check if project has a conanfile (conanfile.txt or conanfile.py)
                 const hasConanfile = files.some(f => f.name === 'conanfile.txt' || f.name === 'conanfile.py');
 
-                if (hasConanfile || (dependencies && Object.keys(dependencies).length > 0)) {
+                // Parse CMakeLists.txt to extract find_package() calls
+                const cmakeFile = files.find(f => f.name === 'CMakeLists.txt');
+                const requiredPackages: string[] = [];
+
+                if (cmakeFile) {
+                    // Extract find_package() calls from CMakeLists.txt
+                    const findPackageRegex = /find_package\s*\(\s*(\w+)(?:\s+REQUIRED|\s+QUIET)?\s*\)/gi;
+                    let match;
+                    while ((match = findPackageRegex.exec(cmakeFile.content)) !== null) {
+                        const packageName = match[1];
+                        // Skip common system packages
+                        if (!['Threads', 'OpenMP', 'CUDA', 'MPI', 'Boost'].includes(packageName)) {
+                            requiredPackages.push(packageName);
+                        }
+                    }
+
+                    if (requiredPackages.length > 0) {
+                        logger.info('[project-execution] Found packages in CMakeLists.txt:', requiredPackages);
+                    }
+                }
+
+                if (hasConanfile || requiredPackages.length > 0 || (dependencies && Object.keys(dependencies).length > 0)) {
                     logger.info('[project-execution] Installing C++ dependencies with Conan');
 
-                    // Generate conanfile.txt from dependencies object if no conanfile exists
-                    if (!hasConanfile && dependencies && Object.keys(dependencies).length > 0) {
+                    // Generate conanfile.txt from CMakeLists.txt packages or dependencies object
+                    if (!hasConanfile) {
                         let conanContent = '[requires]\n';
-                        Object.entries(dependencies).forEach(([pkg, version]) => {
+
+                        // Add packages from CMakeLists.txt with default versions
+                        const packageVersionMap: Record<string, string> = {
+                            'fmt': '10.1.1',
+                            'nlohmann_json': '3.11.2',
+                            'spdlog': '1.12.0',
+                            'catch2': '3.4.0',
+                            'gtest': '1.14.0'
+                        };
+
+                        requiredPackages.forEach(pkg => {
+                            const version = packageVersionMap[pkg] || 'latest';
                             conanContent += `${pkg}/${version}\n`;
                         });
+
+                        // Add explicit dependencies if provided
+                        if (dependencies && Object.keys(dependencies).length > 0) {
+                            Object.entries(dependencies).forEach(([pkg, version]) => {
+                                if (!requiredPackages.includes(pkg)) {
+                                    conanContent += `${pkg}/${version}\n`;
+                                }
+                            });
+                        }
+
                         conanContent += '\n[generators]\nCMakeDeps\nCMakeToolchain\n';
 
                         // Write conanfile.txt
@@ -733,6 +799,8 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                             AttachStdout: true,
                             AttachStderr: true
                         }).then(e => e.start({}));
+
+                        logger.info('[project-execution] Generated conanfile.txt with packages:', requiredPackages);
                     }
 
                     // Run conan profile detect
