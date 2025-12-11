@@ -269,7 +269,7 @@ export default function CollaborativeEditor({
   };
 
   return (
-    <div className="flex h-full">
+    <div className={`flex h-full ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
@@ -319,7 +319,7 @@ export default function CollaborativeEditor({
               variant="ghost"
               size="sm"
               onClick={() => setShowTerminal(!showTerminal)}
-              className={showTerminal ? 'bg-gray-700' : ''}
+              className={showTerminal ? (theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200') : ''}
             >
               <TerminalIcon className="w-4 h-4" />
             </Button>
@@ -475,7 +475,7 @@ export default function CollaborativeEditor({
               : 'bg-white border-gray-200'
           }`}
         >
-          <div className="p-4 border-b">
+          <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className="font-semibold flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
               Chat
@@ -521,7 +521,7 @@ export default function CollaborativeEditor({
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t">
+          <div className={`p-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex gap-2">
               <input
                 type="text"
