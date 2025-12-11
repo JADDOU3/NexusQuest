@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, X, FolderOpen, Trophy, Settings, ChevronRight, Moon, Sun, Minus, Plus, LogOut } from 'lucide-react';
+import { User, X, FolderOpen, Trophy, Settings, ChevronRight, Moon, Sun, Minus, Plus, LogOut, BookOpen, FileQuestion, Users, MessageSquare } from 'lucide-react';
 import type { Theme, User as UserType } from '../types';
 
 interface UserSidePanelProps {
@@ -78,6 +78,22 @@ export function UserSidePanel({
 
           <button onClick={() => { onClose(); navigate('/leaderboard'); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}>
             <Trophy className="w-5 h-5" /><span>Leaderboard</span>
+          </button>
+
+          <button onClick={() => { onClose(); navigate('/tutorials'); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}>
+            <BookOpen className="w-5 h-5" /><span>Tutorials</span>
+          </button>
+
+          <button onClick={() => { onClose(); navigate('/quizzes'); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}>
+            <FileQuestion className="w-5 h-5" /><span>Quizzes</span>
+          </button>
+
+          <button onClick={() => { onClose(); navigate('/collaboration'); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}>
+            <Users className="w-5 h-5" /><span>Collaborate</span>
+          </button>
+
+          <button onClick={() => { onClose(); navigate('/forum'); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}>
+            <MessageSquare className="w-5 h-5" /><span>Forum</span>
           </button>
 
           {/* Settings Section */}

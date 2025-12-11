@@ -363,45 +363,12 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             }`}>Here's what's happening with your learning journey</p>
           </div>
-          <div className="flex gap-3 flex-wrap">
-            <Button
-              onClick={() => navigate('/tutorials')}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-5 py-2.5 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105"
-            >
-              📚 Tutorials
-            </Button>
-            <Button
-              onClick={() => navigate('/quizzes')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-5 py-2.5 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all duration-300 hover:scale-105"
-            >
-              📝 Quizzes
-            </Button>
-            <Button
-              onClick={() => navigate('/playground')}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-5 py-2.5 shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-all duration-300 hover:scale-105"
-            >
-              ⚡ Playground
-            </Button>
-            <Button
-              onClick={() => navigate('/collaboration')}
-              className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white px-5 py-2.5 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 transition-all duration-300 hover:scale-105"
-            >
-              <Users className="w-4 h-4 mr-2 inline" />
-              Collaborate
-            </Button>
-            <Button
-              onClick={() => navigate('/forum')}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-5 py-2.5 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 hover:scale-105"
-            >
-              💬 Forum
-            </Button>
-            <Button
-              onClick={() => navigate('/projects')}
-              className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white px-5 py-2.5 border border-slate-500/30 transition-all duration-300 hover:scale-105"
-            >
-              + Project
-            </Button>
-          </div>
+          <Button
+            onClick={() => navigate('/playground')}
+            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-5 py-2.5 shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-all duration-300 hover:scale-105"
+          >
+            ⚡ Start Playground
+          </Button>
         </div>
 
         {/* Stats Cards */}
