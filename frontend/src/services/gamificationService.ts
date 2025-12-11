@@ -71,3 +71,25 @@ export async function getAvailableAchievements(): Promise<AvailableAchievement[]
 
     return data.achievements;
 }
+
+export interface AchievementWithStatus extends AvailableAchievement {
+    earned: boolean;
+    unlockedAt?: Date;
+}
+
+export async function getAllAchievementsWithStatus(): Promise<AchievementWithStatus[]> {
+    const [available, profile] = await Promise.all([
+        getAvailableAchievements(),
+        getGamificationProfile(),
+    ]);
+
+    // Map available achievements with unlock status
+    return available.map(achievement => {
+        const unlocked = profile.achievements.find(a => a.id === achievement.id);
+        return {
+            ...achievement,
+            earned: !!unlocked,
+            unlockedAt: unlocked?.unlockedAt,
+        };
+    });
+}

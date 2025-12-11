@@ -7,7 +7,7 @@ import { ProfileHeader, ProfileCard, StatsGrid, ProfileTabs, EditProfileModal } 
 import { getUserStats, getMyProgress, TaskProgress } from '../services/taskService';
 import { getMyLeaderboardRank } from '../services/userService';
 import { getDailyChallengeStats } from '../services/dailyChallengeService';
-import { getGamificationProfile, GamificationProfile } from '../services/gamificationService';
+import { getGamificationProfile, GamificationProfile, getAllAchievementsWithStatus, AchievementWithStatus } from '../services/gamificationService';
 
 interface ProfileProps {
   user: { name: string; email: string } | null;
@@ -31,23 +31,26 @@ export function Profile({ user, onLogout }: ProfileProps) {
   const [globalRank, setGlobalRank] = useState<number | null>(null);
   const [streak, setStreak] = useState(0);
   const [gamificationProfile, setGamificationProfile] = useState<GamificationProfile | null>(null);
+  const [allAchievements, setAllAchievements] = useState<AchievementWithStatus[]>([]);
 
   // Load real stats from API
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const [stats, completed, leaderboard, dailyStats, gamification] = await Promise.all([
+        const [stats, completed, leaderboard, dailyStats, gamification, achievementsWithStatus] = await Promise.all([
           getUserStats(),
           getMyProgress('completed'),
           getMyLeaderboardRank(),
           getDailyChallengeStats(),
           getGamificationProfile(),
+          getAllAchievementsWithStatus(),
         ]);
 
         setTotalPoints(stats.totalPoints);
         setCompletedCount(stats.completedTasks);
         setCompletedTasks(completed);
         setGamificationProfile(gamification);
+        setAllAchievements(achievementsWithStatus);
 
         if (leaderboard && typeof leaderboard.rank === 'number') {
           setGlobalRank(leaderboard.rank);
@@ -173,14 +176,15 @@ export function Profile({ user, onLogout }: ProfileProps) {
     };
   });
 
-  // Map real achievements from gamification profile
-  const achievements = gamificationProfile?.achievements.map((ach, index) => ({
+  // Map all achievements (both locked and unlocked)
+  const achievements = allAchievements.map((ach, index) => ({
     id: index + 1,
     title: ach.title,
     description: ach.description,
-    earned: true,
-    icon: ach.icon
-  })) || [];
+    earned: ach.earned,
+    icon: ach.icon,
+    unlockedAt: ach.unlockedAt,
+  }));
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' : 'bg-gradient-to-br from-gray-50 via-white to-gray-50'}`}>
