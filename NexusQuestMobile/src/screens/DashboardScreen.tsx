@@ -46,7 +46,20 @@ export default function DashboardScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Welcome, {user?.name}! 👋</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Profile')} 
+            style={styles.iconButton}
+          >
+            <Text style={styles.iconText}>👤</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Chat')} 
+            style={styles.iconButton}
+          >
+            <Text style={styles.iconText}>💬</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity onPress={toggleTheme} style={styles.themeButton}>
             <Text style={styles.themeText}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
@@ -106,11 +119,23 @@ const getStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    flex: 1,
+  headerLeft: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  iconButton: {
+    backgroundColor: colors.surface,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  iconText: {
+    fontSize: 22,
   },
   headerButtons: {
     flexDirection: 'row',
