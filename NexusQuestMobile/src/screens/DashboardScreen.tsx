@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { getStoredUser, logout, User } from '../services/authService';
 import { useTheme } from '../context/ThemeContext';
 import { getUserStats, getMyLeaderboardRank, UserStats, LeaderboardMe } from '../services/statsService';
+import BottomNavigation from '../components/BottomNavigation';
 
 export default function DashboardScreen({ navigation }: any) {
   const [user, setUser] = useState<User | null>(null);
@@ -58,40 +59,6 @@ export default function DashboardScreen({ navigation }: any) {
 
       <ScrollView style={styles.content}>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>🎯 Quick Actions</Text>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Tutorials')}
-          >
-            <Text style={styles.actionText}>📚 Tutorials</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Quizzes')}
-          >
-            <Text style={styles.actionText}>📝 Quizzes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Playground')}
-          >
-            <Text style={styles.actionText}>⚡ Playground</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Chat')}
-          >
-            <Text style={styles.actionText}>💬 Chat</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Leaderboard')}
-          >
-            <Text style={styles.actionText}>🏆 Leaderboard</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.card}>
           <Text style={styles.cardTitle}>📊 Your Stats</Text>
           {loading ? (
             <ActivityIndicator size="large" color={colors.primary} />
@@ -108,7 +75,19 @@ export default function DashboardScreen({ navigation }: any) {
             </View>
           )}
         </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>⚡ Quick Start</Text>
+          <TouchableOpacity 
+            style={styles.playgroundButton}
+            onPress={() => navigation.navigate('Playground')}
+          >
+            <Text style={styles.playgroundText}>🚀 Start Playground</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      <BottomNavigation navigation={navigation} activeRoute="Dashboard" />
     </View>
   );
 }
@@ -176,18 +155,16 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.text,
     marginBottom: 15,
   },
-  actionButton: {
-    backgroundColor: colors.surface,
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+  playgroundButton: {
+    backgroundColor: colors.primary,
+    padding: 18,
+    borderRadius: 12,
+    alignItems: 'center',
   },
-  actionText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+  playgroundText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   statsRow: {
     flexDirection: 'row',

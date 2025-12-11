@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Code2, Trophy, Target, BookOpen, Clock, Star, TrendingUp, Award, User, MessageCircle, Users } from 'lucide-react';
+import { Code2, Trophy, Target, BookOpen, Clock, Star, TrendingUp, Award, User, MessageCircle, Users, Home, FileQuestion, MessageSquare } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
 import { getMyProgress, TaskProgress, getUserStats, UserStats } from '../services/taskService';
@@ -29,6 +29,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   const [allUsers, setAllUsers] = useState<ChatUser[]>([]);
   const storedUser = getStoredUser();
   const isTeacher = storedUser?.role === 'teacher';
+  const [activeTab, setActiveTab] = useState('home');
 
   // Redirect teachers to their dashboard
   useEffect(() => {
@@ -350,22 +351,22 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
       )}
    
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pb-24 md:pb-8">
         {/* Welcome Section */}
-        <div className="mb-10 flex items-center justify-between">
+        <div className="mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className={`text-4xl font-bold mb-3 ${
+            <h1 className={`text-2xl md:text-4xl font-bold mb-2 md:mb-3 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               Welcome back, <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">{user?.name?.split(' ')[0]}</span>! 👋
             </h1>
-            <p className={`text-lg ${
+            <p className={`text-sm md:text-lg ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             }`}>Here's what's happening with your learning journey</p>
           </div>
           <Button
             onClick={() => navigate('/playground')}
-            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-5 py-2.5 shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-all duration-300 hover:scale-105"
+            className="w-full md:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-5 py-2.5 shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-all duration-300 hover:scale-105"
           >
             ⚡ Start Playground
           </Button>
@@ -681,6 +682,110 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           </div>
         </div>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t backdrop-blur-lg z-40 ${
+        theme === 'dark'
+          ? 'bg-gray-900/95 border-gray-800'
+          : 'bg-white/95 border-gray-200'
+      }`}>
+        <div className="flex items-center justify-around h-16 px-2">
+          <button
+            onClick={() => {
+              setActiveTab('home');
+              navigate('/dashboard');
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+              activeTab === 'home'
+                ? theme === 'dark'
+                  ? 'text-blue-400'
+                  : 'text-blue-600'
+                : theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Home className="w-5 h-5 mb-1" />
+            <span className="text-xs font-medium">Home</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('tutorials');
+              navigate('/tutorials');
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+              activeTab === 'tutorials'
+                ? theme === 'dark'
+                  ? 'text-blue-400'
+                  : 'text-blue-600'
+                : theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <BookOpen className="w-5 h-5 mb-1" />
+            <span className="text-xs font-medium">Tutorials</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('quizzes');
+              navigate('/quizzes');
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+              activeTab === 'quizzes'
+                ? theme === 'dark'
+                  ? 'text-blue-400'
+                  : 'text-blue-600'
+                : theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <FileQuestion className="w-5 h-5 mb-1" />
+            <span className="text-xs font-medium">Quizzes</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('forum');
+              navigate('/forum');
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+              activeTab === 'forum'
+                ? theme === 'dark'
+                  ? 'text-blue-400'
+                  : 'text-blue-600'
+                : theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <MessageSquare className="w-5 h-5 mb-1" />
+            <span className="text-xs font-medium">Forum</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('collaborate');
+              navigate('/collaboration');
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+              activeTab === 'collaborate'
+                ? theme === 'dark'
+                  ? 'text-blue-400'
+                  : 'text-blue-600'
+                : theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Users className="w-5 h-5 mb-1" />
+            <span className="text-xs font-medium">Collaborate</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
