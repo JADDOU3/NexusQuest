@@ -42,9 +42,13 @@ export interface AvailableAchievement {
     hidden: boolean;
 }
 
-export async function getGamificationProfile(): Promise<GamificationProfile> {
+export async function getGamificationProfile(targetUserId?: string): Promise<GamificationProfile> {
     const token = localStorage.getItem('nexusquest-token');
-    const response = await fetch(`${API_URL}/gamification/profile`, {
+    const url = targetUserId
+        ? `${API_URL}/gamification/profile?targetUserId=${targetUserId}`
+        : `${API_URL}/gamification/profile`;
+
+    const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${token}`,
         },
