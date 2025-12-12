@@ -23,6 +23,7 @@ interface Achievement {
   description: string;
   earned: boolean;
   icon: string;
+  hidden?: boolean;
 }
 
 interface ProfileTabsProps {
@@ -113,18 +114,25 @@ export function ProfileTabs({ activeTab, onTabChange, skills, recentActivity, ac
               <Award className="w-5 h-5 text-blue-500" />Achievements
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {achievements.map((achievement) => (
-                <div key={achievement.id} className={`${achievement.earned ? theme === 'dark' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30' : 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300' : theme === 'dark' ? 'bg-gray-800/30 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-lg p-4 ${achievement.earned ? '' : 'opacity-50'}`}>
-                  <div className="flex items-start gap-3">
-                    <div className="text-3xl">{achievement.icon}</div>
-                    <div className="flex-1">
-                      <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-1`}>{achievement.title}</h4>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{achievement.description}</p>
+              {achievements.map((achievement) => {
+                const isLocked = !achievement.earned && achievement.hidden;
+                return (
+                  <div key={achievement.id} className={`${achievement.earned ? theme === 'dark' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30' : 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300' : theme === 'dark' ? 'bg-gray-800/30 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-lg p-4 ${achievement.earned ? '' : 'opacity-50'}`}>
+                    <div className="flex items-start gap-3">
+                      <div className="text-3xl">{isLocked ? '🔒' : achievement.icon}</div>
+                      <div className="flex-1">
+                        <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-1`}>
+                          {isLocked ? '???' : achievement.title}
+                        </h4>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {isLocked ? 'Hidden achievement - unlock to reveal!' : achievement.description}
+                        </p>
+                      </div>
+                      {achievement.earned && <CheckCircle className="w-5 h-5 text-green-500" />}
                     </div>
-                    {achievement.earned && <CheckCircle className="w-5 h-5 text-green-500" />}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

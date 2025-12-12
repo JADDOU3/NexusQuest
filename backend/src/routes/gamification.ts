@@ -228,18 +228,22 @@ router.post('/unlock-achievement', authMiddleware, async (req: AuthRequest, res:
 router.get('/available-achievements', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const achievements = [
-            { id: 'first_task', title: 'First Steps', description: 'Complete your first task', icon: '🎯', category: 'tasks', requirement: 1 },
-            { id: 'task_master_5', title: 'Task Master', description: 'Complete 5 tasks', icon: '⭐', category: 'tasks', requirement: 5 },
-            { id: 'task_legend_10', title: 'Task Legend', description: 'Complete 10 tasks', icon: '🏆', category: 'tasks', requirement: 10 },
-            { id: 'first_quiz', title: 'Quiz Beginner', description: 'Complete your first quiz', icon: '📝', category: 'quizzes', requirement: 1 },
-            { id: 'quiz_expert_5', title: 'Quiz Expert', description: 'Complete 5 quizzes', icon: '🎓', category: 'quizzes', requirement: 5 },
-            { id: 'first_tutorial', title: 'Learning Journey', description: 'Complete your first tutorial', icon: '📚', category: 'tutorials', requirement: 1 },
-            { id: 'tutorial_scholar_5', title: 'Tutorial Scholar', description: 'Complete 5 tutorials', icon: '🧠', category: 'tutorials', requirement: 5 },
-            { id: 'streak_3', title: 'On Fire!', description: '3 day streak', icon: '🔥', category: 'streak', requirement: 3 },
-            { id: 'streak_7', title: 'Week Warrior', description: '7 day streak', icon: '💪', category: 'streak', requirement: 7 },
-            { id: 'social_butterfly', title: 'Social Butterfly', description: 'Send 10 messages', icon: '💬', category: 'social', requirement: 10 },
-            { id: 'level_5', title: 'Rising Star', description: 'Reach level 5', icon: '⭐', category: 'special', requirement: 5 },
-            { id: 'level_10', title: 'Elite Coder', description: 'Reach level 10', icon: '👑', category: 'special', requirement: 10 },
+            { id: 'first_task', title: 'First Steps', description: 'Complete your first task', icon: '🎯', category: 'tasks', requirement: 1, hidden: false },
+            { id: 'task_master_5', title: 'Task Master', description: 'Complete 5 tasks', icon: '⭐', category: 'tasks', requirement: 5, hidden: false },
+            { id: 'task_legend_10', title: 'Task Legend', description: 'Complete 10 tasks', icon: '🏆', category: 'tasks', requirement: 10, hidden: false },
+            { id: 'first_project', title: 'Project Pioneer', description: 'Create your first project', icon: '🚀', category: 'projects', requirement: 1, hidden: false },
+            { id: 'project_creator_5', title: 'Project Creator', description: 'Create 5 projects', icon: '📁', category: 'projects', requirement: 5, hidden: true },
+            { id: 'project_master_10', title: 'Project Master', description: 'Create 10 projects', icon: '🗂️', category: 'projects', requirement: 10, hidden: true },
+            { id: 'polyglot', title: 'Polyglot Programmer', description: 'Create a project in all available languages', icon: '🌐', category: 'special', requirement: 4, hidden: true },
+            { id: 'first_quiz', title: 'Quiz Beginner', description: 'Complete your first quiz', icon: '📝', category: 'quizzes', requirement: 1, hidden: false },
+            { id: 'quiz_expert_5', title: 'Quiz Expert', description: 'Complete 5 quizzes', icon: '🎓', category: 'quizzes', requirement: 5, hidden: false },
+            { id: 'first_tutorial', title: 'Learning Journey', description: 'Complete your first tutorial', icon: '📚', category: 'tutorials', requirement: 1, hidden: false },
+            { id: 'tutorial_scholar_5', title: 'Tutorial Scholar', description: 'Complete 5 tutorials', icon: '🧠', category: 'tutorials', requirement: 5, hidden: false },
+            { id: 'streak_3', title: 'On Fire!', description: '3 day streak', icon: '🔥', category: 'streak', requirement: 3, hidden: true },
+            { id: 'streak_7', title: 'Week Warrior', description: '7 day streak', icon: '💪', category: 'streak', requirement: 7, hidden: true },
+            { id: 'social_butterfly', title: 'Social Butterfly', description: 'Send 10 messages', icon: '💬', category: 'social', requirement: 10, hidden: true },
+            { id: 'level_5', title: 'Rising Star', description: 'Reach level 5', icon: '⭐', category: 'special', requirement: 5, hidden: false },
+            { id: 'level_10', title: 'Elite Coder', description: 'Reach level 10', icon: '👑', category: 'special', requirement: 10, hidden: false },
         ];
 
         res.json({

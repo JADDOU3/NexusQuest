@@ -183,6 +183,7 @@ export function Profile({ user, onLogout }: ProfileProps) {
     description: ach.description,
     earned: ach.earned,
     icon: ach.icon,
+    hidden: ach.hidden,
     unlockedAt: ach.unlockedAt,
   }));
 

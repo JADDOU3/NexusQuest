@@ -38,6 +38,7 @@ export interface AvailableAchievement {
     icon: string;
     category: string;
     requirement: number;
+    hidden: boolean;
 }
 
 export async function getGamificationProfile(): Promise<GamificationProfile> {

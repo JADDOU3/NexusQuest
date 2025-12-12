@@ -2,6 +2,7 @@ import { User } from '../models/User.js';
 import UserSkill from '../models/UserSkill.js';
 import Achievement from '../models/Achievement.js';
 import { UserTaskProgress } from '../models/UserTaskProgress.js';
+import { Project } from '../models/Project.js';
 
 // XP required for each level (exponential growth)
 const getXPForLevel = (level: number): number => {
@@ -147,6 +148,52 @@ async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
         }
     }
 
+    // Project achievements
+    const totalProjects = await Project.countDocuments({ owner: userId });
+    const projectAchievements = [
+        { id: 'first_project', title: 'Project Pioneer', description: 'Create your first project', icon: '🚀', category: 'projects', requirement: 1 },
+        { id: 'project_creator_5', title: 'Project Creator', description: 'Create 5 projects', icon: '📁', category: 'projects', requirement: 5 },
+        { id: 'project_master_10', title: 'Project Master', description: 'Create 10 projects', icon: '🗂️', category: 'projects', requirement: 10 },
+    ];
+
+    for (const ach of projectAchievements) {
+        if (totalProjects >= ach.requirement) {
+            const existing = await Achievement.findOne({ userId, achievementId: ach.id });
+            if (!existing) {
+                const achievement = await Achievement.create({
+                    userId,
+                    achievementId: ach.id,
+                    title: ach.title,
+                    description: ach.description,
+                    icon: ach.icon,
+                    category: ach.category,
+                });
+                newAchievements.push(achievement);
+            }
+        }
+    }
+
+    // Polyglot achievement - create a project in all 4 languages
+    const languages = ['python', 'javascript', 'java', 'cpp'];
+    const userProjects = await Project.find({ owner: userId }).select('language');
+    const uniqueLanguages = new Set(userProjects.map(p => p.language));
+
+    if (uniqueLanguages.size >= languages.length) {
+        const polyglotAch = { id: 'polyglot', title: 'Polyglot Programmer', description: 'Create a project in all available languages', icon: '🌐', category: 'special' };
+        const existing = await Achievement.findOne({ userId, achievementId: polyglotAch.id });
+        if (!existing) {
+            const achievement = await Achievement.create({
+                userId,
+                achievementId: polyglotAch.id,
+                title: polyglotAch.title,
+                description: polyglotAch.description,
+                icon: polyglotAch.icon,
+                category: polyglotAch.category,
+            });
+            newAchievements.push(achievement);
+        }
+    }
+
     // Level achievements
     const user = await User.findById(userId);
     if (user) {
@@ -174,4 +221,8 @@ async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
     }
 
     return newAchievements;
+}
+
+export async function checkProjectAchievements(userId: string): Promise<any[]> {
+    return checkAndUnlockAchievements(userId);
 }
