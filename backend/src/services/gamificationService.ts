@@ -3,6 +3,8 @@ import UserSkill from '../models/UserSkill.js';
 import Achievement from '../models/Achievement.js';
 import { UserTaskProgress } from '../models/UserTaskProgress.js';
 import { Project } from '../models/Project.js';
+import { Notification } from '../models/Notification.js';
+import { NotificationType } from '../enums/NotificationType.js';
 
 // XP required for each level (exponential growth)
 const getXPForLevel = (level: number): number => {
@@ -117,6 +119,7 @@ export async function awardXPForQuiz(userId: string, quizPoints: number): Promis
 
 async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
     const newAchievements: any[] = [];
+    const achievementXPBonus = 50; // XP bonus for unlocking an achievement
 
     // Get user's completed tasks count
     const completedTasks = await UserTaskProgress.countDocuments({
@@ -144,6 +147,39 @@ async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
                     category: ach.category,
                 });
                 newAchievements.push(achievement);
+
+                // Create notification for achievement unlock
+                try {
+                    await Notification.create({
+                        userId,
+                        type: NotificationType.ACHIEVEMENT_UNLOCKED,
+                        message: `🏆 Achievement Unlocked: ${ach.title}!`,
+                        metadata: {
+                            achievementId: ach.id,
+                            achievementTitle: ach.title,
+                            achievementIcon: ach.icon,
+                            xpBonus: achievementXPBonus,
+                        },
+                        read: false,
+                    });
+                } catch (notifyError) {
+                    console.error('Failed to create achievement notification:', notifyError);
+                }
+
+                // Award XP bonus for achievement
+                try {
+                    const user = await User.findById(userId);
+                    if (user) {
+                        user.xp += achievementXPBonus;
+                        const newLevel = calculateLevel(user.xp);
+                        if (newLevel > user.level) {
+                            user.level = newLevel;
+                        }
+                        await user.save();
+                    }
+                } catch (xpError) {
+                    console.error('Failed to award achievement XP:', xpError);
+                }
             }
         }
     }
@@ -169,6 +205,39 @@ async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
                     category: ach.category,
                 });
                 newAchievements.push(achievement);
+
+                // Create notification for achievement unlock
+                try {
+                    await Notification.create({
+                        userId,
+                        type: NotificationType.ACHIEVEMENT_UNLOCKED,
+                        message: `🏆 Achievement Unlocked: ${ach.title}!`,
+                        metadata: {
+                            achievementId: ach.id,
+                            achievementTitle: ach.title,
+                            achievementIcon: ach.icon,
+                            xpBonus: achievementXPBonus,
+                        },
+                        read: false,
+                    });
+                } catch (notifyError) {
+                    console.error('Failed to create achievement notification:', notifyError);
+                }
+
+                // Award XP bonus for achievement
+                try {
+                    const user = await User.findById(userId);
+                    if (user) {
+                        user.xp += achievementXPBonus;
+                        const newLevel = calculateLevel(user.xp);
+                        if (newLevel > user.level) {
+                            user.level = newLevel;
+                        }
+                        await user.save();
+                    }
+                } catch (xpError) {
+                    console.error('Failed to award achievement XP:', xpError);
+                }
             }
         }
     }
@@ -191,6 +260,39 @@ async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
                 category: polyglotAch.category,
             });
             newAchievements.push(achievement);
+
+            // Create notification for achievement unlock
+            try {
+                await Notification.create({
+                    userId,
+                    type: NotificationType.ACHIEVEMENT_UNLOCKED,
+                    message: `🏆 Achievement Unlocked: ${polyglotAch.title}!`,
+                    metadata: {
+                        achievementId: polyglotAch.id,
+                        achievementTitle: polyglotAch.title,
+                        achievementIcon: polyglotAch.icon,
+                        xpBonus: achievementXPBonus,
+                    },
+                    read: false,
+                });
+            } catch (notifyError) {
+                console.error('Failed to create achievement notification:', notifyError);
+            }
+
+            // Award XP bonus for achievement
+            try {
+                const user = await User.findById(userId);
+                if (user) {
+                    user.xp += achievementXPBonus;
+                    const newLevel = calculateLevel(user.xp);
+                    if (newLevel > user.level) {
+                        user.level = newLevel;
+                    }
+                    await user.save();
+                }
+            } catch (xpError) {
+                console.error('Failed to award achievement XP:', xpError);
+            }
         }
     }
 
@@ -215,6 +317,39 @@ async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
                         category: ach.category,
                     });
                     newAchievements.push(achievement);
+
+                    // Create notification for achievement unlock
+                    try {
+                        await Notification.create({
+                            userId,
+                            type: NotificationType.ACHIEVEMENT_UNLOCKED,
+                            message: `🏆 Achievement Unlocked: ${ach.title}!`,
+                            metadata: {
+                                achievementId: ach.id,
+                                achievementTitle: ach.title,
+                                achievementIcon: ach.icon,
+                                xpBonus: achievementXPBonus,
+                            },
+                            read: false,
+                        });
+                    } catch (notifyError) {
+                        console.error('Failed to create achievement notification:', notifyError);
+                    }
+
+                    // Award XP bonus for achievement
+                    try {
+                        const user = await User.findById(userId);
+                        if (user) {
+                            user.xp += achievementXPBonus;
+                            const newLevel = calculateLevel(user.xp);
+                            if (newLevel > user.level) {
+                                user.level = newLevel;
+                            }
+                            await user.save();
+                        }
+                    } catch (xpError) {
+                        console.error('Failed to award achievement XP:', xpError);
+                    }
                 }
             }
         }
