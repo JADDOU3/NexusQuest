@@ -29,6 +29,7 @@ export interface GamificationProfile {
     skills: Skill[];
     achievements: Achievement[];
     totalAchievements: number;
+    isPublic: boolean;
 }
 
 export interface AvailableAchievement {

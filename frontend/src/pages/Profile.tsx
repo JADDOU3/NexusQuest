@@ -32,6 +32,7 @@ export function Profile({ user, onLogout }: ProfileProps) {
   const [streak, setStreak] = useState(0);
   const [gamificationProfile, setGamificationProfile] = useState<GamificationProfile | null>(null);
   const [allAchievements, setAllAchievements] = useState<AchievementWithStatus[]>([]);
+  const [isPublic, setIsPublic] = useState(true);
 
   // Load real stats from API
   useEffect(() => {
@@ -51,6 +52,7 @@ export function Profile({ user, onLogout }: ProfileProps) {
         setCompletedTasks(completed);
         setGamificationProfile(gamification);
         setAllAchievements(achievementsWithStatus);
+        setIsPublic(gamification.isPublic ?? true);
 
         if (leaderboard && typeof leaderboard.rank === 'number') {
           setGlobalRank(leaderboard.rank);
@@ -67,6 +69,31 @@ export function Profile({ user, onLogout }: ProfileProps) {
     };
     loadStats();
   }, []);
+
+  const handlePrivacyChange = async (newIsPublic: boolean) => {
+    try {
+      const token = localStorage.getItem('nexusquest-token');
+      const response = await fetch('http://localhost:9876/api/gamification/profile/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isPublic: newIsPublic }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setIsPublic(newIsPublic);
+      } else {
+        console.error('Failed to update privacy settings:', data.error);
+        alert('Failed to update privacy settings');
+      }
+    } catch (error) {
+      console.error('Error updating privacy settings:', error);
+      alert('Failed to update privacy settings');
+    }
+  };
 
   const saveProfileChanges = async () => {
     if (editPassword && editPassword !== editConfirmPassword) {
@@ -226,6 +253,8 @@ export function Profile({ user, onLogout }: ProfileProps) {
           skills={skills}
           recentActivity={recentActivity}
           achievements={achievements}
+          isPublic={isPublic}
+          onPrivacyChange={handlePrivacyChange}
         />
       </div>
 

@@ -29,12 +29,18 @@ const calculateLevel = (totalXP: number): number => {
 /**
  * GET /api/gamification/profile
  * Get user's gamification profile (XP, level, skills, achievements)
+ * Respects privacy settings - only shows public profiles to other users
  */
 router.get('/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.userId;
+        const { targetUserId } = req.query;
 
-        const user = await User.findById(userId);
+        // If viewing another user's profile, check privacy settings
+        const viewingUserId = targetUserId ? targetUserId.toString() : userId;
+        const isOwnProfile = viewingUserId === userId;
+
+        const user = await User.findById(viewingUserId);
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -42,8 +48,20 @@ router.get('/profile', authMiddleware, async (req: AuthRequest, res: Response) =
             });
         }
 
-        const skills = await UserSkill.find({ userId }).sort({ totalXp: -1 });
-        const achievements = await Achievement.find({ userId }).sort({ unlockedAt: -1 });
+        // Check privacy settings - if profile is private and not own profile, return limited info
+        if (!user.isPublic && !isOwnProfile) {
+            return res.status(403).json({
+                success: false,
+                error: 'This profile is private',
+                profile: {
+                    name: user.name,
+                    isPublic: false,
+                },
+            });
+        }
+
+        const skills = await UserSkill.find({ userId: viewingUserId }).sort({ totalXp: -1 });
+        const achievements = await Achievement.find({ userId: viewingUserId }).sort({ unlockedAt: -1 });
 
         // Calculate current level progress
         const currentLevel = user.level;
@@ -55,12 +73,14 @@ router.get('/profile', authMiddleware, async (req: AuthRequest, res: Response) =
         res.json({
             success: true,
             profile: {
+                name: user.name,
                 xp: user.xp,
                 totalXp: user.xp,
                 level: user.level,
                 xpProgress,
                 xpNeeded,
                 xpPercentage: Math.floor((xpProgress / xpNeeded) * 100),
+                isPublic: user.isPublic,
                 skills: skills.map(skill => ({
                     name: skill.skillName,
                     level: skill.level,
@@ -253,6 +273,46 @@ router.get('/available-achievements', authMiddleware, async (req: AuthRequest, r
         res.status(500).json({
             success: false,
             error: 'Failed to fetch available achievements',
+        });
+    }
+});
+
+/**
+ * PUT /api/gamification/profile/settings
+ * Update user profile settings (privacy, etc.)
+ */
+router.put('/profile/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.userId;
+        const { isPublic } = req.body;
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found',
+            });
+        }
+
+        // Update privacy setting
+        if (typeof isPublic === 'boolean') {
+            user.isPublic = isPublic;
+        }
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Profile settings updated successfully',
+            settings: {
+                isPublic: user.isPublic,
+            },
+        });
+    } catch (error) {
+        console.error('Error updating profile settings:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to update profile settings',
         });
     }
 });

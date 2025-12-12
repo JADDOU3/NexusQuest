@@ -1,5 +1,4 @@
 import { Target, Clock, Award, Settings, CheckCircle } from 'lucide-react';
-import { Button } from '../ui/button';
 import { useTheme } from '../../context/ThemeContext';
 import { getStatColor } from './StatsGrid';
 
@@ -33,9 +32,11 @@ interface ProfileTabsProps {
   recentActivity: Activity[];
   achievements: Achievement[];
   showSettings?: boolean;
+  isPublic?: boolean;
+  onPrivacyChange?: (isPublic: boolean) => void;
 }
 
-export function ProfileTabs({ activeTab, onTabChange, skills, recentActivity, achievements, showSettings = true }: ProfileTabsProps) {
+export function ProfileTabs({ activeTab, onTabChange, skills, recentActivity, achievements, showSettings = true, isPublic = true, onPrivacyChange }: ProfileTabsProps) {
   const { theme } = useTheme();
 
   const tabs = (showSettings
@@ -145,22 +146,23 @@ export function ProfileTabs({ activeTab, onTabChange, skills, recentActivity, ac
               </h3>
               <div className="space-y-4">
                 <div className={`${theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-lg p-4`}>
-                  <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>Email Notifications</h4>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-3`}>Receive updates about your progress</p>
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" defaultChecked />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Enable notifications</span>
-                  </label>
-                </div>
-                <div className={`${theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-lg p-4`}>
                   <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>Privacy</h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-3`}>Control who can see your profile</p>
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" defaultChecked />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Make profile public</span>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 text-blue-600 rounded cursor-pointer" 
+                      checked={isPublic}
+                      onChange={(e) => onPrivacyChange?.(e.target.checked)}
+                    />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Make profile public
+                    </span>
                   </label>
+                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'} mt-2`}>
+                    {isPublic ? 'Your profile is visible to everyone' : 'Your profile is private and only visible to you'}
+                  </p>
                 </div>
-                <Button className="w-full bg-red-600 hover:bg-red-700 text-white">Delete Account</Button>
               </div>
             </div>
           </div>

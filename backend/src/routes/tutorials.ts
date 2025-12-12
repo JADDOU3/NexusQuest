@@ -350,20 +350,6 @@ router.post('/:id/complete', authMiddleware, async (req: AuthRequest, res: Respo
         console.error('Failed to create tutorial completion notification:', notifyError);
       }
 
-      // Check and unlock tutorial achievements
-      try {
-        if (req.userId) {
-          const newAchievements = await checkTutorialAchievements(req.userId.toString());
-          if (newAchievements.length > 0) {
-            console.log(`🏆 Unlocked ${newAchievements.length} new achievements:`);
-            newAchievements.forEach((ach: any) => {
-              console.log(`   - ${ach.icon} ${ach.title}`);
-            });
-          }
-        }
-      } catch (achievementError) {
-        console.error('Failed to check tutorial achievements:', achievementError);
-      }
     }
 
     res.json({ success: true, data: progress });
