@@ -5,6 +5,7 @@ import { UserTaskProgress } from '../models/UserTaskProgress.js';
 import { Project } from '../models/Project.js';
 import { Notification } from '../models/Notification.js';
 import { NotificationType } from '../enums/NotificationType.js';
+import { QuizSubmission } from '../models/Quiz.js';
 
 // XP required for each level (exponential growth)
 const getXPForLevel = (level: number): number => {
@@ -296,6 +297,67 @@ async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
         }
     }
 
+    // Quiz achievements
+    const completedQuizzes = await QuizSubmission.countDocuments({
+        userId,
+        status: { $in: ['passed', 'submitted'] },
+    });
+
+    const quizAchievements = [
+        { id: 'first_quiz', title: 'Quiz Beginner', description: 'Complete your first quiz', icon: '📝', category: 'quizzes', requirement: 1 },
+        { id: 'quiz_expert_5', title: 'Quiz Expert', description: 'Complete 5 quizzes', icon: '🎓', category: 'quizzes', requirement: 5 },
+    ];
+
+    for (const ach of quizAchievements) {
+        if (completedQuizzes >= ach.requirement) {
+            const existing = await Achievement.findOne({ userId, achievementId: ach.id });
+            if (!existing) {
+                const achievement = await Achievement.create({
+                    userId,
+                    achievementId: ach.id,
+                    title: ach.title,
+                    description: ach.description,
+                    icon: ach.icon,
+                    category: ach.category,
+                });
+                newAchievements.push(achievement);
+
+                // Create notification for achievement unlock
+                try {
+                    await Notification.create({
+                        userId,
+                        type: NotificationType.ACHIEVEMENT_UNLOCKED,
+                        message: `🏆 Achievement Unlocked: ${ach.title}!`,
+                        metadata: {
+                            achievementId: ach.id,
+                            achievementTitle: ach.title,
+                            achievementIcon: ach.icon,
+                            xpBonus: achievementXPBonus,
+                        },
+                        read: false,
+                    });
+                } catch (notifyError) {
+                    console.error('Failed to create achievement notification:', notifyError);
+                }
+
+                // Award XP bonus for achievement
+                try {
+                    const user = await User.findById(userId);
+                    if (user) {
+                        user.xp += achievementXPBonus;
+                        const newLevel = calculateLevel(user.xp);
+                        if (newLevel > user.level) {
+                            user.level = newLevel;
+                        }
+                        await user.save();
+                    }
+                } catch (xpError) {
+                    console.error('Failed to award achievement XP:', xpError);
+                }
+            }
+        }
+    }
+
     // Level achievements
     const user = await User.findById(userId);
     if (user) {
@@ -359,5 +421,9 @@ async function checkAndUnlockAchievements(userId: string): Promise<any[]> {
 }
 
 export async function checkProjectAchievements(userId: string): Promise<any[]> {
+    return checkAndUnlockAchievements(userId);
+}
+
+export async function checkQuizAchievements(userId: string): Promise<any[]> {
     return checkAndUnlockAchievements(userId);
 }
