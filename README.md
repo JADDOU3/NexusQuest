@@ -259,6 +259,7 @@ NexusQuest/
 │   │   ├── utils/           # Helper functions
 │   │   └── index.ts         # Entry point
 │   ├── uploads/             # User uploads
+│   ├── Dockerfile           # Backend Docker configuration
 │   └── package.json
 │
 ├── frontend/
@@ -272,9 +273,160 @@ NexusQuest/
 │   │   ├── constants/       # Constants and configs
 │   │   └── main.tsx         # Entry point
 │   ├── public/              # Static assets
+│   ├── Dockerfile           # Frontend Docker configuration
 │   └── package.json
 │
+├── mobile/
+│   ├── src/
+│   │   ├── screens/         # Mobile screens
+│   │   ├── components/      # Reusable components
+│   │   ├── navigation/      # Navigation configuration
+│   │   ├── services/        # API services
+│   │   ├── store/           # State management
+│   │   └── utils/           # Helper functions
+│   ├── assets/              # Images, fonts, etc.
+│   ├── android/             # Android native code
+│   ├── ios/                 # iOS native code
+│   └── package.json
+│
+├── docker-compose.yml       # Docker Compose configuration
+├── .dockerignore            # Docker ignore file
 └── README.md
+```
+
+---
+
+## 📱 Mobile Application
+
+### Overview
+
+NexusQuest includes a native mobile application built with **React Native**, providing students and teachers with on-the-go access to the platform's core features.
+
+### Technology Stack
+
+- **Framework**: React Native
+- **Language**: TypeScript
+- **State Management**: Redux Toolkit / Context API
+- **Navigation**: React Navigation
+- **UI Components**: React Native Paper / Native Base
+- **API Integration**: Axios with interceptors
+- **Real-Time**: Socket.io Client
+- **Code Editor**: Monaco Editor (React Native WebView)
+- **Authentication**: JWT with secure storage
+
+### Key Features
+
+#### For Students
+- 📚 **Browse Tutorials**: Access all tutorials organized by language and difficulty
+- 💻 **Code Playground**: Write and execute code directly on mobile
+- 📝 **Take Quizzes**: Complete timed quizzes with instant feedback
+- 🏆 **Track Progress**: View XP, level, achievements, and leaderboard
+- 💬 **Forum Access**: Ask questions and browse community discussions
+- 🔔 **Push Notifications**: Get notified about new content and achievements
+- 📊 **Dashboard**: View stats, recent activity, and recommendations
+
+#### For Teachers
+- 📋 **Content Management**: Create and edit tasks, quizzes, and tutorials
+- 👥 **Student Monitoring**: Track student progress and performance
+- 📊 **Analytics**: View engagement metrics and completion rates
+- 🏆 **Leaderboard**: Check teacher rankings and points
+- 🔔 **Notifications**: Stay updated on student submissions
+
+### Mobile-Specific Optimizations
+
+- **Offline Mode**: Cache tutorials and code for offline access
+- **Responsive Design**: Optimized layouts for phones and tablets
+- **Touch Gestures**: Swipe navigation and pull-to-refresh
+- **Dark Mode**: Native dark theme support
+- **Biometric Auth**: Fingerprint/Face ID login
+- **Code Syntax Highlighting**: Full syntax support for all languages
+- **File Management**: Upload and manage project files
+
+### Platform Support
+
+- ✅ **iOS**: iOS 13.0 and above
+- ✅ **Android**: Android 8.0 (API 26) and above
+
+### Running the Mobile App
+
+```bash
+cd mobile
+npm install
+
+# For iOS
+cd ios && pod install && cd ..
+npx react-native run-ios
+
+# For Android
+npx react-native run-android
+```
+
+### Building for Production
+
+```bash
+# iOS
+cd ios
+xcodebuild -workspace NexusQuest.xcworkspace -scheme NexusQuest -configuration Release
+
+# Android
+cd android
+./gradlew assembleRelease
+```
+
+---
+
+## 🐳 Docker Configuration
+
+### Docker Compose Services
+
+The `docker-compose.yml` file orchestrates three main services:
+
+1. **MongoDB**: Database service
+   - Port: `27017`
+   - Persistent volume for data storage
+   - Health checks enabled
+
+2. **Backend**: Node.js API server
+   - Port: `3001`
+   - Auto-restart on failure
+   - Environment variables from `.env`
+   - Depends on MongoDB
+
+3. **Frontend**: React application
+   - Port: `5173`
+   - Hot reload enabled for development
+   - Nginx for production builds
+
+### Docker Commands
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+
+# Rebuild containers
+docker-compose up -d --build
+
+# Remove volumes (clean slate)
+docker-compose down -v
+```
+
+### Individual Service Management
+
+```bash
+# Restart specific service
+docker-compose restart backend
+
+# View service logs
+docker-compose logs -f frontend
+
+# Execute commands in container
+docker-compose exec backend npm run migrate
 ```
 
 ---
