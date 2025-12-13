@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, BookOpen, Award, BarChart3, User, Clock, Calendar, Users, Book, MessageCircle, Code2, Trophy } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, Award, BarChart3, User, Clock, Calendar, Users, Book, MessageCircle, Code2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Task, getMyTasks, deleteTask } from '../services/taskService';
 import { Quiz, getMyQuizzes, deleteQuiz } from '../services/quizService';
@@ -9,7 +9,6 @@ import { getStoredUser } from '../services/authService';
 import CreateTaskModal from '../components/teacher/CreateTaskModal';
 import CreateQuizModal from '../components/teacher/CreateQuizModal';
 import TutorialManagement from '../components/teacher/TutorialManagement';
-import TeacherLeaderboard from '../components/teacher/TeacherLeaderboard';
 import { UserSidePanel } from '../components/UserSidePanel';
 import { useTheme } from '../context/ThemeContext';
 import { NotificationsBell } from '../components/NotificationsBell';
@@ -30,7 +29,7 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'tasks' | 'quizzes' | 'tutorials' | 'leaderboard'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'quizzes' | 'tutorials'>('tasks');
   const [teacherPoints, setTeacherPoints] = useState(0);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const { theme, setTheme } = useTheme();
@@ -156,7 +155,7 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
     }
   };
 
-  const totalPoints = tasks.reduce((sum, t) => sum + t.points, 0);
+  const totalTaskPoints = tasks.reduce((sum, t) => sum + t.points, 0);
   const tasksByDifficulty = {
     easy: tasks.filter(t => t.difficulty === 'easy').length,
     medium: tasks.filter(t => t.difficulty === 'medium').length,
@@ -225,12 +224,6 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className={`rounded-xl p-4 border ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'}`}>
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500"><Trophy className="w-5 h-5 text-white" /></div>
-              <div><p className="text-sm text-gray-400">Total Points</p><p className="text-2xl font-bold text-yellow-400">{teacherPoints.toLocaleString()}</p></div>
-            </div>
-          </div>
-          <div className={`rounded-xl p-4 border ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'}`}>
-            <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-500/20"><BookOpen className="w-5 h-5 text-blue-400" /></div>
               <div><p className="text-sm text-gray-400">Total Tasks</p><p className="text-2xl font-bold">{tasks.length}</p></div>
             </div>
@@ -238,7 +231,7 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
           <div className={`rounded-xl p-4 border ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'}`}>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-yellow-500/20"><Award className="w-5 h-5 text-yellow-400" /></div>
-              <div><p className="text-sm text-gray-400">Total Points</p><p className="text-2xl font-bold">{totalPoints}</p></div>
+              <div><p className="text-sm text-gray-400">Your Points</p><p className="text-2xl font-bold">{teacherPoints}</p></div>
             </div>
           </div>
           <div className={`rounded-xl p-4 border ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'}`}>
@@ -301,21 +294,6 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
           >
             <Book className="w-4 h-4 inline mr-2" />
             Tutorials
-          </button>
-          <button
-            onClick={() => setActiveTab('leaderboard')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'leaderboard'
-                ? theme === 'dark'
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-blue-600 border-b-2 border-blue-600'
-                : theme === 'dark'
-                ? 'text-gray-400 hover:text-gray-300'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            <Trophy className="w-4 h-4 inline mr-2" />
-            Leaderboard
           </button>
         </div>
 
@@ -452,11 +430,6 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
         {/* Tutorials Tab */}
         {activeTab === 'tutorials' && (
           <TutorialManagement />
-        )}
-
-        {/* Leaderboard Tab */}
-        {activeTab === 'leaderboard' && (
-          <TeacherLeaderboard />
         )}
       </div>
 
