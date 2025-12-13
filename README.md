@@ -48,8 +48,7 @@
 - **Quiz System**: Timed assessments with multiple question types
 
 #### 🤝 Collaboration
-- **Live Collaboration**: Real-time pair programming with video/audio
-- **Screen Sharing**: Share your screen during collaboration sessions
+- **Live Collaboration**: Real-time pair programming
 - **Code Synchronization**: See changes in real-time
 - **Direct Messaging**: Chat with peers and teachers
 - **User Search**: Find and connect with other learners
@@ -135,7 +134,7 @@ The easiest way to get NexusQuest up and running is using Docker Compose:
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/NexusQuest.git
+git clone https://github.com/Amjad-Mousa/NexusQuest.git
 cd NexusQuest
 ```
 
@@ -175,7 +174,7 @@ If you prefer to run without Docker:
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/NexusQuest.git
+git clone https://github.com/Amjad-Mousa/NexusQuest.git
 cd NexusQuest
 ```
 
@@ -564,11 +563,11 @@ pip install -r requirements.txt
 
 ### For Java Projects
 
-Use Maven (`pom.xml`) or Gradle (`build.gradle`) for dependency management.
+Use Maven (`pom.xml`) for dependency management.
 
 ### For C++ Projects
 
-Use CMake or package managers like vcpkg or Conan.
+Use CMake.
 
 **Note:** The code execution environment supports standard libraries for all languages. Custom dependencies can be installed in your local development environment.
 
@@ -665,26 +664,6 @@ npm run test:e2e
 
 ---
 
-## 📊 Performance
-
-- **Code Execution**: < 2s average response time
-- **Real-Time Updates**: < 100ms latency
-- **API Response**: < 200ms average
-- **Database Queries**: Optimized with indexes
-- **Frontend Bundle**: Code-split for faster loading
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ### Coding Standards
 
 - **TypeScript**: Strict mode enabled
@@ -694,16 +673,11 @@ We welcome contributions! Please follow these steps:
 
 ---
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 ## 👥 Authors
 
-- **Amjad Mousa** - *Initial work* - [GitHub](https://github.com/Amjad-Mousa)
-
+- **Amjad Mousa** - - [GitHub](https://github.com/Amjad-Mousa)
+- **Mohammed Jaddou** -  - [GitHub](https://github.com/JADDOU3).
 ---
 
 ## 🙏 Acknowledgments
@@ -712,14 +686,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Socket.io for real-time communication
 - shadcn/ui for beautiful UI components
 - The open-source community
-
----
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/NexusQuest/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/NexusQuest/discussions)
-- **Email**: support@nexusquest.com
 
 ---
 
