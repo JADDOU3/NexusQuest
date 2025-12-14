@@ -270,10 +270,13 @@ export default function CollaborativeEditor({
 
   const currentUser = getStoredUser();
 
+  // Debug logging
+  console.log('Render state:', { showParticipants, showChat, showTerminal });
+
   return (
     <div className={`flex h-full w-full ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}>
       {/* Main Editor Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
         <div
           className={`flex items-center justify-between px-4 py-3 border-b ${
@@ -372,7 +375,7 @@ export default function CollaborativeEditor({
         {/* Editor and Terminal Container */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {/* Editor */}
-          <div className={(showTerminal || showParticipants || showChat) ? 'flex-1 min-h-[200px]' : 'flex-1'}>
+          <div className={showTerminal ? 'flex-1 min-h-[200px]' : 'flex-1'}>
             <Editor
               height="100%"
               language={language}
@@ -444,206 +447,207 @@ export default function CollaborativeEditor({
             </div>
           )}
 
-          {/* Participants Panel - Below Editor like Terminal */}
-          {showParticipants && (
-            <div
-              className={`h-48 border-t flex flex-col flex-shrink-0 ${
-                theme === 'dark'
-                  ? 'bg-gray-900 border-gray-700'
-                  : 'bg-gray-100 border-gray-300'
-              }`}
-            >
-              <div
-                className={`flex items-center justify-between px-3 py-1 border-b ${
-                  theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span className="text-sm font-medium">Participants</span>
-                </div>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
-                }`}>
-                  {participants.length} online
-                </span>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-1">
-                {participants.map((participant) => {
-                  const isCurrentUser = participant.userId === currentUser?.id;
-                  const isOwner = participant.role === 'owner';
-                  return (
-                    <div
-                      key={participant.userId}
-                      className={`flex items-center gap-3 p-2 rounded-lg transition-all duration-200 ${
-                        isCurrentUser
-                          ? theme === 'dark'
-                            ? 'bg-orange-500/10 border border-orange-500/30'
-                            : 'bg-orange-50 border border-orange-200'
-                          : theme === 'dark'
-                          ? 'hover:bg-gray-800/50'
-                          : 'hover:bg-gray-200'
-                      }`}
-                    >
-                      <div className="relative">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                          style={{ backgroundColor: participant.color || '#6366f1' }}
-                        >
-                          {participant.username?.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-gray-900" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`font-medium text-sm truncate ${
-                            isCurrentUser ? (theme === 'dark' ? 'text-orange-400' : 'text-orange-600') : ''
-                          }`}>
-                            {participant.username}
-                          </span>
-                          {isCurrentUser && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                              theme === 'dark' ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
-                            }`}>
-                              You
-                            </span>
-                          )}
-                          {isOwner && <Crown className="w-3.5 h-3.5 text-yellow-500" />}
-                        </div>
-                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                          {isOwner ? 'Session Owner' : 'Editor'}
-                        </span>
-                      </div>
-                      <div
-                        className="w-2 h-6 rounded-full"
-                        style={{ backgroundColor: participant.color || '#6366f1' }}
-                      />
-                    </div>
-                  );
-                })}
-                {participants.length === 0 && (
-                  <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    <Users className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                    <p className="text-sm">No participants yet</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Chat Panel - Below Editor like Terminal */}
-          {showChat && (
-            <div
-              className={`h-64 border-t flex flex-col flex-shrink-0 ${
-                theme === 'dark'
-                  ? 'bg-gray-900 border-gray-700'
-                  : 'bg-gray-100 border-gray-300'
-              }`}
-            >
-              <div
-                className={`flex items-center justify-between px-3 py-1 border-b ${
-                  theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  <span className="text-sm font-medium">Chat</span>
-                </div>
-                {messages.length > 0 && (
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${
-                    theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {messages.length}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                {messages.length === 0 ? (
-                  <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    <MessageSquare className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                    <p className="text-sm">No messages yet</p>
-                  </div>
-                ) : (
-                  messages.map((msg) => {
-                    const isOwnMessage = msg.userId === currentUser?.id;
-                    const participantColor = participants.find((p) => p.userId === msg.userId)?.color || '#6366f1';
-                    return (
-                      <div key={msg._id} className={msg.type === 'system' ? 'text-center' : ''}>
-                        {msg.type === 'system' ? (
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
-                            theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-500'
-                          }`}>
-                            {msg.message}
-                          </span>
-                        ) : (
-                          <div className={`flex gap-2 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
-                            <div
-                              className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
-                              style={{ backgroundColor: participantColor }}
-                            >
-                              {msg.username?.charAt(0).toUpperCase()}
-                            </div>
-                            <div className={`flex-1 max-w-[80%] ${isOwnMessage ? 'text-right' : ''}`}>
-                              <div className={`flex items-baseline gap-1.5 mb-0.5 ${isOwnMessage ? 'justify-end' : ''}`}>
-                                <span className={`font-medium text-xs ${
-                                  isOwnMessage
-                                    ? theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
-                                    : theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                                }`}>
-                                  {isOwnMessage ? 'You' : msg.username}
-                                </span>
-                                <span className={`text-[10px] ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-                              <div
-                                className={`inline-block px-3 py-1.5 rounded-xl text-sm ${
-                                  isOwnMessage
-                                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
-                                    : theme === 'dark'
-                                    ? 'bg-gray-800 text-gray-200'
-                                    : 'bg-gray-200 text-gray-800'
-                                }`}
-                              >
-                                {msg.message}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-              <div className={`p-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Type a message..."
-                    className={`flex-1 px-3 py-1.5 rounded-lg border transition-all duration-200 focus:outline-none text-sm ${
-                      theme === 'dark'
-                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-orange-500'
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-orange-500'
-                    }`}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!chatMessage.trim()}
-                    size="sm"
-                    className="px-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 disabled:opacity-50"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Right Sidebar - Participants */}
+      {showParticipants && (
+        <div
+          className={`w-72 border-l flex flex-col flex-shrink-0 ${
+            theme === 'dark'
+              ? 'bg-gray-900 border-gray-700'
+              : 'bg-gray-100 border-gray-300'
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between px-3 py-1 border-b ${
+              theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span className="text-sm font-medium">Participants</span>
+            </div>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
+            }`}>
+              {participants.length} online
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            {participants.map((participant) => {
+              const isCurrentUser = participant.userId === currentUser?.id;
+              const isOwner = participant.role === 'owner';
+              return (
+                <div
+                  key={participant.userId}
+                  className={`flex items-center gap-3 p-2 rounded-lg transition-all duration-200 ${
+                    isCurrentUser
+                      ? theme === 'dark'
+                        ? 'bg-orange-500/10 border border-orange-500/30'
+                        : 'bg-orange-50 border border-orange-200'
+                      : theme === 'dark'
+                      ? 'hover:bg-gray-800/50'
+                      : 'hover:bg-gray-200'
+                  }`}
+                >
+                  <div className="relative">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                      style={{ backgroundColor: participant.color || '#6366f1' }}
+                    >
+                      {participant.username?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-gray-900" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`font-medium text-sm truncate ${
+                        isCurrentUser ? (theme === 'dark' ? 'text-orange-400' : 'text-orange-600') : ''
+                      }`}>
+                        {participant.username}
+                      </span>
+                      {isCurrentUser && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                          theme === 'dark' ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
+                        }`}>
+                          You
+                        </span>
+                      )}
+                      {isOwner && <Crown className="w-3.5 h-3.5 text-yellow-500" />}
+                    </div>
+                    <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {isOwner ? 'Session Owner' : 'Editor'}
+                    </span>
+                  </div>
+                  <div
+                    className="w-2 h-6 rounded-full"
+                    style={{ backgroundColor: participant.color || '#6366f1' }}
+                  />
+                </div>
+              );
+            })}
+            {participants.length === 0 && (
+              <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                <Users className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                <p className="text-sm">No participants yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Right Sidebar - Chat */}
+      {showChat && (
+        <div
+          className={`w-80 border-l flex flex-col flex-shrink-0 ${
+            theme === 'dark'
+              ? 'bg-gray-900 border-gray-700'
+              : 'bg-gray-100 border-gray-300'
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between px-3 py-1 border-b ${
+              theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-sm font-medium">Chat</span>
+            </div>
+            {messages.length > 0 && (
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {messages.length}
+              </span>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {messages.length === 0 ? (
+              <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                <MessageSquare className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                <p className="text-sm">No messages yet</p>
+              </div>
+            ) : (
+              messages.map((msg) => {
+                const isOwnMessage = msg.userId === currentUser?.id;
+                const participantColor = participants.find((p) => p.userId === msg.userId)?.color || '#6366f1';
+                return (
+                  <div key={msg._id} className={msg.type === 'system' ? 'text-center' : ''}>
+                    {msg.type === 'system' ? (
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
+                        theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {msg.message}
+                      </span>
+                    ) : (
+                      <div className={`flex gap-2 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
+                        <div
+                          className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
+                          style={{ backgroundColor: participantColor }}
+                        >
+                          {msg.username?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className={`flex-1 max-w-[80%] ${isOwnMessage ? 'text-right' : ''}`}>
+                          <div className={`flex items-baseline gap-1.5 mb-0.5 ${isOwnMessage ? 'justify-end' : ''}`}>
+                            <span className={`font-medium text-xs ${
+                              isOwnMessage
+                                ? theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
+                                : theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
+                              {isOwnMessage ? 'You' : msg.username}
+                            </span>
+                            <span className={`text-[10px] ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div
+                            className={`inline-block px-3 py-1.5 rounded-xl text-sm ${
+                              isOwnMessage
+                                ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                                : theme === 'dark'
+                                ? 'bg-gray-800 text-gray-200'
+                                : 'bg-gray-200 text-gray-800'
+                            }`}
+                          >
+                            {msg.message}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          <div className={`p-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type a message..."
+                className={`flex-1 px-3 py-1.5 rounded-lg border transition-all duration-200 focus:outline-none text-sm ${
+                  theme === 'dark'
+                    ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-orange-500'
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                }`}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!chatMessage.trim()}
+                size="sm"
+                className="px-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom CSS for cursors */}
       <style>{`
