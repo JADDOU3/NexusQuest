@@ -3,9 +3,18 @@ import Editor from '@monaco-editor/react';
 import { useCollaboration } from '../context/CollaborationContext';
 import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
-import { Users, MessageSquare, Send, Play, Square, Terminal as TerminalIcon, Crown, Circle, ArrowLeft, Code2, Link2, Copy, Check, X } from 'lucide-react';
+import { collaborationService } from '../services/collaborationService';
+import { Users, MessageSquare, Send, Play, Square, Terminal as TerminalIcon, Crown, ArrowLeft, Code2, UserPlus, X, Search, Loader2, Circle, Check } from 'lucide-react';
 import { Button } from './ui/button';
 import type { editor } from 'monaco-editor';
+
+interface AvailableUser {
+  id: string;
+  name: string;
+  email: string;
+  avatarImage?: string;
+  level: number;
+}
 
 interface TerminalLine {
   type: 'output' | 'error';
@@ -47,7 +56,11 @@ export default function CollaborativeEditor({
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [sendingInvites, setSendingInvites] = useState(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const decorationsRef = useRef<string[]>([]);
   const isRemoteChange = useRef(false);
@@ -341,11 +354,22 @@ export default function CollaborativeEditor({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowInviteDialog(true)}
+              onClick={async () => {
+                setShowInviteDialog(true);
+                setLoadingUsers(true);
+                try {
+                  const users = await collaborationService.getAvailableUsers(currentSession?.sessionId || '');
+                  setAvailableUsers(users);
+                } catch (error) {
+                  console.error('Failed to load users:', error);
+                } finally {
+                  setLoadingUsers(false);
+                }
+              }}
               className="text-blue-500 hover:text-blue-400"
               title="Invite to session"
             >
-              <Link2 className="w-4 h-4" />
+              <UserPlus className="w-4 h-4" />
             </Button>
             <div className={`h-6 w-px ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`} />
             <Button
@@ -671,17 +695,21 @@ export default function CollaborativeEditor({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                    <Link2 className="w-5 h-5 text-white" />
+                    <UserPlus className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">Invite to Session</h2>
+                    <h2 className="text-lg font-bold">Invite Users</h2>
                     <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Share this link with others
+                      Select users to invite to this session
                     </p>
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowInviteDialog(false)}
+                  onClick={() => {
+                    setShowInviteDialog(false);
+                    setSelectedUsers([]);
+                    setSearchQuery('');
+                  }}
                   className={`p-2 rounded-lg transition-colors ${
                     theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
                   }`}
@@ -690,48 +718,137 @@ export default function CollaborativeEditor({
                 </button>
               </div>
             </div>
-            <div className="p-6">
-              <div className={`mb-4 p-4 rounded-xl ${
+            
+            {/* Search */}
+            <div className={`px-6 py-3 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'}`}>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
                 theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
               }`}>
-                <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Session Link
-                </p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}/collaboration/${currentSession?.sessionId}`}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-mono ${
-                      theme === 'dark'
-                        ? 'bg-gray-900 text-gray-300 border border-gray-700'
-                        : 'bg-white text-gray-700 border border-gray-300'
-                    }`}
-                  />
-                  <Button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/collaboration/${currentSession?.sessionId}`);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                    size="sm"
-                    className={copied 
-                      ? 'bg-green-600 hover:bg-green-600' 
-                      : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500'
-                    }
-                  >
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
+                <Search className="w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`flex-1 bg-transparent outline-none text-sm ${
+                    theme === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
+                  }`}
+                />
               </div>
-              <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                <p className="flex items-center gap-2 mb-2">
-                  <Users className="w-4 h-4" />
-                  <span>Anyone with this link can join the session</span>
+            </div>
+
+            {/* User List */}
+            <div className="max-h-80 overflow-y-auto p-4">
+              {loadingUsers ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                </div>
+              ) : availableUsers.length === 0 ? (
+                <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p>No users available to invite</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availableUsers
+                    .filter(user => 
+                      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((user) => (
+                      <div
+                        key={user.id}
+                        onClick={() => {
+                          setSelectedUsers(prev => 
+                            prev.includes(user.id)
+                              ? prev.filter(id => id !== user.id)
+                              : [...prev, user.id]
+                          );
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
+                          selectedUsers.includes(user.id)
+                            ? theme === 'dark'
+                              ? 'bg-blue-500/20 border border-blue-500/50'
+                              : 'bg-blue-50 border border-blue-200'
+                            : theme === 'dark'
+                            ? 'hover:bg-gray-800 border border-transparent'
+                            : 'hover:bg-gray-100 border border-transparent'
+                        }`}
+                      >
+                        <div className="relative">
+                          {user.avatarImage ? (
+                            <img
+                              src={user.avatarImage}
+                              alt={user.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className={`absolute -bottom-0.5 -right-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+                          }`}>
+                            {user.level}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{user.name}</p>
+                          <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {user.email}
+                          </p>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          selectedUsers.includes(user.id)
+                            ? 'bg-blue-500 border-blue-500'
+                            : theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
+                        }`}>
+                          {selectedUsers.includes(user.id) && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className={`px-6 py-4 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'}`}>
+              <div className="flex items-center justify-between">
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''} selected
                 </p>
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Session ID: <span className="font-mono">{currentSession?.sessionId}</span>
-                </p>
+                <Button
+                  onClick={async () => {
+                    if (selectedUsers.length === 0) return;
+                    setSendingInvites(true);
+                    try {
+                      await collaborationService.sendInvitations(currentSession?.sessionId || '', selectedUsers);
+                      setShowInviteDialog(false);
+                      setSelectedUsers([]);
+                      setSearchQuery('');
+                      // Refresh available users
+                      const users = await collaborationService.getAvailableUsers(currentSession?.sessionId || '');
+                      setAvailableUsers(users);
+                    } catch (error) {
+                      console.error('Failed to send invitations:', error);
+                      alert('Failed to send invitations');
+                    } finally {
+                      setSendingInvites(false);
+                    }
+                  }}
+                  disabled={selectedUsers.length === 0 || sendingInvites}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 disabled:opacity-50"
+                >
+                  {sendingInvites ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  Send Invites
+                </Button>
               </div>
             </div>
           </div>
