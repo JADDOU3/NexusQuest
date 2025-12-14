@@ -107,7 +107,7 @@ export default function ForumPage() {
   const handleLogout = () => {
     localStorage.removeItem('nexusquest-token');
     localStorage.removeItem('nexusquest-user');
-    navigate('/');
+    navigate('/login');
   };
 
   const formatDate = (dateStr: string) => {

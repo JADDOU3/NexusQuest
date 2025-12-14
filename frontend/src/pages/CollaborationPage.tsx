@@ -165,7 +165,7 @@ export default function CollaborationPage() {
   const handleLogout = () => {
     localStorage.removeItem('nexusquest-token');
     localStorage.removeItem('nexusquest-user');
-    navigate('/');
+    navigate('/login');
   };
 
   if (currentSession) {

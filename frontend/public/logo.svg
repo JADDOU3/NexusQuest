@@ -24,7 +24,5 @@
     <line x1="36" y1="18" x2="28" y2="46"/>
   </g>
   
-  <!-- Small quest star/sparkle -->
-  <circle cx="52" cy="12" r="4" fill="#FCD34D"/>
-  <circle cx="52" cy="12" r="2" fill="#FBBF24"/>
+ 
 </svg>
