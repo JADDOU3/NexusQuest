@@ -21,8 +21,10 @@ import {
   Tag,
   MessageCircle,
 } from 'lucide-react';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function ForumPage() {
+  usePageTitle('Forum');
   const navigate = useNavigate();
   const { theme } = useTheme();
   const storedUser = getStoredUser();

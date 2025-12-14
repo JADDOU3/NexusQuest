@@ -4,8 +4,10 @@ import { Clock, Calendar, ArrowLeft, Trophy, CheckCircle2, Play } from 'lucide-r
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
 import { Quiz, getQuizzes } from '../services/quizService';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function QuizzesPage() {
+  usePageTitle('Quizzes');
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);

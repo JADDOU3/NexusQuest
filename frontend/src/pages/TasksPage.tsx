@@ -4,12 +4,14 @@ import { Search, Filter, BookOpen, Award, BarChart3, Clock, CheckCircle2, ArrowL
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
 import { getTasks, Task, TaskDifficulty, TaskLanguage, getMyProgress, TaskProgress } from '../services/taskService';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 interface TasksPageProps {
   user: { name: string; email: string } | null;
 }
 
 export default function TasksPage(_props: TasksPageProps) {
+  usePageTitle('Tasks');
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
