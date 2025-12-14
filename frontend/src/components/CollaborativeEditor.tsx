@@ -271,7 +271,7 @@ export default function CollaborativeEditor({
   const currentUser = getStoredUser();
 
   return (
-    <div className={`flex h-full ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}>
+    <div className={`flex h-full w-full ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}>
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
@@ -370,9 +370,9 @@ export default function CollaborativeEditor({
         </div>
 
         {/* Editor and Terminal Container */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
           {/* Editor */}
-          <div className={showTerminal ? 'h-[60%]' : 'flex-1'}>
+          <div className={(showTerminal || showParticipants || showChat) ? 'flex-1 min-h-[200px]' : 'flex-1'}>
             <Editor
               height="100%"
               language={language}
@@ -443,74 +443,60 @@ export default function CollaborativeEditor({
               </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Right Sidebar - Participants & Chat */}
-      {(showParticipants || showChat) && (
-        <div
-          className={`w-80 border-l flex flex-col ${
-            theme === 'dark'
-              ? 'bg-gray-900/80 border-gray-800 backdrop-blur-xl'
-              : 'bg-white/80 border-gray-200 backdrop-blur-xl'
-          }`}
-        >
-          {/* Participants Section */}
+          {/* Participants Panel - Below Editor like Terminal */}
           {showParticipants && (
-            <div className={`${showChat ? 'border-b' : ''} ${
-              theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-            }`}>
-              <div className={`px-4 py-3 border-b ${
-                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                      <Users className="w-4 h-4 text-white" />
-                    </div>
-                    <span>Participants</span>
-                  </h3>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                    theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
-                  }`}>
-                    {participants.length} online
-                  </span>
+            <div
+              className={`h-48 border-t flex flex-col flex-shrink-0 ${
+                theme === 'dark'
+                  ? 'bg-gray-900 border-gray-700'
+                  : 'bg-gray-100 border-gray-300'
+              }`}
+            >
+              <div
+                className={`flex items-center justify-between px-3 py-1 border-b ${
+                  theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span className="text-sm font-medium">Participants</span>
                 </div>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
+                }`}>
+                  {participants.length} online
+                </span>
               </div>
-              <div className={`p-3 space-y-1 ${showChat ? 'max-h-48 overflow-y-auto' : 'flex-1 overflow-y-auto'}`}>
+              <div className="flex-1 overflow-y-auto p-3 space-y-1">
                 {participants.map((participant) => {
                   const isCurrentUser = participant.userId === currentUser?.id;
                   const isOwner = participant.role === 'owner';
-                  
                   return (
                     <div
                       key={participant.userId}
-                      className={`flex items-center gap-3 p-2.5 rounded-xl transition-all duration-200 ${
+                      className={`flex items-center gap-3 p-2 rounded-lg transition-all duration-200 ${
                         isCurrentUser
                           ? theme === 'dark'
                             ? 'bg-orange-500/10 border border-orange-500/30'
                             : 'bg-orange-50 border border-orange-200'
                           : theme === 'dark'
                           ? 'hover:bg-gray-800/50'
-                          : 'hover:bg-gray-100'
+                          : 'hover:bg-gray-200'
                       }`}
                     >
-                      {/* Avatar */}
                       <div className="relative">
                         <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg"
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
                           style={{ backgroundColor: participant.color || '#6366f1' }}
                         >
                           {participant.username?.charAt(0).toUpperCase()}
                         </div>
-                        {/* Online indicator */}
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-gray-900" />
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-gray-900" />
                       </div>
-                      
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className={`font-semibold text-sm truncate ${
+                          <span className={`font-medium text-sm truncate ${
                             isCurrentUser ? (theme === 'dark' ? 'text-orange-400' : 'text-orange-600') : ''
                           }`}>
                             {participant.username}
@@ -522,32 +508,22 @@ export default function CollaborativeEditor({
                               You
                             </span>
                           )}
-                          {isOwner && (
-                            <Crown className="w-3.5 h-3.5 text-yellow-500" />
-                          )}
+                          {isOwner && <Crown className="w-3.5 h-3.5 text-yellow-500" />}
                         </div>
-                        <span className={`text-xs ${
-                          theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        }`}>
+                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                           {isOwner ? 'Session Owner' : 'Editor'}
                         </span>
                       </div>
-                      
-                      {/* Cursor color indicator */}
                       <div
-                        className="w-2 h-8 rounded-full"
+                        className="w-2 h-6 rounded-full"
                         style={{ backgroundColor: participant.color || '#6366f1' }}
-                        title="Cursor color"
                       />
                     </div>
                   );
                 })}
-                
                 {participants.length === 0 && (
-                  <div className={`text-center py-8 ${
-                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                  }`}>
-                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <Users className="w-6 h-6 mx-auto mb-1 opacity-50" />
                     <p className="text-sm">No participants yet</p>
                   </div>
                 )}
@@ -555,90 +531,78 @@ export default function CollaborativeEditor({
             </div>
           )}
 
-          {/* Chat Section */}
+          {/* Chat Panel - Below Editor like Terminal */}
           {showChat && (
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className={`px-4 py-3 border-b ${
-                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-              }`}>
-                <h3 className="font-bold flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                    <MessageSquare className="w-4 h-4 text-white" />
-                  </div>
-                  <span>Chat</span>
-                  {messages.length > 0 && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {messages.length}
-                    </span>
-                  )}
-                </h3>
-              </div>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.length === 0 ? (
-                  <div className={`text-center py-8 ${
-                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+            <div
+              className={`h-64 border-t flex flex-col flex-shrink-0 ${
+                theme === 'dark'
+                  ? 'bg-gray-900 border-gray-700'
+                  : 'bg-gray-100 border-gray-300'
+              }`}
+            >
+              <div
+                className={`flex items-center justify-between px-3 py-1 border-b ${
+                  theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="text-sm font-medium">Chat</span>
+                </div>
+                {messages.length > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
                   }`}>
-                    <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    {messages.length}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                {messages.length === 0 ? (
+                  <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <MessageSquare className="w-6 h-6 mx-auto mb-1 opacity-50" />
                     <p className="text-sm">No messages yet</p>
-                    <p className="text-xs mt-1">Start the conversation!</p>
                   </div>
                 ) : (
                   messages.map((msg) => {
                     const isOwnMessage = msg.userId === currentUser?.id;
                     const participantColor = participants.find((p) => p.userId === msg.userId)?.color || '#6366f1';
-                    
                     return (
-                      <div
-                        key={msg._id}
-                        className={`${
-                          msg.type === 'system'
-                            ? 'text-center'
-                            : ''
-                        }`}
-                      >
+                      <div key={msg._id} className={msg.type === 'system' ? 'text-center' : ''}>
                         {msg.type === 'system' ? (
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs ${
-                            theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500'
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
+                            theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-500'
                           }`}>
                             {msg.message}
                           </span>
                         ) : (
-                          <div className={`flex gap-2.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
-                            {/* Avatar */}
+                          <div className={`flex gap-2 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
                             <div
-                              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold shadow-md"
+                              className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
                               style={{ backgroundColor: participantColor }}
                             >
                               {msg.username?.charAt(0).toUpperCase()}
                             </div>
-                            
-                            {/* Message bubble */}
                             <div className={`flex-1 max-w-[80%] ${isOwnMessage ? 'text-right' : ''}`}>
-                              <div className={`flex items-baseline gap-2 mb-1 ${isOwnMessage ? 'justify-end' : ''}`}>
-                                <span className={`font-semibold text-xs ${
+                              <div className={`flex items-baseline gap-1.5 mb-0.5 ${isOwnMessage ? 'justify-end' : ''}`}>
+                                <span className={`font-medium text-xs ${
                                   isOwnMessage
                                     ? theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
                                     : theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                                 }`}>
                                   {isOwnMessage ? 'You' : msg.username}
                                 </span>
-                                <span className={`text-[10px] ${
-                                  theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                }`}>
+                                <span className={`text-[10px] ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
                                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               </div>
                               <div
-                                className={`inline-block px-3.5 py-2 rounded-2xl text-sm ${
+                                className={`inline-block px-3 py-1.5 rounded-xl text-sm ${
                                   isOwnMessage
-                                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-br-md'
+                                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
                                     : theme === 'dark'
-                                    ? 'bg-gray-800 text-gray-200 rounded-bl-md'
-                                    : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                                    ? 'bg-gray-800 text-gray-200'
+                                    : 'bg-gray-200 text-gray-800'
                                 }`}
                               >
                                 {msg.message}
@@ -652,11 +616,7 @@ export default function CollaborativeEditor({
                 )}
                 <div ref={messagesEndRef} />
               </div>
-
-              {/* Input */}
-              <div className={`p-3 border-t ${
-                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-              }`}>
+              <div className={`p-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -664,16 +624,17 @@ export default function CollaborativeEditor({
                     onChange={(e) => setChatMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Type a message..."
-                    className={`flex-1 px-4 py-2.5 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
+                    className={`flex-1 px-3 py-1.5 rounded-lg border transition-all duration-200 focus:outline-none text-sm ${
                       theme === 'dark'
                         ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-orange-500'
-                        : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-orange-500'
                     }`}
                   />
                   <Button
                     onClick={handleSendMessage}
                     disabled={!chatMessage.trim()}
-                    className="px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
+                    size="sm"
+                    className="px-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 disabled:opacity-50"
                   >
                     <Send className="w-4 h-4" />
                   </Button>
@@ -682,7 +643,7 @@ export default function CollaborativeEditor({
             </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Custom CSS for cursors */}
       <style>{`
