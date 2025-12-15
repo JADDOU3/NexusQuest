@@ -12,9 +12,11 @@ export interface TeacherStats {
 /**
  * Get teacher statistics from database
  */
+import { getStoredToken } from './authService';
+
 export const getTeacherStats = async (): Promise<TeacherStats> => {
   try {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     const response = await fetch(`${API_BASE}/auth/teacher/stats`, {
       headers: {
         'Authorization': `Bearer ${token}`,

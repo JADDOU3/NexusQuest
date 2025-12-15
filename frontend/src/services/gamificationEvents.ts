@@ -15,9 +15,11 @@ export function triggerAchievementNotification(title: string, description: strin
 }
 
 // Check for level up and achievements after completing tasks/quizzes
+import { getStoredToken } from './authService';
+
 export async function checkGamificationUpdates(previousLevel?: number, previousAchievements?: string[]) {
     try {
-        const token = localStorage.getItem('nexusquest-token');
+        const token = getStoredToken();
         const response = await fetch('http://localhost:9876/api/gamification/profile', {
             headers: {
                 'Authorization': `Bearer ${token}`,

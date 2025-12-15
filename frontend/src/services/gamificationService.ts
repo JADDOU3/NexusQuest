@@ -43,8 +43,10 @@ export interface AvailableAchievement {
     hidden: boolean;
 }
 
+import { getStoredToken } from './authService';
+
 export async function getGamificationProfile(targetUserId?: string): Promise<GamificationProfile> {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     const url = targetUserId
         ? `${API_URL}/gamification/profile?targetUserId=${targetUserId}`
         : `${API_URL}/gamification/profile`;
@@ -64,7 +66,7 @@ export async function getGamificationProfile(targetUserId?: string): Promise<Gam
 }
 
 export async function getAvailableAchievements(): Promise<AvailableAchievement[]> {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     const response = await fetch(`${API_URL}/gamification/available-achievements`, {
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -102,7 +104,7 @@ export async function getAllAchievementsWithStatus(): Promise<AchievementWithSta
 }
 
 export async function addCustomSkill(skill: string): Promise<string[]> {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     const response = await fetch(`${API_URL}/gamification/profile/skills`, {
         method: 'POST',
         headers: {
@@ -121,7 +123,7 @@ export async function addCustomSkill(skill: string): Promise<string[]> {
 }
 
 export async function removeCustomSkill(skill: string): Promise<string[]> {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     const response = await fetch(`${API_URL}/gamification/profile/skills/${encodeURIComponent(skill)}`, {
         method: 'DELETE',
         headers: {
@@ -138,7 +140,7 @@ export async function removeCustomSkill(skill: string): Promise<string[]> {
 }
 
 export async function getCustomSkills(): Promise<string[]> {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     const response = await fetch(`${API_URL}/gamification/profile/skills`, {
         headers: {
             'Authorization': `Bearer ${token}`,

@@ -14,9 +14,11 @@ const api = axios.create({
   },
 });
 
+import { getStoredToken } from './authService';
+
 // Add auth token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('nexusquest-token');
+  const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

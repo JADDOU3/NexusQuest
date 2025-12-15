@@ -118,7 +118,7 @@ export interface TaskProgress {
 }
 
 export async function getMyProgress(status?: string): Promise<TaskProgress[]> {
-  const token = localStorage.getItem('nexusquest-token');
+  const token = getStoredToken();
   if (!token) return [];
 
   const url = status
@@ -140,7 +140,7 @@ export async function getMyProgress(status?: string): Promise<TaskProgress[]> {
 }
 
 export async function getUserProgress(userId: string, status?: string): Promise<TaskProgress[]> {
-  const token = localStorage.getItem('nexusquest-token');
+  const token = getStoredToken();
   if (!token) return [];
 
   const url = status
