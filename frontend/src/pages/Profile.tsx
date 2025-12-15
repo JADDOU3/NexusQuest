@@ -24,7 +24,6 @@ export function Profile({ user, onLogout }: ProfileProps) {
   const [editName, setEditName] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [editConfirmPassword, setEditConfirmPassword] = useState('');
-  const [fontSize, setFontSize] = useState(14);
   const [totalPoints, setTotalPoints] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [completedTasks, setCompletedTasks] = useState<TaskProgress[]>([]);
@@ -252,8 +251,6 @@ export function Profile({ user, onLogout }: ProfileProps) {
         onLogout={onLogout}
         theme={theme}
         setTheme={setTheme}
-        fontSize={fontSize}
-        setFontSize={setFontSize}
       />
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">

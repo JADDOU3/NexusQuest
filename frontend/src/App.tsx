@@ -3,20 +3,22 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { CodeEditor } from './components/CodeEditor';
 import { Console } from './components/Console';
 import { Terminal } from './components/Terminal';
-import { Header } from './components/Header';
-import { ProjectExplorer } from './components/ProjectExplorer';
-import { UserSidePanel } from './components/UserSidePanel';
-import { AiAgent } from './components/AiAgent';
-import { VersionControl } from './components/VersionControl';
 import * as projectService from './services/projectService';
-import {
-  defaultCode,
-  defaultPythonCode,
-  defaultJavaCode,
-  defaultJavaScriptCode,
-  defaultCppCode
+import { 
+  defaultCode, 
+  defaultPythonCode, 
+  defaultJavaCode, 
+  defaultJavaScriptCode, 
+  defaultCppCode 
 } from './constants/defaultCode';
-import type { Language, Theme, ConsoleOutput, AppProps, Project, ProjectFile } from './types';
+import type { 
+  Language, 
+  Theme, 
+  ConsoleOutput, 
+  AppProps, 
+  Project, 
+  ProjectFile 
+} from './types';
 
 function App({ user, onLogout }: AppProps) {
   const navigate = useNavigate();
@@ -34,7 +36,7 @@ function App({ user, onLogout }: AppProps) {
     return saved || defaultCode;
   });
   const [output, setOutput] = useState<ConsoleOutput[]>([]);
-  const [isRunning] = useState(false); // Currently not used but kept for Header component
+  const [isRunning] = useState(false);
   const [language, setLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('nexusquest-language');
     return (saved as Language) || 'python';
@@ -77,11 +79,10 @@ function App({ user, onLogout }: AppProps) {
     loadUserAvatar();
   }, []);
 
-  // Project state
-  const [, setProjects] = useState<Project[]>([]); // Used for session restoration
+  const [, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [currentFile, setCurrentFile] = useState<ProjectFile | null>(null);
-  const [showNewFileInput, setShowNewFileInput] = useState<string | null>(null); // null, project._id, or "folder:path"
+  const [showNewFileInput, setShowNewFileInput] = useState<string | null>(null);
   const [newFileName, setNewFileName] = useState('');
   const [newFileLanguage, setNewFileLanguage] = useState<'python' | 'java' | 'javascript' | 'cpp'>('python');
   const [isSaving, setIsSaving] = useState(false);

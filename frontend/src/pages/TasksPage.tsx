@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, BookOpen, Award, BarChart3, Clock, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Search, Filter, BookOpen, Award, Clock, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
 import { getTasks, Task, TaskDifficulty, TaskLanguage, getMyProgress, TaskProgress } from '../services/taskService';
@@ -243,12 +243,9 @@ export default function TasksPage(_props: TasksPageProps) {
                       <Award className="w-4 h-4 text-yellow-500" />
                       <span className="text-sm font-medium">{task.points} pts</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-gray-500" />
-                      <span className="text-xs text-gray-500">
-                        by {typeof task.createdBy === 'object' ? task.createdBy.name : 'Teacher'}
-                      </span>
-                    </div>
+                    <span className="text-xs text-gray-500">
+                      by {typeof task.createdBy === 'object' ? task.createdBy.name : 'Teacher'}
+                    </span>
                   </div>
                 </div>
               );

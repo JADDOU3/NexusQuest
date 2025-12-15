@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Code2, Trophy, Target, BookOpen, Clock, Star, TrendingUp, Award, User, MessageCircle, Users, Home, FileQuestion, MessageSquare } from 'lucide-react';
+import { Code2, Trophy, Target, BookOpen, Clock, Star, TrendingUp, Award, User, MessageCircle, Home, FileQuestion, MessageSquare, Users } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
 import { getMyProgress, TaskProgress, getUserStats, UserStats } from '../services/taskService';
 import { getGamificationProfile } from '../services/gamificationService';
 import { checkGamificationUpdates, storeGamificationState, getStoredGamificationState } from '../services/gamificationEvents';
-import { UserSidePanel } from '@/components/UserSidePanel';
-import { ProjectsSidebar } from '@/components/ProjectsSidebar';
-import { DailyChallenge } from '@/components/DailyChallenge';
-import { NotificationsBell } from '@/components/NotificationsBell';
+import { UserSidePanel } from '../components/UserSidePanel';
+import { ProjectsSidebar } from '../components/ProjectsSidebar';
+import { DailyChallenge } from '../components/DailyChallenge';
+import { NotificationsBell } from '../components/NotificationsBell';
 import { connectChat, getChatSocket, type ChatMessage } from '../services/chatService';
 import { fetchUsers, type ChatUser, getMyLeaderboardRank } from '../services/userService';
 import { getDailyChallengeStats } from '../services/dailyChallengeService';
@@ -25,7 +25,6 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
-  const [fontSize, setFontSize] = useState(14);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [allUsers, setAllUsers] = useState<ChatUser[]>([]);
@@ -151,18 +150,6 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
         // Check for level ups and new achievements
         const stored = getStoredGamificationState();
         if (stored.level && stored.achievements) {
-          // Check if level increased
-          if (gamification.level > stored.level) {
-            // Trigger level up notification (will be shown by toast container)
-            // The notification will be triggered automatically by checkGamificationUpdates
-          }
-
-          // Check for new achievements
-          const currentAchievementIds = gamification.achievements.map((a: any) => a.id);
-          const newAchievements = gamification.achievements.filter(
-            (a: any) => !stored.achievements.includes(a.id)
-          );
-
           // Notifications will be triggered by the event system
         }
 
@@ -351,8 +338,6 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           setTheme={setTheme}
           user={user}
           avatarImage={avatarImage}
-          fontSize={fontSize}
-          setFontSize={setFontSize}
           isOpen={showSidePanel}
           onClose={() => setShowSidePanel(false)}
           onLogout={onLogout}

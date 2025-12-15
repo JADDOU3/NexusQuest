@@ -32,9 +32,8 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
   const [activeTab, setActiveTab] = useState<'tasks' | 'quizzes' | 'tutorials'>('tasks');
   const [teacherPoints, setTeacherPoints] = useState(0);
   const [newMessageCount, setNewMessageCount] = useState(0);
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
 
-  
   const loadTasks = async () => {
     try {
       setLoading(true);
@@ -155,7 +154,6 @@ export default function TeacherDashboard({ user, onLogout }: TeacherDashboardPro
     }
   };
 
-  const totalTaskPoints = tasks.reduce((sum, t) => sum + t.points, 0);
   const tasksByDifficulty = {
     easy: tasks.filter(t => t.difficulty === 'easy').length,
     medium: tasks.filter(t => t.difficulty === 'medium').length,
