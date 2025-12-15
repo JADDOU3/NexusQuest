@@ -3,6 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { CodeEditor } from './components/CodeEditor';
 import { Console } from './components/Console';
 import { Terminal } from './components/Terminal';
+import { Header } from './components/Header';
+import { UserSidePanel } from './components/UserSidePanel';
+import { AiAgent } from './components/AiAgent';
+import { ProjectExplorer } from './components/ProjectExplorer';
+import { VersionControl } from './components/VersionControl';
 import * as projectService from './services/projectService';
 import { 
   defaultCode, 
