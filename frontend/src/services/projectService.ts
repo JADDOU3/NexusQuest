@@ -20,13 +20,7 @@ export interface Project {
   updatedAt: string;
 }
 
-function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('nexusquest-token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+import { getAuthHeaders } from '../utils';
 
 // Get all projects
 export async function getProjects(): Promise<Project[]> {

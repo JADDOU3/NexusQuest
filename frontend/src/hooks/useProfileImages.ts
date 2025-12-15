@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { getStoredToken } from '../services/authService';
+import { getApiUrl } from '../utils';
 
-const API_BASE = 'http://localhost:9876/api';
+const API_BASE = `${getApiUrl()}/api`;
 
 export function useProfileImages() {
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
@@ -9,7 +11,9 @@ export function useProfileImages() {
   useEffect(() => {
     const loadUserImages = async () => {
       try {
-        const token = localStorage.getItem('nexusquest-token');
+        const token = getStoredToken();
+        if (!token) return;
+
         const response = await fetch(`${API_BASE}/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -27,7 +31,9 @@ export function useProfileImages() {
 
   const updateImage = async (type: 'avatar' | 'cover', imageData: string) => {
     try {
-      const token = localStorage.getItem('nexusquest-token');
+      const token = getStoredToken();
+      if (!token) return false;
+
       const response = await fetch(`${API_BASE}/auth/profile/images`, {
         method: 'PUT',
         headers: {

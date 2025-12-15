@@ -47,6 +47,12 @@ getTimeAgo(date: Date): string
 formatDate(dateStr: string): string
 ```
 
+### **timeHelpers.ts** - Time Calculations
+```typescript
+formatRelativeTime(dateString: string): string  // "2m ago", "3h ago"
+getTimeDifference(startDate: Date, endDate?: Date): { days, hours, minutes, seconds }
+```
+
 ### **colorHelpers.ts** - Color Mapping
 ```typescript
 getCategoryColor(category: string): string
@@ -65,6 +71,20 @@ getUnreadMessages(): Record<string, number>
 setUnreadMessages(unreadMap: Record<string, number>): void
 incrementUnreadCount(userId: string): void
 clearUnreadCount(userId: string): void
+```
+
+### **apiHelpers.ts** - API Request Utilities
+```typescript
+getAuthHeaders(): HeadersInit  // Standard auth headers
+getApiUrl(): string  // Get API URL from env
+apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T>
+handleApiResponse<T>(response: Response): Promise<T>
+```
+
+### **userHelpers.ts** - User Data Utilities
+```typescript
+fetchUserAvatar(): Promise<string | null>
+fetchCurrentUser(): Promise<{ avatarImage: string | null; totalPoints?: number } | null>
 ```
 
 ## 📦 Common Components
@@ -106,6 +126,7 @@ Pages (compose) → Common Components (use) → Utils (pure functions)
 // Clean imports from utils index
 import { formatDateTime, getCategoryColor, incrementUnreadCount } from '../utils';
 import { TaskCard, SearchAndFilter } from '../components/common';
+import { getStoredToken } from '../services/authService';
 ```
 
 ### Bad ❌
@@ -116,6 +137,9 @@ import { getCategoryColor } from '../utils/colorHelpers';
 
 // Don't duplicate functions
 const formatDateTime = (date) => { /* ... */ }
+
+// Don't access localStorage directly for tokens
+const token = localStorage.getItem('nexusquest-token');
 ```
 
 ## 🔄 Migration Checklist
@@ -137,12 +161,17 @@ When adding new features:
 - ✅ No duplicate color mapping logic
 - ✅ No duplicate localStorage operations
 - ✅ No duplicate date formatting
+- ✅ No duplicate API header creation
+- ✅ No duplicate user avatar loading
+- ✅ No duplicate token access
 
 ### Consistent Patterns
 - ✅ All cards use common components
 - ✅ All pages use PageHeader
 - ✅ All filtering uses SearchAndFilter
 - ✅ All utilities properly typed
+- ✅ All services use getStoredToken()
+- ✅ All API calls use getAuthHeaders()
 
 ### Clean Architecture
 - ✅ Pages compose components

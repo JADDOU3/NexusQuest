@@ -7,6 +7,8 @@ export interface Tutorial extends BaseTutorial {
 
 export type { TutorialSection };
 
+import { getStoredToken } from './authService';
+
 // Get tutorial customizations from localStorage
 const getTutorialCustomizations = (): Record<string, Partial<Tutorial>> => {
   const customizations = localStorage.getItem('tutorial-customizations');
@@ -122,7 +124,7 @@ export const getTutorial = async (id: string): Promise<Tutorial> => {
 // Get all tutorials for teacher
 export const getTeacherTutorials = async (): Promise<Tutorial[]> => {
   try {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     if (!token) {
       throw new Error('No authentication token');
     }
@@ -184,7 +186,7 @@ export const toggleTutorialVisibility = async (id: string): Promise<Tutorial> =>
 // Save tutorial customizations
 export const saveTutorialCustomization = async (id: string, updates: Partial<Tutorial>): Promise<Tutorial> => {
   try {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     if (!token) {
       throw new Error('No authentication token');
     }
@@ -232,7 +234,7 @@ export const saveTutorialCustomization = async (id: string, updates: Partial<Tut
 // Create a new custom tutorial
 export const createCustomTutorial = async (tutorial: Omit<Tutorial, 'isPublished' | 'isCustom'>): Promise<Tutorial> => {
   try {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     if (!token) {
       throw new Error('No authentication token');
     }
@@ -280,7 +282,7 @@ export const createCustomTutorial = async (tutorial: Omit<Tutorial, 'isPublished
 // Delete a custom tutorial
 export const deleteCustomTutorial = async (id: string): Promise<void> => {
   try {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     if (!token) {
       throw new Error('No authentication token');
     }
@@ -307,9 +309,10 @@ export const getAvailableLanguages = async (): Promise<string[]> => {
   try {
     // Try fetching from backend API first
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const token = getStoredToken();
     const response = await fetch(`${API_URL}/api/tutorials/meta/languages`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('nexusquest-token')}`,
+        'Authorization': `Bearer ${token}`,
       },
     });
 
@@ -332,7 +335,7 @@ export const getAvailableLanguages = async (): Promise<string[]> => {
 
 // Mark tutorial as started
 export const startTutorial = async (tutorialId: string): Promise<void> => {
-  const token = localStorage.getItem('nexusquest-token');
+  const token = getStoredToken();
   if (!token) return;
 
   try {
@@ -355,7 +358,7 @@ export const startTutorial = async (tutorialId: string): Promise<void> => {
 
 // Mark tutorial as completed
 export const completeTutorial = async (tutorialId: string): Promise<void> => {
-  const token = localStorage.getItem('nexusquest-token');
+  const token = getStoredToken();
   if (!token) return;
 
   try {
