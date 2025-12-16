@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Trophy, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Trophy, RefreshCw, Maximize, ShieldAlert } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
 import { Quiz, getQuiz, startQuiz, submitQuiz, QuizSubmitResponse } from '../services/quizService';
@@ -20,6 +20,11 @@ export default function QuizPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuizSubmitResponse | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [violations, setViolations] = useState(0);
+  const [showViolationWarning, setShowViolationWarning] = useState(false);
+  const [violationMessage, setViolationMessage] = useState('');
+  const quizContainerRef = useRef<HTMLDivElement>(null);
 
   // Load quiz data
   const loadQuiz = useCallback(async () => {
@@ -80,9 +85,128 @@ export default function QuizPage() {
     return () => clearInterval(interval);
   }, [quiz, started, result]);
 
+  // Fullscreen functions
+  const enterFullscreen = useCallback(async () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if ((elem as any).webkitRequestFullscreen) {
+        await (elem as any).webkitRequestFullscreen();
+      } else if ((elem as any).msRequestFullscreen) {
+        await (elem as any).msRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } catch (err) {
+      console.error('Failed to enter fullscreen:', err);
+    }
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if ((document as any).webkitExitFullscreen) {
+      (document as any).webkitExitFullscreen();
+    } else if ((document as any).msExitFullscreen) {
+      (document as any).msExitFullscreen();
+    }
+    setIsFullscreen(false);
+  }, []);
+
+  // Monitor fullscreen changes
+  useEffect(() => {
+    if (!started || result) return;
+
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isCurrentlyFullscreen);
+      
+      if (!isCurrentlyFullscreen && started && !result) {
+        // User exited fullscreen - count as violation
+        setViolations(prev => prev + 1);
+        setViolationMessage('⚠️ لقد خرجت من وضع الشاشة الكاملة! يجب العودة للمتابعة.');
+        setShowViolationWarning(true);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, [started, result]);
+
+  // Monitor tab/window visibility changes
+  useEffect(() => {
+    if (!started || result) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && started && !result) {
+        setViolations(prev => prev + 1);
+        setViolationMessage('⚠️ تم اكتشاف محاولة تبديل التطبيق! هذا مخالف لقواعد الاختبار.');
+        setShowViolationWarning(true);
+      }
+    };
+
+    const handleBlur = () => {
+      if (started && !result) {
+        setViolations(prev => prev + 1);
+        setViolationMessage('⚠️ تم اكتشاف محاولة الخروج من النافذة!');
+        setShowViolationWarning(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [started, result]);
+
+  // Prevent keyboard shortcuts
+  useEffect(() => {
+    if (!started || result) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block common exit shortcuts
+      if (
+        e.key === 'Escape' ||
+        (e.altKey && e.key === 'Tab') ||
+        (e.altKey && e.key === 'F4') ||
+        (e.ctrlKey && e.key === 'w') ||
+        (e.metaKey && e.key === 'Tab')
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        setViolationMessage('⚠️ لا يمكنك استخدام هذا الاختصار أثناء الاختبار!');
+        setShowViolationWarning(true);
+        setTimeout(() => setShowViolationWarning(false), 3000);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [started, result]);
+
+  // Exit fullscreen when quiz ends or result is shown
+  useEffect(() => {
+    if (result && isFullscreen) {
+      exitFullscreen();
+    }
+  }, [result, isFullscreen, exitFullscreen]);
+
   const handleStart = async () => {
     if (!id) return;
     try {
+      // Enter fullscreen first
+      await enterFullscreen();
+      
       const { alreadyStarted } = await startQuiz(id);
       setStarted(true);
       if (!alreadyStarted) {
@@ -160,7 +284,51 @@ export default function QuizPage() {
   const isActive = quiz.status === 'active';
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div ref={quizContainerRef} className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+      {/* Violation Warning Modal */}
+      {showViolationWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className={`max-w-md w-full mx-4 p-6 rounded-2xl ${theme === 'dark' ? 'bg-red-900/90 border border-red-500' : 'bg-red-50 border border-red-300'}`}>
+            <div className="text-center">
+              <ShieldAlert className="w-16 h-16 mx-auto mb-4 text-red-500" />
+              <h2 className="text-2xl font-bold mb-2 text-red-500">تحذير!</h2>
+              <p className="text-lg mb-4">{violationMessage}</p>
+              <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
+                عدد المخالفات: {violations}
+              </p>
+              {!isFullscreen ? (
+                <Button 
+                  onClick={() => {
+                    enterFullscreen();
+                    setShowViolationWarning(false);
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Maximize className="w-4 h-4 mr-2" />
+                  العودة للشاشة الكاملة
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => setShowViolationWarning(false)}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  فهمت، متابعة
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Violations Counter Badge */}
+      {started && !result && violations > 0 && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${theme === 'dark' ? 'bg-red-900/80 border border-red-500' : 'bg-red-100 border border-red-300'}`}>
+            <ShieldAlert className="w-4 h-4 text-red-500" />
+            <span className="text-sm font-medium text-red-500">المخالفات: {violations}</span>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className={`border-b sticky top-0 z-50 ${theme === 'dark' ? 'border-gray-800 bg-gray-900/95' : 'border-gray-200 bg-white/95'} backdrop-blur-sm`}>
         <div className="container mx-auto px-4 py-3">
@@ -334,6 +502,12 @@ export default function QuizPage() {
             <p className="text-sm text-gray-500 mb-6">
               Duration: {quiz.duration} minutes • Ends at {new Date(quiz.endTime).toLocaleTimeString()}
             </p>
+            <div className={`mb-4 p-3 rounded-lg ${theme === 'dark' ? 'bg-yellow-900/30 border border-yellow-500/30' : 'bg-yellow-50 border border-yellow-200'}`}>
+              <p className="text-yellow-500 text-sm flex items-center justify-center gap-2">
+                <Maximize className="w-4 h-4" />
+                سيتم تفعيل وضع الشاشة الكاملة عند البدء
+              </p>
+            </div>
             <Button onClick={handleStart} className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3">
               <Play className="w-5 h-5 mr-2" /> Start Quiz
             </Button>
