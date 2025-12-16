@@ -658,9 +658,13 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
         const passed = results.filter(r => r.passed).length;
         const allPassed = passed === results.length;
 
-        // Calculate points (proportional to tests passed)
-        // Only award points automatically if all tests pass
-        const newPointsAwarded = allPassed ? quiz.points : 0;
+        // Calculate auto grade based on percentage of tests passed (0-100)
+        const autoGrade = results.length > 0 ? Math.round((passed / results.length) * 100) : 0;
+
+        // Calculate points proportionally based on tests passed
+        const newPointsAwarded = results.length > 0 
+            ? Math.round((passed / results.length) * quiz.points) 
+            : 0;
 
         // Track previous points to handle point adjustments
         const previousPoints = submission.pointsAwarded || 0;
@@ -672,9 +676,14 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
         submission.score = passed;
         submission.totalTests = results.length;
         submission.submittedAt = new Date();
+        
+        // Set auto grade (teacher can override this later)
+        if (submission.teacherGrade === undefined) {
+            submission.teacherGrade = autoGrade;
+        }
 
-        // Only update points if score improved (all passed)
-        if (allPassed && pointsDiff > 0) {
+        // Award points proportionally (only if improved)
+        if (pointsDiff > 0) {
             submission.pointsAwarded = newPointsAwarded;
             await User.findByIdAndUpdate(req.userId, { $inc: { totalPoints: pointsDiff } });
 
@@ -683,12 +692,15 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
                 await Notification.create({
                     userId: req.userId,
                     type: NotificationType.POINTS_EARNED,
-                    message: `You earned ${pointsDiff} points from quiz "${quiz.title}"`,
+                    message: `You earned ${pointsDiff} points from quiz "${quiz.title}" (${passed}/${results.length} tests passed)`,
                     metadata: {
                         quizId: quiz._id,
                         title: quiz.title,
                         points: pointsDiff,
-                        reason: 'quiz_auto_pass',
+                        testsPassed: passed,
+                        totalTests: results.length,
+                        autoGrade: autoGrade,
+                        reason: 'quiz_auto_grade',
                     },
                     read: false,
                 });
