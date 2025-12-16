@@ -573,9 +573,12 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
     try {
         const { code, forceSubmit, violations } = req.body as { code?: string; forceSubmit?: boolean; violations?: number };
 
-        if (!code || !code.trim()) {
+        // Allow empty code only for force submit (when student tries to cheat)
+        if (!forceSubmit && (!code || !code.trim())) {
             return res.status(400).json({ success: false, error: 'Code is required' });
         }
+        
+        const submittedCode = code || '';
 
         const quiz = await Quiz.findById(req.params.id);
 
@@ -625,7 +628,7 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
 
             try {
                 const execResult = await Promise.race([
-                    executeCode(code, quiz.language, test.input),
+                    executeCode(submittedCode, quiz.language, test.input),
                     new Promise<never>((_, reject) => {
                         setTimeout(() => reject(new Error('Test execution timeout (10 seconds)')), 10000);
                     }),
@@ -671,7 +674,7 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
         const pointsDiff = newPointsAwarded - previousPoints;
 
         // Update submission
-        submission.code = code;
+        submission.code = submittedCode;
         submission.status = allPassed ? 'passed' : 'submitted';
         submission.score = passed;
         submission.totalTests = results.length;
