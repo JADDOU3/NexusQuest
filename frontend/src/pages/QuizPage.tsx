@@ -140,7 +140,7 @@ export default function QuizPage() {
       if (!isCurrentlyFullscreen && started && !result) {
         // User exited fullscreen - count as violation
         setViolations(prev => prev + 1);
-        setViolationMessage('⚠️ لقد خرجت من وضع الشاشة الكاملة! يجب العودة للمتابعة.');
+        setViolationMessage('⚠️ You exited fullscreen mode! You must return to continue.');
         setShowViolationWarning(true);
       }
     };
@@ -226,7 +226,7 @@ export default function QuizPage() {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        setViolationMessage('⚠️ لا يمكنك الخروج من وضع الشاشة الكاملة!');
+        setViolationMessage('⚠️ You cannot exit fullscreen mode!');
         setShowViolationWarning(true);
         setTimeout(() => setShowViolationWarning(false), 3000);
       }
@@ -340,10 +340,10 @@ export default function QuizPage() {
           <div className={`max-w-md w-full mx-4 p-6 rounded-2xl ${theme === 'dark' ? 'bg-red-900/90 border border-red-500' : 'bg-red-50 border border-red-300'}`}>
             <div className="text-center">
               <ShieldAlert className="w-16 h-16 mx-auto mb-4 text-red-500" />
-              <h2 className="text-2xl font-bold mb-2 text-red-500">تحذير!</h2>
+              <h2 className="text-2xl font-bold mb-2 text-red-500">Warning!</h2>
               <p className="text-lg mb-4">{violationMessage}</p>
               <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
-                عدد المخالفات: {violations}
+                Violations: {violations}
               </p>
               {!isFullscreen ? (
                 <Button 
@@ -354,14 +354,14 @@ export default function QuizPage() {
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
                   <Maximize className="w-4 h-4 mr-2" />
-                  العودة للشاشة الكاملة
+                  Return to Fullscreen
                 </Button>
               ) : (
                 <Button 
                   onClick={() => setShowViolationWarning(false)}
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
-                  فهمت، متابعة
+                  I understand, Continue
                 </Button>
               )}
             </div>
@@ -374,7 +374,7 @@ export default function QuizPage() {
         <div className="fixed top-4 right-4 z-50">
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${theme === 'dark' ? 'bg-red-900/80 border border-red-500' : 'bg-red-100 border border-red-300'}`}>
             <ShieldAlert className="w-4 h-4 text-red-500" />
-            <span className="text-sm font-medium text-red-500">المخالفات: {violations}</span>
+            <span className="text-sm font-medium text-red-500">Violations: {violations}</span>
           </div>
         </div>
       )}
@@ -554,7 +554,7 @@ export default function QuizPage() {
             <div className={`mb-4 p-3 rounded-lg ${theme === 'dark' ? 'bg-yellow-900/30 border border-yellow-500/30' : 'bg-yellow-50 border border-yellow-200'}`}>
               <p className="text-yellow-500 text-sm flex items-center justify-center gap-2">
                 <Maximize className="w-4 h-4" />
-                سيتم تفعيل وضع الشاشة الكاملة عند البدء
+                Fullscreen mode will be activated when you start
               </p>
             </div>
             <Button onClick={handleStart} className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3">

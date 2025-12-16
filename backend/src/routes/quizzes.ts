@@ -608,7 +608,7 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
                 await Notification.create({
                     userId: quiz.createdBy,
                     type: NotificationType.QUIZ_VIOLATION,
-                    message: `⚠️ الطالب ${student?.name || 'Unknown'} حاول الخروج من الكويز "${quiz.title}" وتم تسليمه إجبارياً`,
+                    message: `⚠️ Student ${student?.name || 'Unknown'} attempted to leave quiz "${quiz.title}" and was force-submitted`,
                     metadata: {
                         quizId: quiz._id,
                         quizTitle: quiz.title,
