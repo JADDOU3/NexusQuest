@@ -102,9 +102,9 @@ export const collaborationService = {
     return response.data.users;
   },
 
-  // Send invitations to users
-  async sendInvitations(sessionId: string, userIds: string[]): Promise<{ invitedCount: number }> {
-    const response = await api.post(`/sessions/${sessionId}/invite`, { userIds });
+  // Send invitations to users with role (editor = can edit, viewer = readonly)
+  async sendInvitations(sessionId: string, userIds: string[], role: 'editor' | 'viewer' = 'editor'): Promise<{ invitedCount: number }> {
+    const response = await api.post(`/sessions/${sessionId}/invite`, { userIds, role });
     return { invitedCount: response.data.invitedCount };
   },
 

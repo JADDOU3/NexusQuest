@@ -527,7 +527,7 @@ router.get('/sessions/:sessionId/available-users', authenticateToken, async (req
 router.post('/sessions/:sessionId/invite', authenticateToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const { userIds } = req.body; // Array of user IDs to invite
+    const { userIds, role = 'editor' } = req.body; // Array of user IDs to invite, role: 'editor' or 'viewer'
     const userId = (req as any).userId || (req as any).user?._id?.toString();
     const inviterName = (req as any).user?.name || 'Someone';
 
@@ -558,18 +558,20 @@ router.post('/sessions/:sessionId/invite', authenticateToken, async (req, res) =
       });
     }
 
-    // Create notifications for each invited user
+    // Create notifications for each invited user with role
+    const roleLabel = role === 'viewer' ? 'view only' : 'edit';
     const notifications = await Promise.all(
       userIds.map(async (targetUserId: string) => {
         return Notification.create({
           userId: targetUserId,
           type: NotificationType.COLLABORATION_INVITE,
-          message: `${inviterName} invited you to join "${session.name}" collaboration session`,
+          message: `${inviterName} invited you to join "${session.name}" collaboration session (${roleLabel})`,
           metadata: {
             sessionId: session.sessionId,
             sessionName: session.name,
             inviterId: userId,
             inviterName: inviterName,
+            role: role, // 'editor' or 'viewer'
           },
         });
       })
@@ -618,8 +620,14 @@ router.post('/sessions/:sessionId/accept-invite', authenticateToken, async (req,
       });
     }
 
-    // Mark notification as read
+    // Get role from notification metadata
+    let role = 'editor';
     if (notificationId) {
+      const notification = await Notification.findById(notificationId);
+      if (notification?.metadata?.role) {
+        role = notification.metadata.role;
+      }
+      // Mark notification as read
       await Notification.findByIdAndUpdate(notificationId, {
         read: true,
         readAt: new Date(),
@@ -630,6 +638,7 @@ router.post('/sessions/:sessionId/accept-invite', authenticateToken, async (req,
       success: true,
       message: 'Invitation accepted',
       sessionId: session.sessionId,
+      role: role, // Return the role so frontend can use it
     });
   } catch (error) {
     console.error('Error accepting invitation:', error);

@@ -85,4 +85,5 @@ export interface JoinSessionData {
   sessionId: string;
   userId: string;
   username: string;
+  role?: 'editor' | 'viewer'; // Role from invitation
 }
