@@ -12,6 +12,7 @@ import { connectChat, getChatSocket, type ChatMessage } from '../services/chatSe
 import { usePageTitle } from '../hooks/usePageTitle';
 import YouTubeEmbed from '../components/YouTubeEmbed';
 import TutorialCodeRunner from '../components/TutorialCodeRunner';
+import PracticeExercise from '../components/PracticeExercise';
 
 export default function TutorialCardView() {
   usePageTitle('Tutorial');
@@ -30,6 +31,8 @@ export default function TutorialCardView() {
   const [userSearch, setUserSearch] = useState('');
   const [fontSize, setFontSize] = useState(14);
   const [newMessageCount, setNewMessageCount] = useState(0);
+  const [practiceAnswered, setPracticeAnswered] = useState<Record<number, boolean>>({});
+  const [earnedPoints, setEarnedPoints] = useState(0);
 
   useEffect(() => {
     loadTutorial();
@@ -460,12 +463,30 @@ export default function TutorialCardView() {
                   />
                 )}
 
-                {/* Code Example with Run Button */}
-                {currentSectionData?.codeExample && (
+                {/* Code Example with Run Button - only show if NOT a practice section */}
+                {currentSectionData?.codeExample && !currentSectionData?.isPractice && (
                   <TutorialCodeRunner
                     code={currentSectionData.codeExample}
                     language={currentSectionData.language || tutorial.language}
                     theme={theme}
+                  />
+                )}
+
+                {/* Practice Exercise */}
+                {currentSectionData?.isPractice && currentSectionData?.practiceQuestion && (
+                  <PracticeExercise
+                    question={currentSectionData.practiceQuestion}
+                    language={currentSectionData.language || tutorial.language}
+                    theme={theme}
+                    isAnswered={practiceAnswered[currentSection] === true}
+                    wasCorrect={practiceAnswered[currentSection] === true}
+                    onCorrectAnswer={(points) => {
+                      setPracticeAnswered(prev => ({ ...prev, [currentSection]: true }));
+                      setEarnedPoints(prev => prev + points);
+                    }}
+                    onWrongAnswer={() => {
+                      // Don't mark as answered - let them retry
+                    }}
                   />
                 )}
 
@@ -488,25 +509,37 @@ export default function TutorialCardView() {
                   {currentSection === tutorial.sections.length - 1 ? (
                     <Button
                       onClick={() => {
+                        // Check if this is a practice section that hasn't been answered correctly
+                        if (currentSectionData?.isPractice && currentSectionData?.practiceQuestion && !practiceAnswered[currentSection]) {
+                          return; // Don't allow completion without answering practice
+                        }
                         const newCompleted = new Set(completedSections);
                         newCompleted.add(currentSection);
                         setCompletedSections(newCompleted);
                         localStorage.setItem(
                           getTutorialProgressKey(id!),
-                          JSON.stringify({ completed: true, sections: Array.from(newCompleted) })
+                          JSON.stringify({ completed: true, sections: Array.from(newCompleted), points: earnedPoints })
                         );
                         // Show completion with next suggestion
                         setCurrentSection(tutorial.sections.length); // Go to completion screen
                       }}
-                      className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+                      disabled={currentSectionData?.isPractice && currentSectionData?.practiceQuestion && !practiceAnswered[currentSection]}
+                      className="bg-green-600 hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <CheckCircle className="w-4 h-4" />
                       Complete Tutorial
                     </Button>
                   ) : (
                     <Button
-                      onClick={handleNext}
-                      className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                      onClick={() => {
+                        // Check if this is a practice section that hasn't been answered correctly
+                        if (currentSectionData?.isPractice && currentSectionData?.practiceQuestion && !practiceAnswered[currentSection]) {
+                          return; // Don't allow next without answering practice
+                        }
+                        handleNext();
+                      }}
+                      disabled={currentSectionData?.isPractice && currentSectionData?.practiceQuestion && !practiceAnswered[currentSection]}
+                      className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
                       <ArrowRight className="w-4 h-4" />

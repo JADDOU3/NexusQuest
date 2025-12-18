@@ -1,3 +1,11 @@
+export interface PracticeQuestion {
+  question: string;
+  starterCode: string; // Initial code template for the student
+  expectedOutput: string; // Expected output to validate against
+  hint?: string; // Optional hint for the student
+  points?: number; // Points awarded for correct answer (default: 10)
+}
+
 export interface TutorialSection {
   id: string;
   title: string;
@@ -5,6 +13,8 @@ export interface TutorialSection {
   codeExample?: string;
   language?: string;
   videoUrl?: string; // YouTube video URL
+  isPractice?: boolean; // If true, this is a practice exercise section
+  practiceQuestion?: PracticeQuestion; // Question for practice sections
 }
 
 export interface Tutorial {
@@ -124,22 +134,15 @@ let hasLicense = false;`,
       {
         id: 'practice',
         title: "Practice Exercise",
-        content: `Try this exercise to practice what you learned:
-
-**Exercise:** Create variables for a student profile
-1. Create a constant for the student's name
-2. Create a variable for their age
-3. Create a variable for their GPA
-4. Print all information using template literals`,
-        codeExample: `// Your solution here:
-const studentName = "Ali";
-let studentAge = 20;
-let studentGPA = 3.5;
-
-console.log(\`Student: \${studentName}\`);
-console.log(\`Age: \${studentAge}\`);
-console.log(\`GPA: \${studentGPA}\`);`,
-        language: 'javascript'
+        content: `Write a program that declares a constant called "greeting" with the value "Hello, World!" and prints it to the console.`,
+        isPractice: true,
+        practiceQuestion: {
+          question: "Declare a constant called 'greeting' with the value 'Hello, World!' and print it using console.log()",
+          starterCode: `// Declare a constant called greeting\n\n// Print the greeting`,
+          expectedOutput: "Hello, World!",
+          hint: "Use const to declare a constant, then use console.log() to print it",
+          points: 10
+        }
       }
     ]
   },
@@ -257,24 +260,15 @@ console.log(isEven(7));  // false`,
       {
         id: 'practice',
         title: "Practice Exercise",
-        content: `**Exercise:** Create a function to calculate the area of a rectangle
-
-1. Create a function called calculateArea
-2. It should accept width and height as parameters
-3. Return the calculated area
-4. Test it with different values`,
-        codeExample: `// Your solution here:
-function calculateArea(width, height) {
-    return width * height;
-}
-
-console.log(calculateArea(5, 10)); // 50
-console.log(calculateArea(3, 7));  // 21
-
-// Bonus: Use arrow function
-const calcArea = (w, h) => w * h;
-console.log(calcArea(4, 6)); // 24`,
-        language: 'javascript'
+        content: `Write an arrow function called "multiply" that takes two numbers and returns their product. Then call it with 5 and 3.`,
+        isPractice: true,
+        practiceQuestion: {
+          question: "Create an arrow function 'multiply' that multiplies two numbers, then print multiply(5, 3)",
+          starterCode: `// Create an arrow function called multiply\n\n// Call it with 5 and 3 and print the result`,
+          expectedOutput: "15",
+          hint: "Use const multiply = (a, b) => a * b; then console.log(multiply(5, 3))",
+          points: 10
+        }
       }
     ]
   },
@@ -986,27 +980,15 @@ print(price_float)  # 99.99`,
       {
         id: 'practice',
         title: "Practice Exercise",
-        content: `**Exercise:** Create a personal information program
-
-1. Create variables for name, age, height
-2. Use f-strings to display the information
-3. Calculate BMI if given weight and height
-4. Convert types as needed`,
-        codeExample: `# Your solution here:
-name = "Ali"
-age = 20
-height = 1.75  # meters
-weight = 70    # kg
-
-# Display information
-print(f"Name: {name}")
-print(f"Age: {age}")
-print(f"Height: {height}m")
-
-# Calculate BMI
-bmi = weight / (height ** 2)
-print(f"BMI: {bmi:.2f}")`,
-        language: 'python'
+        content: `Write a program that creates a variable called "name" with your name and prints a greeting using an f-string.`,
+        isPractice: true,
+        practiceQuestion: {
+          question: "Create a variable 'name' with value 'Ali' and print 'Hello, Ali!' using an f-string",
+          starterCode: `# Create a variable called name\n\n# Print a greeting using f-string`,
+          expectedOutput: "Hello, Ali!",
+          hint: "Use name = 'Ali' then print(f'Hello, {name}!')",
+          points: 10
+        }
       }
     ]
   },
@@ -1706,28 +1688,15 @@ final int MAX_STUDENTS = 30;
       {
         id: 'practice',
         title: "Practice Exercise",
-        content: `**Exercise:** Create a student record program
-
-1. Declare variables for student name, age, and GPA
-2. Calculate if the student passes (GPA >= 2.0)
-3. Display all information
-4. Use appropriate data types`,
-        codeExample: `// Your solution here:
-public class Main {
-    public static void main(String[] args) {
-        String studentName = "Ahmed";
-        int studentAge = 20;
-        double studentGPA = 3.5;
-        
-        boolean passes = studentGPA >= 2.0;
-        
-        System.out.println("Name: " + studentName);
-        System.out.println("Age: " + studentAge);
-        System.out.println("GPA: " + studentGPA);
-        System.out.println("Passes: " + passes);
-    }
-}`,
-        language: 'java'
+        content: `Write a program that declares a final constant PI with value 3.14159 and prints it.`,
+        isPractice: true,
+        practiceQuestion: {
+          question: "Declare a final constant called PI with value 3.14159 and print it",
+          starterCode: `public class Main {\n    public static void main(String[] args) {\n        // Declare a final constant PI\n        \n        // Print PI\n        \n    }\n}`,
+          expectedOutput: "3.14159",
+          hint: "Use final double PI = 3.14159; then System.out.println(PI);",
+          points: 10
+        }
       }
     ]
   },
@@ -2580,30 +2549,15 @@ const int MAX_SIZE = 100;
       {
         id: 'practice',
         title: "Practice Exercise",
-        content: `**Exercise:** Create a simple calculator
-
-1. Declare two integer variables
-2. Calculate their sum, difference, product
-3. Display the results
-4. Use appropriate data types`,
-        codeExample: `// Your solution here:
-#include <iostream>
-using namespace std;
-
-int main() {
-    int a = 10, b = 5;
-    
-    int sum = a + b;
-    int diff = a - b;
-    int prod = a * b;
-    
-    cout << "Sum: " << sum << endl;
-    cout << "Difference: " << diff << endl;
-    cout << "Product: " << prod << endl;
-    
-    return 0;
-}`,
-        language: 'cpp'
+        content: `Write a program that prints "Hello, C++!" to the console.`,
+        isPractice: true,
+        practiceQuestion: {
+          question: "Print 'Hello, C++!' to the console using cout",
+          starterCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Print Hello, C++! here\n    \n    return 0;\n}`,
+          expectedOutput: "Hello, C++!",
+          hint: "Use cout << \"Hello, C++!\" << endl;",
+          points: 10
+        }
       }
     ]
   },
