@@ -111,9 +111,17 @@ router.get('/sessions/:sessionId', authenticateToken, async (req, res) => {
     const isParticipant = session.participants.some(
       p => p.userId.toString() === userId
     );
-    const isOwner = session.owner.toString() === userId;
+    const isOwner = session.owner._id?.toString() === userId || session.owner.toString() === userId;
+    
+    // Check if user has a pending invitation for this session
+    const hasPendingInvite = await Notification.findOne({
+      userId: userId,
+      type: NotificationType.COLLABORATION_INVITE,
+      'metadata.sessionId': sessionId,
+      read: false,
+    });
 
-    if (!session.isPublic && !isParticipant && !isOwner) {
+    if (!session.isPublic && !isParticipant && !isOwner && !hasPendingInvite) {
       return res.status(403).json({
         success: false,
         message: 'Access denied',
@@ -146,16 +154,25 @@ router.get('/sessions/:sessionId', authenticateToken, async (req, res) => {
   }
 });
 
-// Get user's sessions
+// Get user's sessions (including sessions with pending invitations)
 router.get('/sessions', authenticateToken, async (req, res) => {
   try {
     const userId = (req as any).userId || (req as any).user?._id?.toString();
     const { active = 'true' } = req.query;
 
+    // Get pending invitation session IDs for this user
+    const pendingInvites = await Notification.find({
+      userId: userId,
+      type: NotificationType.COLLABORATION_INVITE,
+      read: false,
+    });
+    const invitedSessionIds = pendingInvites.map(n => n.metadata?.sessionId).filter(Boolean);
+
     const query: any = {
       $or: [
         { owner: userId },
         { 'participants.userId': userId },
+        { sessionId: { $in: invitedSessionIds } }, // Include sessions with pending invites
       ],
     };
 
@@ -170,18 +187,29 @@ router.get('/sessions', authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      sessions: sessions.map(session => ({
-        sessionId: session.sessionId,
-        name: session.name,
-        description: session.description,
-        owner: session.owner,
-        participantCount: session.participants.filter(p => p.isActive).length,
-        language: session.language,
-        isPublic: session.isPublic,
-        maxParticipants: session.maxParticipants,
-        createdAt: session.createdAt,
-        lastActivity: session.lastActivity,
-      })),
+      sessions: sessions.map(session => {
+        // Check if user has pending invite for this session
+        const hasPendingInvite = invitedSessionIds.includes(session.sessionId);
+        const pendingInvite = pendingInvites.find(n => n.metadata?.sessionId === session.sessionId);
+        
+        return {
+          sessionId: session.sessionId,
+          name: session.name,
+          description: session.description,
+          owner: session.owner,
+          participantCount: session.participants.filter(p => p.isActive).length,
+          participants: session.participants,
+          language: session.language,
+          isPublic: session.isPublic,
+          maxParticipants: session.maxParticipants,
+          createdAt: session.createdAt,
+          lastActivity: session.lastActivity,
+          // Include invitation info
+          hasPendingInvite,
+          inviteRole: pendingInvite?.metadata?.role || 'editor',
+          inviteNotificationId: pendingInvite?._id?.toString(),
+        };
+      }),
     });
   } catch (error) {
     console.error('Error fetching sessions:', error);
@@ -527,7 +555,7 @@ router.get('/sessions/:sessionId/available-users', authenticateToken, async (req
 router.post('/sessions/:sessionId/invite', authenticateToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const { userIds } = req.body; // Array of user IDs to invite
+    const { userIds, role = 'editor' } = req.body; // Array of user IDs to invite, role: 'editor' or 'viewer'
     const userId = (req as any).userId || (req as any).user?._id?.toString();
     const inviterName = (req as any).user?.name || 'Someone';
 
@@ -558,18 +586,20 @@ router.post('/sessions/:sessionId/invite', authenticateToken, async (req, res) =
       });
     }
 
-    // Create notifications for each invited user
+    // Create notifications for each invited user with role
+    const roleLabel = role === 'viewer' ? 'view only' : 'edit';
     const notifications = await Promise.all(
       userIds.map(async (targetUserId: string) => {
         return Notification.create({
           userId: targetUserId,
           type: NotificationType.COLLABORATION_INVITE,
-          message: `${inviterName} invited you to join "${session.name}" collaboration session`,
+          message: `${inviterName} invited you to join "${session.name}" collaboration session (${roleLabel})`,
           metadata: {
             sessionId: session.sessionId,
             sessionName: session.name,
             inviterId: userId,
             inviterName: inviterName,
+            role: role, // 'editor' or 'viewer'
           },
         });
       })
@@ -618,18 +648,47 @@ router.post('/sessions/:sessionId/accept-invite', authenticateToken, async (req,
       });
     }
 
-    // Mark notification as read
+    // Get role from notification metadata
+    let role: 'editor' | 'viewer' = 'editor';
     if (notificationId) {
+      const notification = await Notification.findById(notificationId);
+      if (notification?.metadata?.role) {
+        role = notification.metadata.role as 'editor' | 'viewer';
+      }
+      // Mark notification as read
       await Notification.findByIdAndUpdate(notificationId, {
         read: true,
         readAt: new Date(),
       });
     }
 
+    // Add user as participant if not already
+    const existingParticipant = session.participants.find(
+      p => p.userId.toString() === userId
+    );
+    
+    if (!existingParticipant) {
+      // Generate a random color for the user
+      const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      session.participants.push({
+        userId: userId as any,
+        username: username,
+        role: role,
+        joinedAt: new Date(),
+        isActive: false, // Will be set to true when they actually join via WebSocket
+        color: color,
+      } as any);
+      
+      await session.save();
+    }
+
     res.json({
       success: true,
       message: 'Invitation accepted',
       sessionId: session.sessionId,
+      role: role, // Return the role so frontend can use it
     });
   } catch (error) {
     console.error('Error accepting invitation:', error);

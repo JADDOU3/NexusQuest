@@ -61,6 +61,13 @@ export default function CollaborativeEditor({
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sendingInvites, setSendingInvites] = useState(false);
+  const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
+
+  // Get current user's role in the session
+  const currentUser = getStoredUser();
+  const currentParticipant = participants.find(p => p.userId === currentUser?.id);
+  const isViewer = currentParticipant?.role === 'viewer';
+  const isOwner = currentSession?.owner === currentUser?.id;
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const decorationsRef = useRef<string[]>([]);
   const isRemoteChange = useRef(false);
@@ -285,8 +292,6 @@ export default function CollaborativeEditor({
     setTerminalLines(prev => [...prev, { type: 'error', content: '\n⏹ Execution stopped\n' }]);
   };
 
-  const currentUser = getStoredUser();
-
   return (
     <div className={`flex h-full w-full ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}>
       {/* Main Editor Area */}
@@ -414,7 +419,7 @@ export default function CollaborativeEditor({
               height="100%"
               language={language}
               value={code}
-              onChange={handleCodeChange}
+              onChange={isViewer ? undefined : handleCodeChange}
               onMount={handleEditorDidMount}
               theme={theme === 'dark' ? 'vs-dark' : 'light'}
               options={{
@@ -424,8 +429,17 @@ export default function CollaborativeEditor({
                 scrollBeyondLastLine: false,
                 automaticLayout: true,
                 tabSize: 2,
+                readOnly: isViewer,
               }}
             />
+            {isViewer && (
+              <div className={`absolute top-2 right-2 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 ${
+                theme === 'dark' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-purple-100 text-purple-700 border border-purple-200'
+              }`}>
+                <Circle className="w-2 h-2 fill-current" />
+                View Only Mode
+              </div>
+            )}
           </div>
 
           {/* Terminal */}
@@ -816,6 +830,77 @@ export default function CollaborativeEditor({
               )}
             </div>
 
+            {/* Role Selection */}
+            <div className={`px-6 py-3 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'}`}>
+              <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                Permission Level
+              </p>
+              <div className="flex gap-3">
+                <label
+                  className={`flex-1 flex items-center gap-2 p-3 rounded-lg cursor-pointer border transition-all ${
+                    inviteRole === 'editor'
+                      ? theme === 'dark'
+                        ? 'bg-blue-500/20 border-blue-500/50'
+                        : 'bg-blue-50 border-blue-300'
+                      : theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                      : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="inviteRole"
+                    value="editor"
+                    checked={inviteRole === 'editor'}
+                    onChange={() => setInviteRole('editor')}
+                    className="sr-only"
+                  />
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    inviteRole === 'editor' ? 'border-blue-500 bg-blue-500' : theme === 'dark' ? 'border-gray-500' : 'border-gray-400'
+                  }`}>
+                    {inviteRole === 'editor' && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Can Edit</p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Full access to edit code
+                    </p>
+                  </div>
+                </label>
+                <label
+                  className={`flex-1 flex items-center gap-2 p-3 rounded-lg cursor-pointer border transition-all ${
+                    inviteRole === 'viewer'
+                      ? theme === 'dark'
+                        ? 'bg-purple-500/20 border-purple-500/50'
+                        : 'bg-purple-50 border-purple-300'
+                      : theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                      : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="inviteRole"
+                    value="viewer"
+                    checked={inviteRole === 'viewer'}
+                    onChange={() => setInviteRole('viewer')}
+                    className="sr-only"
+                  />
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    inviteRole === 'viewer' ? 'border-purple-500 bg-purple-500' : theme === 'dark' ? 'border-gray-500' : 'border-gray-400'
+                  }`}>
+                    {inviteRole === 'viewer' && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">View Only</p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Can only view, not edit
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             {/* Footer */}
             <div className={`px-6 py-4 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'}`}>
               <div className="flex items-center justify-between">
@@ -827,10 +912,11 @@ export default function CollaborativeEditor({
                     if (selectedUsers.length === 0) return;
                     setSendingInvites(true);
                     try {
-                      await collaborationService.sendInvitations(currentSession?.sessionId || '', selectedUsers);
+                      await collaborationService.sendInvitations(currentSession?.sessionId || '', selectedUsers, inviteRole);
                       setShowInviteDialog(false);
                       setSelectedUsers([]);
                       setSearchQuery('');
+                      setInviteRole('editor');
                       // Refresh available users
                       const users = await collaborationService.getAvailableUsers(currentSession?.sessionId || '');
                       setAvailableUsers(users);

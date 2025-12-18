@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Code, Loader2, CheckCircle, Trophy, ChevronRight, Code2, MessageCircle, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Loader2, CheckCircle, Trophy, ChevronRight, Code2, MessageCircle, User } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
 import { getTutorial, getTutorials, Tutorial } from '../services/tutorialService';
 import type { TutorialSection } from '../services/tutorialService';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { getStoredUser } from '../services/authService';
 import { NotificationsBell } from '../components/NotificationsBell';
 import { UserSidePanel } from '../components/UserSidePanel';
 import { connectChat, getChatSocket, type ChatMessage } from '../services/chatService';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { getApiUrl } from '../utils/apiHelpers';
+import YouTubeEmbed from '../components/YouTubeEmbed';
+import TutorialCodeRunner from '../components/TutorialCodeRunner';
+import PracticeExercise from '../components/PracticeExercise';
 
 export default function TutorialCardView() {
   usePageTitle('Tutorial');
@@ -31,6 +31,8 @@ export default function TutorialCardView() {
   const [userSearch, setUserSearch] = useState('');
   const [fontSize, setFontSize] = useState(14);
   const [newMessageCount, setNewMessageCount] = useState(0);
+  const [practiceAnswered, setPracticeAnswered] = useState<Record<number, boolean>>({});
+  const [earnedPoints, setEarnedPoints] = useState(0);
 
   useEffect(() => {
     loadTutorial();
@@ -452,25 +454,40 @@ export default function TutorialCardView() {
                   </div>
                 </div>
 
-                {/* Code Example */}
-                {currentSectionData?.codeExample && (
-                  <div className="mb-8">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Code className="w-5 h-5 text-blue-500" />
-                      <h3 className="font-semibold text-lg">Code Example</h3>
-                    </div>
-                    <SyntaxHighlighter
-                      language={currentSectionData.language || tutorial.language}
-                      style={vscDarkPlus as any}
-                      customStyle={{
-                        borderRadius: '0.75rem',
-                        padding: '1.5rem',
-                        fontSize: '0.95rem'
-                      }}
-                    >
-                      {currentSectionData.codeExample}
-                    </SyntaxHighlighter>
-                  </div>
+                {/* YouTube Video */}
+                {currentSectionData?.videoUrl && (
+                  <YouTubeEmbed 
+                    videoUrl={currentSectionData.videoUrl} 
+                    title={`${currentSectionData.title} - Video`}
+                    theme={theme}
+                  />
+                )}
+
+                {/* Code Example with Run Button - only show if NOT a practice section */}
+                {currentSectionData?.codeExample && !currentSectionData?.isPractice && (
+                  <TutorialCodeRunner
+                    code={currentSectionData.codeExample}
+                    language={currentSectionData.language || tutorial.language}
+                    theme={theme}
+                  />
+                )}
+
+                {/* Practice Exercise */}
+                {currentSectionData?.isPractice && currentSectionData?.practiceQuestion && (
+                  <PracticeExercise
+                    question={currentSectionData.practiceQuestion}
+                    language={currentSectionData.language || tutorial.language}
+                    theme={theme}
+                    isAnswered={practiceAnswered[currentSection] === true}
+                    wasCorrect={practiceAnswered[currentSection] === true}
+                    onCorrectAnswer={(points) => {
+                      setPracticeAnswered(prev => ({ ...prev, [currentSection]: true }));
+                      setEarnedPoints(prev => prev + points);
+                    }}
+                    onWrongAnswer={() => {
+                      // Don't mark as answered - let them retry
+                    }}
+                  />
                 )}
 
                 {/* Navigation Buttons */}
@@ -492,25 +509,37 @@ export default function TutorialCardView() {
                   {currentSection === tutorial.sections.length - 1 ? (
                     <Button
                       onClick={() => {
+                        // Check if this is a practice section that hasn't been answered correctly
+                        if (currentSectionData?.isPractice && currentSectionData?.practiceQuestion && !practiceAnswered[currentSection]) {
+                          return; // Don't allow completion without answering practice
+                        }
                         const newCompleted = new Set(completedSections);
                         newCompleted.add(currentSection);
                         setCompletedSections(newCompleted);
                         localStorage.setItem(
                           getTutorialProgressKey(id!),
-                          JSON.stringify({ completed: true, sections: Array.from(newCompleted) })
+                          JSON.stringify({ completed: true, sections: Array.from(newCompleted), points: earnedPoints })
                         );
                         // Show completion with next suggestion
                         setCurrentSection(tutorial.sections.length); // Go to completion screen
                       }}
-                      className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+                      disabled={currentSectionData?.isPractice && currentSectionData?.practiceQuestion && !practiceAnswered[currentSection]}
+                      className="bg-green-600 hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <CheckCircle className="w-4 h-4" />
                       Complete Tutorial
                     </Button>
                   ) : (
                     <Button
-                      onClick={handleNext}
-                      className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                      onClick={() => {
+                        // Check if this is a practice section that hasn't been answered correctly
+                        if (currentSectionData?.isPractice && currentSectionData?.practiceQuestion && !practiceAnswered[currentSection]) {
+                          return; // Don't allow next without answering practice
+                        }
+                        handleNext();
+                      }}
+                      disabled={currentSectionData?.isPractice && currentSectionData?.practiceQuestion && !practiceAnswered[currentSection]}
+                      className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
                       <ArrowRight className="w-4 h-4" />

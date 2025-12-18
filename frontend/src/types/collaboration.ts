@@ -31,6 +31,10 @@ export interface CollaborationSession {
   createdAt: Date;
   updatedAt?: Date;
   lastActivity: Date;
+  // Invitation info (for pending invites)
+  hasPendingInvite?: boolean;
+  inviteRole?: 'editor' | 'viewer';
+  inviteNotificationId?: string;
 }
 
 export interface CollaborationMessage {
@@ -85,4 +89,5 @@ export interface JoinSessionData {
   sessionId: string;
   userId: string;
   username: string;
+  role?: 'editor' | 'viewer'; // Role from invitation
 }

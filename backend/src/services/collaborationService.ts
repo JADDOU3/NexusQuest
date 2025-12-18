@@ -47,6 +47,7 @@ export function setupCollaboration(io: Server) {
       sessionId: string;
       userId: string;
       username: string;
+      role?: 'editor' | 'viewer'; // Role from invitation
     }) => {
       try {
         const session = await CollaborationSession.findOne({
@@ -72,15 +73,23 @@ export function setupCollaboration(io: Server) {
         );
 
         const userColor = existingParticipant?.color || USER_COLORS[colorIndex++ % USER_COLORS.length];
+        
+        // Determine role: owner > existing role > invited role > default editor
+        const isOwner = session.owner.toString() === data.userId;
+        const userRole = isOwner ? 'owner' : (existingParticipant?.role || data.role || 'editor');
 
         if (existingParticipant) {
           existingParticipant.isActive = true;
           existingParticipant.joinedAt = new Date();
+          // Update role if provided and not owner
+          if (data.role && !isOwner && existingParticipant.role !== 'owner') {
+            existingParticipant.role = data.role;
+          }
         } else {
           session.participants.push({
             userId: data.userId as any,
             username: data.username,
-            role: session.owner.toString() === data.userId ? 'owner' : 'editor',
+            role: userRole,
             joinedAt: new Date(),
             isActive: true,
             color: userColor,

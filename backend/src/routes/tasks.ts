@@ -29,7 +29,7 @@ const teacherMiddleware = async (req: AuthRequest, res: Response, next: () => vo
 // All routes require authentication
 router.use(authMiddleware);
 
-// Get all tasks (available to all users)
+// Get all tasks (available to all users, filtered by assignedTo for students)
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { difficulty, language, createdBy } = req.query;
@@ -39,9 +39,29 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     if (language) filter.language = language;
     if (createdBy) filter.createdBy = createdBy;
 
-    const tasks = await Task.find(filter)
-      .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
+    // Check if user is a teacher or student
+    const user = await User.findById(req.userId);
+    
+    let tasks;
+    if (user && user.role === 'teacher') {
+      // Teachers see all tasks
+      tasks = await Task.find(filter)
+        .populate('createdBy', 'name email')
+        .populate('assignedTo', '_id name email')
+        .sort({ createdAt: -1 });
+    } else {
+      // Students only see tasks assigned to them OR tasks with empty assignedTo (all students)
+      tasks = await Task.find({
+        ...filter,
+        $or: [
+          { assignedTo: { $size: 0 } }, // Empty array = all students
+          { assignedTo: { $exists: false } }, // No assignedTo field = all students
+          { assignedTo: req.userId } // Assigned to this specific student
+        ]
+      })
+        .populate('createdBy', 'name email')
+        .sort({ createdAt: -1 });
+    }
 
     res.json({
       success: true,
@@ -57,6 +77,7 @@ router.get('/my-tasks', teacherMiddleware, async (req: AuthRequest, res: Respons
   try {
     const tasks = await Task.find({ createdBy: req.userId })
       .select('+solution') // Include solution for teacher's own tasks
+      .populate('assignedTo', '_id name email')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -68,11 +89,29 @@ router.get('/my-tasks', teacherMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
+// Get list of students (for task assignment) - MUST be before /:id route
+router.get('/students/list', teacherMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    // In this system, 'user' role represents students (non-teachers)
+    const students = await User.find({ role: 'user' })
+      .select('_id name email')
+      .sort({ name: 1 });
+
+    res.json({
+      success: true,
+      data: students,
+    });
+  } catch {
+    res.status(500).json({ success: false, error: 'Failed to fetch students' });
+  }
+});
+
 // Get a single task by ID
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const task = await Task.findById(req.params.id)
-      .populate('createdBy', 'name email');
+      .populate('createdBy', 'name email')
+      .populate('assignedTo', '_id name email');
 
     if (!task) {
       return res.status(404).json({ success: false, error: 'Task not found' });
@@ -87,7 +126,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // Create a new task (teachers only)
 router.post('/', teacherMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, points, difficulty, language, starterCode, solution, testCases } = req.body;
+    const { title, description, points, difficulty, language, starterCode, solution, testCases, assignedTo } = req.body;
 
     if (!Array.isArray(testCases) || testCases.length === 0) {
       return res.status(400).json({ success: false, error: 'At least one test case is required' });
@@ -103,6 +142,7 @@ router.post('/', teacherMiddleware, async (req: AuthRequest, res: Response) => {
       starterCode,
       solution,
       testCases,
+      assignedTo: assignedTo || [],
     });
 
     // Award points to teacher for creating content
@@ -143,7 +183,7 @@ router.put('/:id', teacherMiddleware, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ success: false, error: 'Task not found or not authorized' });
     }
 
-    const { title, description, points, difficulty, language, starterCode, solution, testCases } = req.body;
+    const { title, description, points, difficulty, language, starterCode, solution, testCases, assignedTo } = req.body;
 
     if (title) task.title = title;
     if (description) task.description = description;
@@ -158,6 +198,7 @@ router.put('/:id', teacherMiddleware, async (req: AuthRequest, res: Response) =>
       }
       task.testCases = testCases;
     }
+    if (assignedTo !== undefined) task.assignedTo = assignedTo;
 
     await task.save();
 
