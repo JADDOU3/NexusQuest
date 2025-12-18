@@ -15,10 +15,13 @@ export function triggerAchievementNotification(title: string, description: strin
 }
 
 // Check for level up and achievements after completing tasks/quizzes
+import { getStoredToken } from './authService';
+import { getApiUrl } from '../utils/apiHelpers';
+
 export async function checkGamificationUpdates(previousLevel?: number, previousAchievements?: string[]) {
     try {
-        const token = localStorage.getItem('nexusquest-token');
-        const response = await fetch('http://localhost:9876/api/gamification/profile', {
+        const token = getStoredToken();
+        const response = await fetch(`${getApiUrl()}/api/gamification/profile`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
@@ -36,7 +39,6 @@ export async function checkGamificationUpdates(previousLevel?: number, previousA
 
         // Check for new achievements
         if (previousAchievements) {
-            const currentAchievementIds = profile.achievements.map((a: any) => a.id);
             const newAchievements = profile.achievements.filter(
                 (a: any) => !previousAchievements.includes(a.id)
             );

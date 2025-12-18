@@ -8,7 +8,9 @@ import { getUserStats, getMyProgress, TaskProgress } from '../services/taskServi
 import { getMyLeaderboardRank } from '../services/userService';
 import { getDailyChallengeStats } from '../services/dailyChallengeService';
 import { getGamificationProfile, GamificationProfile, getAllAchievementsWithStatus, AchievementWithStatus, addCustomSkill, removeCustomSkill } from '../services/gamificationService';
+import { getCategoryColor, getTimeAgo } from '../utils';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { getApiUrl } from '../utils/apiHelpers';
 
 interface ProfileProps {
   user: { name: string; email: string } | null;
@@ -26,7 +28,6 @@ export function Profile({ user, onLogout }: ProfileProps) {
   const [editName, setEditName] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [editConfirmPassword, setEditConfirmPassword] = useState('');
-  const [fontSize, setFontSize] = useState(14);
   const [totalPoints, setTotalPoints] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [completedTasks, setCompletedTasks] = useState<TaskProgress[]>([]);
@@ -77,7 +78,7 @@ export function Profile({ user, onLogout }: ProfileProps) {
   const handlePrivacyChange = async (newIsPublic: boolean) => {
     try {
       const token = localStorage.getItem('nexusquest-token');
-      const response = await fetch('http://localhost:9876/api/gamification/profile/settings', {
+      const response = await fetch(`${getApiUrl()}/api/gamification/profile/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +136,7 @@ export function Profile({ user, onLogout }: ProfileProps) {
       if (editName) updateData.name = editName;
       if (editPassword) updateData.password = editPassword;
 
-      const response = await fetch('http://localhost:9876/api/auth/profile', {
+      const response = await fetch(`${getApiUrl()}/api/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(updateData)
@@ -190,16 +191,6 @@ export function Profile({ user, onLogout }: ProfileProps) {
   ];
 
   // Map real skills from gamification profile
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      python: 'blue',
-      javascript: 'yellow',
-      java: 'red',
-      cpp: 'purple',
-      general: 'green'
-    };
-    return colors[category] || 'gray';
-  };
 
   const skills = gamificationProfile?.skills.map(skill => ({
     name: skill.name,
@@ -211,12 +202,7 @@ export function Profile({ user, onLogout }: ProfileProps) {
   const recentActivity = completedTasks.slice(0, 4).map((progress, index) => {
     const task = progress.taskId;
     const completedDate = progress.completedAt ? new Date(progress.completedAt) : new Date();
-    const now = new Date();
-    const diffMs = now.getTime() - completedDate.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-    const timeAgo = diffDays > 0 ? `${diffDays} day${diffDays > 1 ? 's' : ''} ago` : 
-                   diffHours > 0 ? `${diffHours} hour${diffHours > 1 ? 's' : ''} ago` : 'Just now';
+    const timeAgo = getTimeAgo(completedDate);
     
     return {
       id: index + 1,
@@ -254,8 +240,6 @@ export function Profile({ user, onLogout }: ProfileProps) {
         onLogout={onLogout}
         theme={theme}
         setTheme={setTheme}
-        fontSize={fontSize}
-        setFontSize={setFontSize}
       />
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">

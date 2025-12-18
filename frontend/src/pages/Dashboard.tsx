@@ -1,20 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Code2, Trophy, Target, BookOpen, Clock, Star, TrendingUp, Award, User, MessageCircle, Users, Home, FileQuestion, MessageSquare } from 'lucide-react';
+import { Code2, Trophy, Target, BookOpen, Clock, Star, TrendingUp, Award, User, MessageCircle, Home, FileQuestion, MessageSquare, Users } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getStoredUser } from '../services/authService';
 import { getMyProgress, TaskProgress, getUserStats, UserStats } from '../services/taskService';
 import { getGamificationProfile } from '../services/gamificationService';
 import { checkGamificationUpdates, storeGamificationState, getStoredGamificationState } from '../services/gamificationEvents';
-import { UserSidePanel } from '@/components/UserSidePanel';
-import { ProjectsSidebar } from '@/components/ProjectsSidebar';
-import { DailyChallenge } from '@/components/DailyChallenge';
-import { NotificationsBell } from '@/components/NotificationsBell';
+import { UserSidePanel } from '../components/UserSidePanel';
+import { ProjectsSidebar } from '../components/ProjectsSidebar';
+import { DailyChallenge } from '../components/DailyChallenge';
+import { NotificationsBell } from '../components/NotificationsBell';
 import { connectChat, getChatSocket, type ChatMessage } from '../services/chatService';
 import { fetchUsers, type ChatUser, getMyLeaderboardRank } from '../services/userService';
 import { getDailyChallengeStats } from '../services/dailyChallengeService';
+import { incrementUnreadCount } from '../utils';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { getApiUrl } from '../utils/apiHelpers';
 
 interface DashboardProps {
   user: { name: string; email: string } | null;
@@ -27,7 +29,6 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
-  const [fontSize, setFontSize] = useState(14);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [allUsers, setAllUsers] = useState<ChatUser[]>([]);
@@ -47,7 +48,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
     const loadUserAvatar = async () => {
       try {
         const token = localStorage.getItem('nexusquest-token');
-        const response = await fetch('http://localhost:9876/api/auth/me', {
+        const response = await fetch(`${getApiUrl()}/api/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -89,16 +90,8 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
       // Increment global counter
       setNewMessageCount((prev) => prev + 1);
 
-      // Persist per-user unread counts so Messages page can show badges
-      try {
-        const raw = localStorage.getItem('nexusquest-unread-users');
-        const map: Record<string, number> = raw ? JSON.parse(raw) : {};
-        const fromId = _msg.senderId;
-        map[fromId] = (map[fromId] || 0) + 1;
-        localStorage.setItem('nexusquest-unread-users', JSON.stringify(map));
-      } catch {
-        // ignore JSON/localStorage errors
-      }
+      // Persist per-user unread counts
+      incrementUnreadCount(_msg.senderId);
     };
 
     s.on('dm:received', handleReceived as any);
@@ -153,18 +146,6 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
         // Check for level ups and new achievements
         const stored = getStoredGamificationState();
         if (stored.level && stored.achievements) {
-          // Check if level increased
-          if (gamification.level > stored.level) {
-            // Trigger level up notification (will be shown by toast container)
-            // The notification will be triggered automatically by checkGamificationUpdates
-          }
-
-          // Check for new achievements
-          const currentAchievementIds = gamification.achievements.map((a: any) => a.id);
-          const newAchievements = gamification.achievements.filter(
-            (a: any) => !stored.achievements.includes(a.id)
-          );
-
           // Notifications will be triggered by the event system
         }
 
@@ -353,8 +334,6 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           setTheme={setTheme}
           user={user}
           avatarImage={avatarImage}
-          fontSize={fontSize}
-          setFontSize={setFontSize}
           isOpen={showSidePanel}
           onClose={() => setShowSidePanel(false)}
           onLogout={onLogout}

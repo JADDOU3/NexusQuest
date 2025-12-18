@@ -1,19 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Calendar, ArrowLeft, Trophy, CheckCircle2, Play, User } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import { Clock, CheckCircle2, Play } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { Quiz, getQuizzes } from '../services/quizService';
-import { getStoredUser } from '../services/authService';
-import { UserSidePanel } from '../components/UserSidePanel';
-import { usePageTitle } from '../hooks/usePageTitle';
+import { QuizCard, PageHeader } from '../components/common';
 
 export default function QuizzesPage() {
-  usePageTitle('Quizzes');
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const storedUser = getStoredUser();
-  const [showSidebar, setShowSidebar] = useState(false);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,38 +27,6 @@ export default function QuizzesPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'active': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'ended': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-      default: return 'bg-gray-500/20 text-gray-400';
-    }
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-500/20 text-green-400';
-      case 'medium': return 'bg-yellow-500/20 text-yellow-400';
-      case 'hard': return 'bg-red-500/20 text-red-400';
-      default: return 'bg-gray-500/20 text-gray-400';
-    }
-  };
-
-  const formatDateTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getSubmissionStatus = (quiz: Quiz) => {
-    if (!quiz.submission) return null;
-    return quiz.submission.status;
-  };
-
   // Separate quizzes into active/upcoming and completed
   const activeQuizzes = quizzes.filter(q => q.status === 'active' || q.status === 'scheduled');
   const completedQuizzes = quizzes.filter(q => q.status === 'ended' || q.submission?.status === 'passed');
@@ -80,157 +42,6 @@ export default function QuizzesPage() {
     return new Date(b.endTime).getTime() - new Date(a.endTime).getTime();
   });
 
-  const renderQuizCard = (quiz: Quiz) => {
-    const submissionStatus = getSubmissionStatus(quiz);
-    const isCompleted = quiz.status === 'ended' || submissionStatus === 'passed';
-    const hasGrade = quiz.submission?.teacherGrade !== undefined;
-
-    return (
-      <div
-        key={quiz._id}
-        onClick={() => navigate(`/quiz/${quiz._id}`)}
-        className={`group rounded-2xl p-5 cursor-pointer transition-all duration-300 border ${
-          theme === 'dark'
-            ? 'bg-gray-900/50 border-gray-800 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/5'
-            : 'bg-white border-gray-200 hover:border-purple-300 shadow-sm hover:shadow-md'
-        } hover:-translate-y-1`}
-      >
-        {/* Status Badge */}
-        <div className="flex justify-between items-start mb-3">
-          <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(quiz.status)}`}>
-            {quiz.status === 'active' ? '🔴 Live Now' : quiz.status}
-          </span>
-          {submissionStatus && (
-            <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-              submissionStatus === 'passed'
-                ? 'bg-green-500/20 text-green-400'
-                : submissionStatus === 'submitted'
-                ? 'bg-yellow-500/20 text-yellow-400'
-                : 'bg-gray-500/20 text-gray-400'
-            }`}>
-              {submissionStatus === 'passed' ? (
-                <><CheckCircle2 className="w-3 h-3" /> Passed</>
-              ) : submissionStatus === 'submitted' ? (
-                hasGrade ? (
-                  <><CheckCircle2 className="w-3 h-3" /> Graded</>
-                ) : (
-                  <><Clock className="w-3 h-3" /> Pending</>
-                )
-              ) : (
-                <><Clock className="w-3 h-3" /> In Progress</>
-              )}
-            </span>
-          )}
-        </div>
-
-        {/* Title */}
-        <h3 className="font-semibold text-lg mb-2">{quiz.title}</h3>
-
-        {/* Description */}
-        <p className={`text-sm mb-4 line-clamp-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          {quiz.description}
-        </p>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <span className={`text-xs px-2 py-1 rounded-full ${getDifficultyColor(quiz.difficulty)}`}>
-            {quiz.difficulty}
-          </span>
-          <span className={`text-xs px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
-            {quiz.language}
-          </span>
-          <span className={`text-xs px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-600'}`}>
-            {quiz.points} pts
-          </span>
-        </div>
-
-        {/* Time Info */}
-        <div className={`pt-3 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {formatDateTime(quiz.startTime)}
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {quiz.duration} min
-            </div>
-          </div>
-        </div>
-
-        {/* Grade display for completed quizzes */}
-        {isCompleted && quiz.submission && (
-          <div className="mt-3 space-y-2">
-            {hasGrade ? (
-              <>
-                <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                  theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100'
-                }`}>
-                  <span className="text-sm font-medium text-green-400">
-                    Grade: {quiz.submission.teacherGrade}%
-                  </span>
-                  <span className="text-sm text-green-400">
-                    +{quiz.submission.pointsAwarded} pts
-                  </span>
-                </div>
-                {quiz.submission.teacherFeedback && (
-                  <div className={`py-2 px-3 rounded-lg text-sm ${
-                    theme === 'dark' ? 'bg-gray-800/50 text-gray-300' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    <span className="font-medium">Feedback: </span>
-                    {quiz.submission.teacherFeedback}
-                  </div>
-                )}
-              </>
-            ) : quiz.submission.status === 'passed' ? (
-              <div className={`flex items-center justify-center gap-2 py-2 rounded-lg ${
-                theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100'
-              }`}>
-                <Trophy className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm text-green-400">
-                  All tests passed! +{quiz.submission.pointsAwarded} pts
-                </span>
-              </div>
-            ) : (
-              <div className={`flex items-center justify-center gap-2 py-2 rounded-lg ${
-                theme === 'dark' ? 'bg-yellow-900/30' : 'bg-yellow-100'
-              }`}>
-                <Clock className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm text-yellow-600">
-                  Awaiting teacher grade ({quiz.submission.score}/{quiz.submission.totalTests} tests)
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Action hint for active quizzes */}
-        {quiz.status === 'active' && !submissionStatus && (
-          <div className="mt-3">
-            <div className={`flex items-center justify-center gap-2 py-2 rounded-lg ${
-              theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-600'
-            }`}>
-              <Play className="w-4 h-4" />
-              <span className="text-sm font-medium">Start Now</span>
-            </div>
-          </div>
-        )}
-
-        {/* Continue hint for in-progress */}
-        {quiz.status === 'active' && submissionStatus === 'started' && (
-          <div className="mt-3">
-            <div className={`flex items-center justify-center gap-2 py-2 rounded-lg ${
-              theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'
-            }`}>
-              <Play className="w-4 h-4" />
-              <span className="text-sm font-medium">Continue</span>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className={`min-h-screen relative ${theme === 'dark' ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white' : 'bg-gradient-to-br from-gray-50 via-white to-gray-50 text-gray-900'}`}>
       {/* Subtle Background */}
@@ -240,38 +51,14 @@ export default function QuizzesPage() {
           <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-pink-500/5 rounded-full blur-3xl" />
         </div>
       )}
-      {/* Header */}
-      <header className={`border-b sticky top-0 z-50 ${theme === 'dark' ? 'border-gray-800/50 bg-gray-950/80' : 'border-gray-200 bg-white/80'} backdrop-blur-xl shadow-sm`}>
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="hover:bg-gray-800/50">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Back
-              </Button>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
-                  <Clock className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="text-xl font-bold">Quizzes</h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500">
-                {quizzes.filter(q => q.status === 'active').length} active quizzes
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSidebar(true)}
-                className="flex items-center gap-2"
-              >
-                <User className="w-4 h-4" />
-                <span className="hidden sm:inline">{storedUser?.name}</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      
+      <PageHeader
+        title="Quizzes"
+        icon={<Clock className="w-5 h-5 text-white" />}
+        iconGradient="bg-gradient-to-br from-purple-500 to-pink-600 shadow-purple-500/25"
+        subtitle={`${quizzes.filter(q => q.status === 'active').length} active quizzes`}
+        theme={theme}
+      />
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {loading ? (
@@ -297,7 +84,14 @@ export default function QuizzesPage() {
                   Active & Upcoming Quizzes
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {sortedActiveQuizzes.map(renderQuizCard)}
+                  {sortedActiveQuizzes.map(quiz => (
+                    <QuizCard
+                      key={quiz._id}
+                      quiz={quiz}
+                      onClick={() => navigate(`/quiz/${quiz._id}`)}
+                      theme={theme}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -310,7 +104,14 @@ export default function QuizzesPage() {
                   Completed Quizzes
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {sortedCompletedQuizzes.map(renderQuizCard)}
+                  {sortedCompletedQuizzes.map(quiz => (
+                    <QuizCard
+                      key={quiz._id}
+                      quiz={quiz}
+                      onClick={() => navigate(`/quiz/${quiz._id}`)}
+                      theme={theme}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -326,18 +127,6 @@ export default function QuizzesPage() {
           </>
         )}
       </div>
-
-      {/* User Sidebar */}
-      <UserSidePanel
-        user={storedUser}
-        onLogout={() => {
-          localStorage.removeItem('nexusquest-token');
-          localStorage.removeItem('nexusquest-user');
-          navigate('/login');
-        }}
-        isOpen={showSidebar}
-        onClose={() => setShowSidebar(false)}
-      />
     </div>
   );
 }

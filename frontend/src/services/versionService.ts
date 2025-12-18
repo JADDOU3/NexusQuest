@@ -1,12 +1,6 @@
-const API_URL = 'http://localhost:9876/api/versions';
+import { getAuthHeaders, getApiUrl } from '../utils';
 
-function getAuthHeaders() {
-    const token = localStorage.getItem('nexusquest-token');
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-    };
-}
+const API_URL = `${getApiUrl()}/api/versions`;
 
 export interface Snapshot {
     _id: string;

@@ -1,4 +1,6 @@
-const API_BASE = 'http://localhost:9876/api';
+import { getApiUrl } from '../utils/apiHelpers';
+
+const API_BASE = `${getApiUrl()}/api`;
 
 export interface TeacherStats {
   totalTasks: number;
@@ -12,9 +14,11 @@ export interface TeacherStats {
 /**
  * Get teacher statistics from database
  */
+import { getStoredToken } from './authService';
+
 export const getTeacherStats = async (): Promise<TeacherStats> => {
   try {
-    const token = localStorage.getItem('nexusquest-token');
+    const token = getStoredToken();
     const response = await fetch(`${API_BASE}/auth/teacher/stats`, {
       headers: {
         'Authorization': `Bearer ${token}`,

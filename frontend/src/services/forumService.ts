@@ -64,8 +64,10 @@ export interface QuestionsResponse {
   };
 }
 
+import { getStoredToken } from './authService';
+
 const getAuthHeader = (): Record<string, string> => {
-  const token = localStorage.getItem('nexusquest-token');
+  const token = getStoredToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 

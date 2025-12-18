@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, X, FolderOpen, Trophy, Settings, ChevronRight, Moon, Sun, Minus, Plus, LogOut, BookOpen, FileQuestion, Users, MessageSquare } from 'lucide-react';
 import type { Theme, User as UserType } from '../types';
@@ -30,42 +30,14 @@ export function UserSidePanel({
   const navigate = useNavigate();
   const themeContext = useTheme();
   const [showSettings, setShowSettings] = useState(false);
-  const [loadedAvatar, setLoadedAvatar] = useState<string | null>(null);
-  const [fontSize, setFontSizeState] = useState(14);
-
-  // Use provided props or fallback to context/state
   const theme = themeProp || themeContext.theme;
   const setTheme = setThemeProp || ((newTheme: Theme) => {
     if (themeContext.setTheme) {
       themeContext.setTheme(newTheme);
     }
   });
-  const avatarImage = avatarImageProp !== undefined ? avatarImageProp : loadedAvatar;
-  const currentFontSize = fontSizeProp || fontSize;
-  const setFontSize = setFontSizeProp || setFontSizeState;
-
-  // Load avatar if not provided
-  useEffect(() => {
-    if (avatarImageProp === undefined && isOpen) {
-      const loadUserAvatar = async () => {
-        try {
-          const token = localStorage.getItem('nexusquest-token');
-          const response = await fetch('http://localhost:9876/api/auth/me', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          const data = await response.json();
-          if (data.success && data.user) {
-            setLoadedAvatar(data.user.avatarImage || null);
-          }
-        } catch (error) {
-          console.error('Failed to load user avatar:', error);
-        }
-      };
-      loadUserAvatar();
-    }
-  }, [isOpen, avatarImageProp]);
+  const currentFontSize = fontSizeProp || 14;
+  const setFontSize = setFontSizeProp || (() => {});
 
   if (!isOpen) return null;
 
@@ -82,8 +54,8 @@ export function UserSidePanel({
         <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {avatarImage ? (
-                <img src={avatarImage} alt="Avatar" className="w-10 h-10 rounded-full object-cover" />
+              {avatarImageProp ? (
+                <img src={avatarImageProp} alt="Avatar" className="w-10 h-10 rounded-full object-cover" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                   <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase()}</span>
@@ -153,8 +125,8 @@ export function UserSidePanel({
                   </button>
                 </div>
 
-                {/* Font Size Control - only show if fontSize prop is provided */}
-                {fontSizeProp !== undefined && (
+                {/* Font Size Control */}
+                {fontSizeProp !== undefined && setFontSizeProp && (
                   <div className="flex items-center justify-between py-2">
                     <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Font Size</span>
                     <div className="flex items-center gap-2">
