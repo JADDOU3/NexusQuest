@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Code, Loader2, CheckCircle, Trophy, ChevronRight, Code2, MessageCircle, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Loader2, CheckCircle, Trophy, ChevronRight, Code2, MessageCircle, User } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../context/ThemeContext';
 import { getTutorial, getTutorials, Tutorial } from '../services/tutorialService';
 import type { TutorialSection } from '../services/tutorialService';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { getStoredUser } from '../services/authService';
 import { NotificationsBell } from '../components/NotificationsBell';
 import { UserSidePanel } from '../components/UserSidePanel';
 import { connectChat, getChatSocket, type ChatMessage } from '../services/chatService';
 import { usePageTitle } from '../hooks/usePageTitle';
 import YouTubeEmbed from '../components/YouTubeEmbed';
+import TutorialCodeRunner from '../components/TutorialCodeRunner';
 
 export default function TutorialCardView() {
   usePageTitle('Tutorial');
@@ -461,25 +460,13 @@ export default function TutorialCardView() {
                   />
                 )}
 
-                {/* Code Example */}
+                {/* Code Example with Run Button */}
                 {currentSectionData?.codeExample && (
-                  <div className="mb-8">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Code className="w-5 h-5 text-blue-500" />
-                      <h3 className="font-semibold text-lg">Code Example</h3>
-                    </div>
-                    <SyntaxHighlighter
-                      language={currentSectionData.language || tutorial.language}
-                      style={vscDarkPlus as any}
-                      customStyle={{
-                        borderRadius: '0.75rem',
-                        padding: '1.5rem',
-                        fontSize: '0.95rem'
-                      }}
-                    >
-                      {currentSectionData.codeExample}
-                    </SyntaxHighlighter>
-                  </div>
+                  <TutorialCodeRunner
+                    code={currentSectionData.codeExample}
+                    language={currentSectionData.language || tutorial.language}
+                    theme={theme}
+                  />
                 )}
 
                 {/* Navigation Buttons */}
