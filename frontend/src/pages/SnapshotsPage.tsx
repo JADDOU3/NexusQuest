@@ -107,10 +107,8 @@ export default function SnapshotsPage() {
         await deleteProjectSnapshot(snapshotId);
         setSnapshots(prev => prev.filter(s => s._id !== snapshotId));
       } else if (type === 'restore') {
-        const result = await restoreProjectSnapshot(snapshotId);
-        navigate(`/playground/${projectId}`, { 
-          state: { restoredFiles: result.files, snapshotName: result.name } 
-        });
+        await restoreProjectSnapshot(snapshotId);
+        navigate(`/project/${projectId}`);
       }
     } catch (error) {
       console.error(`Failed to ${type} snapshot:`, error);
