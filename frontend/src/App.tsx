@@ -68,7 +68,7 @@ function App({ user, onLogout }: AppProps) {
     const loadUserAvatar = async () => {
       try {
         const token = localStorage.getItem('nexusquest-token');
-        const response = await fetch('http://localhost:9876/api/auth/me', {
+        const response = await fetch('http://localhost:3001/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -277,7 +277,7 @@ function App({ user, onLogout }: AppProps) {
               
               // Save dependencies to the backend
               const token = localStorage.getItem('nexusquest-token');
-              fetch(`http://localhost:9876/api/projects/${projectId}/dependencies`, {
+              fetch(`http://localhost:3001/api/projects/${projectId}/dependencies`, {
                 method: 'PUT',
                 headers: { 
                   'Content-Type': 'application/json',
@@ -310,7 +310,7 @@ function App({ user, onLogout }: AppProps) {
               
               // Save dependencies to the backend
               const token = localStorage.getItem('nexusquest-token');
-              fetch(`http://localhost:9876/api/projects/${projectId}/dependencies`, {
+              fetch(`http://localhost:3001/api/projects/${projectId}/dependencies`, {
                 method: 'PUT',
                 headers: { 
                   'Content-Type': 'application/json',

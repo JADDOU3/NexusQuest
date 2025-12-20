@@ -42,7 +42,7 @@ export function PlaygroundTerminal({ language, code, executeFlag, theme = 'dark'
     setLines([{ type: 'output', content: `▶️ Running ${language} code...\n` }]);
 
     try {
-      const response = await fetch('http://localhost:9876/api/playground/execute', {
+      const response = await fetch('http://localhost:3001/api/playground/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +132,7 @@ export function PlaygroundTerminal({ language, code, executeFlag, theme = 'dark'
     setLines(prev => [...prev, { type: 'output', content: input + '\n' }]);
 
     try {
-      await fetch('http://localhost:9876/api/playground/input', {
+      await fetch('http://localhost:3001/api/playground/input', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

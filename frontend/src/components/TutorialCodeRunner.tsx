@@ -55,7 +55,7 @@ export default function TutorialCodeRunner({ code, language, theme = 'dark' }: T
     setTerminalLines([{ type: 'output', content: `▶️ Running ${language} code...\n` }]);
 
     try {
-      const response = await fetch('http://localhost:9876/api/playground/execute', {
+      const response = await fetch('http://localhost:3001/api/playground/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ export default function TutorialCodeRunner({ code, language, theme = 'dark' }: T
     setTerminalLines(prev => [...prev, { type: 'output', content: input + '\n' }]);
 
     try {
-      await fetch('http://localhost:9876/api/playground/input', {
+      await fetch('http://localhost:3001/api/playground/input', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

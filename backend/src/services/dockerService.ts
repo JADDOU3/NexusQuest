@@ -531,39 +531,43 @@ async function installPythonDependencies(
     return {
       success: false,
       output: '',
-      export async function executeProject(request: ProjectExecutionRequest): Promise<ExecutionResult> {
-        const startTime = Date.now();
-        const { files, mainFile, language, input, dependencies, customLibraries, projectId } = request;
-        const containerName = persistentContainers[language.toLowerCase()];
+      error: error.message || 'Failed to install dependencies',
+    };
+  }
+}
 
-        if (!containerName) {
-          return {
-            output: '',
-            error: `Unsupported language: ${language}`,
-            executionTime: Date.now() - startTime,
-          };
-          logger.info(`Starting container: ${containerName}`);
-          await container.start();
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      } catch(err: any) {
-        if (err.statusCode === 404) {
-          return {
-            output: '',
-            error: `Container ${containerName} not found. Please run: docker-compose up -d`,
-            executionTime: Date.now() - startTime,
-          };
-        }
-        throw err;
-      }
+// Execute multi-file project using PERSISTENT containers
+export async function executeProject(request: ProjectExecutionRequest): Promise<ExecutionResult> {
+  const startTime = Date.now();
+  const { files, mainFile, language, input, dependencies, customLibraries, projectId } = request;
+  const containerName = persistentContainers[language.toLowerCase()];
 
-  // Use a unique temp directory
-  const baseDir = `/tmp/nexusquest-project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  if (!containerName) {
+    return {
+      output: '',
+      error: `Unsupported language: ${language}`,
+      executionTime: Date.now() - startTime,
+    };
+  }
 
-      // Check if we should use cached dependencies
-      let useCachedDeps = false;
-      let depDir = '';
-      if(projectId && (dependencies || customLibraries)) {
+  try {
+    const container = docker.getContainer(containerName);
+
+    // Check if container is running, start if needed
+    const info = await container.inspect();
+    if (!info.State.Running) {
+      logger.info(`Starting container: ${containerName}`);
+      await container.start();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // Use a unique temp directory
+    const baseDir = `/tmp/nexusquest-project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Check if we should use cached dependencies
+    let useCachedDeps = false;
+    let depDir = '';
+    if (projectId && (dependencies || customLibraries)) {
       const depHash = computeDependencyHash(dependencies || {}, customLibraries);
       depDir = `/dependencies/${projectId}`;
       useCachedDeps = await checkDependenciesInstalled(container, projectId, language, depHash);
@@ -633,23 +637,12 @@ async function installPythonDependencies(
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    // Verify files were written
-    logger.info('[executeProject] Verifying files were written...');
-    const verifyExec = await container.exec({
-      Cmd: ['sh', '-c', `ls -la ${baseDir}`],
-      AttachStdout: true,
-      AttachStderr: true,
-    });
-    const verifyStream = await verifyExec.start({ hijack: true });
-    const { stdout: verifyOutput } = await demuxStream(verifyStream);
-    logger.info('[executeProject] Directory contents:\n' + verifyOutput);
-
     // Install dependencies if specified
     if (dependencies && Object.keys(dependencies).length > 0) {
       logger.info(`[executeProject] Installing dependencies for ${language}`);
 
       if (language.toLowerCase() === 'javascript') {
-        const depResult = await installJavaScriptDependencies(container, baseDir, dependencies);
+        const depResult = await installJavaScriptDependencies(container, baseDir, projectId || '', dependencies);
         if (!depResult.success) {
           logger.error('[executeProject] Dependency installation failed:', depResult.error);
           return {

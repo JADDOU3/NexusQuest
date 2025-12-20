@@ -6,7 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Quiz, getQuiz, startQuiz, submitQuiz, QuizSubmitResponse, runTests, RunTestsResponse } from '../services/quizService';
 import { usePageTitle } from '../hooks/usePageTitle';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9876';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function QuizPage() {
   usePageTitle('Quiz');
