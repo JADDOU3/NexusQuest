@@ -22,7 +22,7 @@ export default function Home() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9876';
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         const response = await fetch(`${API_URL}/api/stats`);
         if (response.ok) {
           const data = await response.json();

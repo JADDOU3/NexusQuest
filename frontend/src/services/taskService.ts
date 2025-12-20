@@ -1,6 +1,6 @@
 import { getStoredToken } from './authService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9876';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export type TaskDifficulty = 'easy' | 'medium' | 'hard';
 export type TaskLanguage = 'python' | 'javascript' | 'java' | 'cpp';

@@ -5,7 +5,7 @@ import {
   CollaborationMessage,
 } from '../types/collaboration';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9876';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const api = axios.create({
   baseURL: `${API_URL}/api/collaboration`,

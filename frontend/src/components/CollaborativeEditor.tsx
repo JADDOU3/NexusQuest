@@ -225,7 +225,7 @@ export default function CollaborativeEditor({
     setTerminalLines([{ type: 'output', content: `▶️ Running ${language} code...\n` }]);
 
     try {
-      const response = await fetch('http://localhost:9876/api/playground/execute', {
+      const response = await fetch('http://localhost:3001/api/playground/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

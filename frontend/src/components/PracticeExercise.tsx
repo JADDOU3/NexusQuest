@@ -75,7 +75,7 @@ export default function PracticeExercise({
     let fullOutput = '';
 
     try {
-      const response = await fetch('http://localhost:9876/api/playground/execute', {
+      const response = await fetch('http://localhost:3001/api/playground/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -176,7 +176,7 @@ export default function PracticeExercise({
     setTerminalLines(prev => [...prev, { type: 'output', content: input + '\n' }]);
 
     try {
-      await fetch('http://localhost:9876/api/playground/input', {
+      await fetch('http://localhost:3001/api/playground/input', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
