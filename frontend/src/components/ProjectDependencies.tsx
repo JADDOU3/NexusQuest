@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Trash2, Package, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import axios from 'axios';
+import { getAuthHeaders, getApiUrl } from '../utils';
 
 interface CustomLibrary {
   _id: string;
@@ -32,10 +33,19 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [newDep, setNewDep] = useState({ name: '', version: '' });
+  const [installedDeps, setInstalledDeps] = useState<Record<string, string>>({});
+  const [loadingInstalled, setLoadingInstalled] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadLibraries();
+    loadInstalled();
   }, [projectId]);
+
+  useEffect(() => {
+    // Refresh installed view when declared deps change
+    loadInstalled();
+  }, [dependencies]);
 
   const loadLibraries = async () => {
     try {
@@ -104,6 +114,55 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
       await loadLibraries();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete library');
+    }
+  };
+
+  const loadInstalled = async () => {
+    try {
+      setLoadingInstalled(true);
+      setError(null);
+      const resp = await fetch(`${getApiUrl()}/api/projects/${projectId}/dependencies`, {
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await resp.json();
+      if (data.success) {
+        setInstalledDeps(data.installed || {});
+      } else {
+        setInstalledDeps({});
+      }
+    } catch (err) {
+      console.error('Failed to load installed dependencies', err);
+    } finally {
+      setLoadingInstalled(false);
+    }
+  };
+
+  const handleSyncInstall = async () => {
+    try {
+      setSyncing(true);
+      setError(null);
+      setSuccess(null);
+      const resp = await fetch(`${getApiUrl()}/api/projects/${projectId}/dependencies/sync`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await resp.json();
+      if (data.success) {
+        setInstalledDeps(data.installed || {});
+        setSuccess(data.usedCache ? 'Using cached dependencies' : 'Dependencies installed');
+      } else {
+        setError(data.error || 'Failed to sync dependencies');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync dependencies');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -219,18 +278,37 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
               theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
             }`}>Package Dependencies</h3>
           </div>
-          <button
-            onClick={handleClearCache}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              theme === 'dark'
-                ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-            title="Clear dependency cache and force reinstall"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Clear Cache
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSyncInstall}
+              disabled={language !== 'javascript' || syncing}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                language !== 'javascript' || syncing
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              } ${
+                theme === 'dark'
+                  ? 'text-emerald-300 hover:text-emerald-200 hover:bg-emerald-900/20'
+                  : 'text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100'
+              }`}
+              title={language !== 'javascript' ? 'Only JavaScript projects support package syncing' : 'Install or use cache for declared dependencies'}
+            >
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing…' : 'Install/Sync'}
+            </button>
+            <button
+              onClick={handleClearCache}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+              title="Clear dependency cache and force reinstall"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Clear Cache
+            </button>
+          </div>
         </div>
 
         <p className={`text-sm mb-4 ${
@@ -318,6 +396,69 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
             </p>
           )}
         </div>
+      </div>
+
+      {/* Installed dependencies section (read-only) */}
+      <div className={`rounded-lg shadow-sm border p-6 ${
+        theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'
+      }`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Package className={`w-5 h-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+              Installed Dependencies
+            </h3>
+          </div>
+          <button
+            onClick={loadInstalled}
+            disabled={loadingInstalled}
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              loadingInstalled ? 'opacity-50 cursor-not-allowed' : ''
+            } ${
+              theme === 'dark' ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+            title="Refresh installed dependencies list"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingInstalled ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+
+        {loadingInstalled ? (
+          <div className="text-center py-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto"></div>
+            <p className={theme === 'dark' ? 'text-gray-400 mt-2' : 'text-gray-600 mt-2'}>Loading installed dependencies…</p>
+          </div>
+        ) : Object.keys(installedDeps).length > 0 ? (
+          <div className="space-y-2">
+            {Object.entries(installedDeps).sort(([a],[b]) => a.localeCompare(b)).map(([name, version]) => {
+              const declaredVersion = dependencies[name];
+              const mismatch = declaredVersion && declaredVersion !== version;
+              return (
+                <div key={name} className={`flex items-center justify-between p-3 rounded-lg border ${
+                    theme === 'dark' ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-200'
+                  }`}>
+                  <div className="flex items-center gap-3">
+                    <Package className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <span className={`font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{name}</span>
+                    <span className={`text-sm ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>{version}</span>
+                    {mismatch && (
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        theme === 'dark' ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-100 text-yellow-800'
+                      }`} title={`Declared: ${declaredVersion}`}>
+                        Declared {declaredVersion}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className={`text-sm text-center py-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+            No installed dependencies found yet. Click "Install/Sync" to install declared packages.
+          </p>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
