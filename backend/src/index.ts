@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import { DEFAULT_PORT, ALLOWED_ORIGINS } from './config/constants.js';
 import { codeExecutionRouter } from './routes/execution.js';
 import aiRouter from './routes/ai.js';
 import authRouter from './routes/auth.js';
@@ -41,7 +42,7 @@ const app = express();
 const server = http.createServer(app);
 
 // Use the container-forwarded port by default and bind to 0.0.0.0 so Docker can route traffic
-const PORT = parseInt(process.env.PORT || '9876', 10);
+const PORT = DEFAULT_PORT;
 
 // Security middleware
 app.use(helmet());
@@ -55,12 +56,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration - allow multiple origins for Docker and local development
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://192.168.1.100:5173',
-];
+const allowedOrigins = ALLOWED_ORIGINS;
 
 app.use(cors({
   origin: (origin, callback) => {

@@ -1,5 +1,6 @@
 import Docker from 'dockerode';
 import { logger } from '../utils/logger.js';
+import { demuxStream } from '../utils/dockerStream.js';
 
 const docker = new Docker();
 
@@ -56,54 +57,7 @@ const persistentContainers: Record<string, string> = {
   'c++': 'nexusquest-cpp'
 };
 
-// Helper to demultiplex Docker stream
-function demuxStream(stream: any): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    let stdout = '';
-    let stderr = '';
-    let dataReceived = false;
-
-    const timeout = setTimeout(() => {
-      if (!dataReceived) {
-        logger.warn('No data received from stream after 2 seconds');
-      }
-    }, 2000);
-
-    stream.on('data', (chunk: Buffer) => {
-      dataReceived = true;
-      clearTimeout(timeout);
-
-      // Docker uses 8-byte headers for multiplexed streams
-      let offset = 0;
-      while (offset < chunk.length) {
-        if (chunk.length - offset < 8) break;
-
-        const streamType = chunk.readUInt8(offset);
-        const payloadSize = chunk.readUInt32BE(offset + 4);
-
-        if (payloadSize > 0 && offset + 8 + payloadSize <= chunk.length) {
-          const payload = chunk.toString('utf8', offset + 8, offset + 8 + payloadSize);
-          if (streamType === 1) {
-            stdout += payload;
-          } else if (streamType === 2) {
-            stderr += payload;
-          }
-        }
-        offset += 8 + payloadSize;
-      }
-    });
-
-    stream.on('end', () => {
-      clearTimeout(timeout);
-      resolve({ stdout, stderr });
-    });
-
-    stream.on('error', (err: Error) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-  });
-}
+// Uses shared demux helper from utils/dockerStream.ts
 
 // Get execution command based on language
 function getExecutionCommand(language: string, mainFile: string): string {
@@ -335,9 +289,14 @@ export async function executeCode(code: string, language: string, input?: string
 function computeDependencyHash(dependencies: Record<string, string>, customLibs?: CustomLibrary[]): string {
   const crypto = require('crypto');
   const hash = crypto.createHash('sha256');
-  hash.update(JSON.stringify(dependencies));
+  // Use stable key ordering so the same deps map yields the same hash
+  const sortedDeps = Object.keys(dependencies || {}).sort().reduce((acc: Record<string, string>, k) => {
+    acc[k] = dependencies[k];
+    return acc;
+  }, {} as Record<string, string>);
+  hash.update(JSON.stringify(sortedDeps));
   if (customLibs && customLibs.length > 0) {
-    hash.update(JSON.stringify(customLibs.map(l => l.fileName)));
+    hash.update(JSON.stringify(customLibs.map(l => l.fileName).sort()));
   }
   return hash.digest('hex');
 }

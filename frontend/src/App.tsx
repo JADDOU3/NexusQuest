@@ -834,12 +834,20 @@ function App({ user, onLogout }: AppProps) {
                   projectId={currentProject._id}
                   language={currentProject.language}
                   dependencies={currentProject.dependencies || {}}
-                  onDependenciesChange={(newDeps) => {
-                    setCurrentProject(prev => {
-                      if (!prev) return prev;
-                      return { ...prev, dependencies: newDeps };
-                    });
-                    addToConsole('✓ Dependencies updated', 'info');
+                  theme={theme}
+                  onDependenciesChange={async (newDeps) => {
+                    if (!currentProject) return;
+                    try {
+                      await projectService.updateProject(currentProject._id, { dependencies: newDeps });
+                      setCurrentProject(prev => {
+                        if (!prev) return prev;
+                        return { ...prev, dependencies: newDeps };
+                      });
+                      addToConsole('✓ Dependencies updated and saved', 'info');
+                    } catch (err) {
+                      console.error('Failed to save dependencies:', err);
+                      addToConsole('✗ Failed to save dependencies', 'error');
+                    }
                   }}
                 />
               ) : (
