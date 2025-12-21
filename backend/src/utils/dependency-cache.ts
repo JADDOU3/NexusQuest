@@ -1,6 +1,13 @@
 import crypto from 'crypto';
 import { logger } from './logger.js';
 
+function stableDepsString(dependencies: Record<string, string>): string {
+    const keys = Object.keys(dependencies || {}).sort();
+    const normalized: Record<string, string> = {};
+    for (const k of keys) normalized[k] = dependencies[k];
+    return JSON.stringify(normalized);
+}
+
 /**
  * Check if dependencies are cached and copy them if available
  * Returns true if cache was used, false if fresh install is needed
@@ -10,8 +17,8 @@ export async function checkAndUseDependencyCache(
     dependencies: Record<string, string>,
     baseDir: string
 ): Promise<boolean> {
-    // Generate hash of dependencies for caching
-    const depsHash = crypto.createHash('md5').update(JSON.stringify(dependencies)).digest('hex');
+    // Generate stable hash of dependencies for caching (sorted keys)
+    const depsHash = crypto.createHash('md5').update(stableDepsString(dependencies)).digest('hex');
     const cacheDir = `/dependencies/js-${depsHash}`;
 
     // Check if dependencies are already cached
@@ -65,7 +72,7 @@ export async function cacheDependencies(
     dependencies: Record<string, string>,
     baseDir: string
 ): Promise<void> {
-    const depsHash = crypto.createHash('md5').update(JSON.stringify(dependencies)).digest('hex');
+    const depsHash = crypto.createHash('md5').update(stableDepsString(dependencies)).digest('hex');
     const cacheDir = `/dependencies/js-${depsHash}`;
 
     try {

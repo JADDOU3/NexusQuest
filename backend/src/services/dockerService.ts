@@ -289,9 +289,14 @@ export async function executeCode(code: string, language: string, input?: string
 function computeDependencyHash(dependencies: Record<string, string>, customLibs?: CustomLibrary[]): string {
   const crypto = require('crypto');
   const hash = crypto.createHash('sha256');
-  hash.update(JSON.stringify(dependencies));
+  // Use stable key ordering so the same deps map yields the same hash
+  const sortedDeps = Object.keys(dependencies || {}).sort().reduce((acc: Record<string, string>, k) => {
+    acc[k] = dependencies[k];
+    return acc;
+  }, {} as Record<string, string>);
+  hash.update(JSON.stringify(sortedDeps));
   if (customLibs && customLibs.length > 0) {
-    hash.update(JSON.stringify(customLibs.map(l => l.fileName)));
+    hash.update(JSON.stringify(customLibs.map(l => l.fileName).sort()));
   }
   return hash.digest('hex');
 }
