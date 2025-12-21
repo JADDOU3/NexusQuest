@@ -18,6 +18,7 @@ import {
   StudentStats,
   QuizSubmission 
 } from '../services/teacherService';
+import BottomNavigation from '../components/BottomNavigation';
 
 type TabType = 'overview' | 'tasks' | 'quizzes' | 'students';
 
@@ -310,6 +311,8 @@ export default function TeacherDashboardScreen({ navigation }: any) {
           </View>
         )}
       </ScrollView>
+
+      <BottomNavigation navigation={navigation} activeRoute="TeacherDashboard" />
     </View>
   );
 }
