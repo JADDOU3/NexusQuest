@@ -2,27 +2,28 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
-interface BottomNavigationProps {
+interface TeacherBottomNavigationProps {
   navigation: any;
   activeRoute: string;
 }
 
-export default function BottomNavigation({ navigation, activeRoute }: BottomNavigationProps) {
+export default function TeacherBottomNavigation({ navigation, activeRoute }: TeacherBottomNavigationProps) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
   const navItems = [
-    { name: 'Dashboard', icon: '🏠', label: 'Home' },
-    { name: 'Tutorials', icon: '📚', label: 'Learn' },
+    { name: 'TeacherDashboard', icon: '🏠', label: 'Home' },
+    { name: 'Quizzes', icon: '📝', label: 'Quizzes' },
     { name: 'Forum', icon: '💬', label: 'Forum' },
-    { name: 'Quizzes', icon: '📝', label: 'Quiz' },
+    { name: 'Tutorials', icon: '📚', label: 'Learn' },
     { name: 'Leaderboard', icon: '🏆', label: 'Rank' },
   ];
 
   return (
     <View style={styles.container}>
       {navItems.map((item) => {
-        const isActive = activeRoute === item.name;
+        const isActive = activeRoute === item.name || 
+          (activeRoute === 'TeacherDashboard' && item.name === 'TeacherDashboard');
         return (
           <TouchableOpacity
             key={item.name}
