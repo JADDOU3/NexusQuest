@@ -18,7 +18,7 @@ import {
   StudentStats,
   QuizSubmission 
 } from '../services/teacherService';
-import BottomNavigation from '../components/BottomNavigation';
+import TeacherBottomNavigation from '../components/TeacherBottomNavigation';
 import { getUnreadNotifications } from '../services/notificationService';
 
 export default function TeacherDashboardScreen({ navigation }: any) {
@@ -282,7 +282,7 @@ export default function TeacherDashboardScreen({ navigation }: any) {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <BottomNavigation navigation={navigation} activeRoute="TeacherDashboard" />
+      <TeacherBottomNavigation navigation={navigation} activeRoute="TeacherDashboard" />
     </View>
   );
 }
