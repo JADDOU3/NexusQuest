@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import Docker from 'dockerode';
 import { logger } from '../utils/logger.js';
+import { languageImages, getDefaultFileName } from '../utils/execution.js';
 
 const router = express.Router();
 const docker = new Docker();
@@ -16,22 +17,6 @@ interface PlaygroundRequest extends Request {
   };
 }
 
-const languageImages: Record<string, string> = {
-  python: 'nexusquest-python',
-  java: 'nexusquest-java',
-  javascript: 'nexusquest-javascript',
-  cpp: 'nexusquest-cpp',
-};
-
-const getDefaultFileName = (language: string): string => {
-  switch (language) {
-    case 'python': return 'main.py';
-    case 'javascript': return 'index.js';
-    case 'java': return 'Main.java';
-    case 'cpp': return 'main.cpp';
-    default: return 'main.txt';
-  }
-};
 
 /**
  * POST/GET /api/playground/execute
@@ -110,16 +95,13 @@ const handleExecute = async (req: Request, res: Response) => {
     let filePath: string;
     let className: string | undefined;
 
-    // For Java, extract class name and use it as filename
+    // Determine file name using shared helper (keeps historical behavior)
+    fileName = getDefaultFileName(language, 'playground', code);
+    filePath = `/tmp/${fileName}`;
     if (language === 'java') {
       const classMatch = code.match(/public\s+class\s+(\w+)/);
       className = classMatch ? classMatch[1] : 'Main';
-      fileName = `${className}.java`;
-      filePath = `/tmp/${fileName}`;
       logger.info(`Java class name: ${className}, file: ${fileName}`);
-    } else {
-      fileName = getDefaultFileName(language);
-      filePath = `/tmp/${fileName}`;
     }
 
     // Write code using cat with heredoc to avoid issues with special characters

@@ -23,7 +23,7 @@ services:
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "if [ -d 'node_modules' ] && [ -f 'node_modules/.package-lock.json' ]; then echo '✓ Frontend: Using cached dependencies from volume'; else echo '⚙ Frontend: Installing dependencies (first time or package.json changed)...'; npm install; fi && npm run dev"
 
   backend:
     build:
@@ -42,7 +42,7 @@ services:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
       - /var/run/docker.sock:/var/run/docker.sock
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "if [ -d 'node_modules' ] && [ -f 'node_modules/.package-lock.json' ]; then echo '✓ Backend: Using cached dependencies from volume'; else echo '⚙ Backend: Installing dependencies (first time or package.json changed)...'; npm install; fi && npm run dev"
     depends_on:
       - docker-in-docker
       - mongodb
@@ -61,7 +61,7 @@ services:
     volumes:
       - ./NexusQuestMobile:/app
       - mobile_node_modules:/app/node_modules
-    command: sh -c "npm install && npm run start"
+    command: sh -c "if [ -d 'node_modules' ] && [ -f 'node_modules/.package-lock.json' ]; then echo '✓ Mobile: Using cached dependencies from volume'; else echo '⚙ Mobile: Installing dependencies (first time or package.json changed)...'; npm install; fi && npm run start"
 
   docker-in-docker:
     image: docker:dind

@@ -1,17 +1,12 @@
 import { Router, Request, Response } from 'express';
 import Docker from 'dockerode';
 import { logger } from '../utils/logger.js';
+import { demuxStream } from '../utils/dockerStream.js';
+import { languageImages, getDefaultFileName, buildExecCommand as getExecutionCommand } from '../utils/execution.js';
 
 export const streamExecutionRouter = Router();
 const docker = new Docker();
 
-const languageImages: Record<string, string> = {
-  python: 'nexusquest-python',
-  javascript: 'nexusquest-javascript',
-  java: 'nexusquest-java',
-  cpp: 'nexusquest-cpp',
-  go: 'nexusquest-go'
-};
 
 // Store active sessions
 const activeSessions = new Map<string, {
@@ -26,88 +21,6 @@ interface ProjectFile {
   content: string;
 }
 
-// Helper to get default file name based on language
-function getDefaultFileName(language: string, code: string): string {
-  if (language === 'python') return 'main.py';
-  if (language === 'javascript') return 'main.js';
-  if (language === 'cpp') return 'main.cpp';
-  if (language === 'java') {
-    const classMatch = code.match(/public\s+class\s+(\w+)/);
-    return classMatch ? `${classMatch[1]}.java` : 'Main.java';
-  }
-  return 'code.txt';
-}
-
-// Get execution command based on language and file path
-function getExecutionCommand(language: string, baseDir: string, files: ProjectFile[], mainFile: string): string {
-  switch (language.toLowerCase()) {
-    case 'python':
-      return `cd ${baseDir} && PYTHONPATH=${baseDir} python3 -u ${mainFile}`;
-
-    case 'javascript':
-      return `cd ${baseDir} && node ${mainFile}`;
-
-    case 'java': {
-      const mainFileContent = files.find(f => f.name === mainFile)?.content || '';
-      const classMatch = mainFileContent.match(/public\s+class\s+(\w+)/);
-      const className = classMatch ? classMatch[1] : 'Main';
-      const javaFiles = files.filter(f => f.name.endsWith('.java')).map(f => f.name).join(' ');
-      return `cd ${baseDir} && javac ${javaFiles} -d . && java -cp . ${className}`;
-    }
-
-    case 'cpp': {
-      const cppFiles = files.filter(f => f.name.endsWith('.cpp')).map(f => f.name).join(' ');
-      return `cd ${baseDir} && g++ -std=c++20 -I${baseDir} ${cppFiles} -o a.out && ./a.out`;
-    }
-
-    default:
-      throw new Error(`Unsupported language: ${language}`);
-  }
-}
-
-// Demultiplex Docker stream
-function demuxStream(stream: any): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    let stdout = '';
-    let stderr = '';
-    let dataReceived = false;
-
-    stream.on('data', (chunk: Buffer) => {
-      dataReceived = true;
-      logger.info(`demuxStream: received ${chunk.length} bytes`);
-      // Docker multiplexed stream format: [streamType:1][reserved:3][payloadSize:4][payload:N]
-      let offset = 0;
-      while (offset < chunk.length) {
-        if (chunk.length - offset < 8) break;
-
-        const streamType = chunk.readUInt8(offset);
-        const payloadSize = chunk.readUInt32BE(offset + 4);
-
-        if (payloadSize > 0 && offset + 8 + payloadSize <= chunk.length) {
-          const payload = chunk.toString('utf8', offset + 8, offset + 8 + payloadSize);
-          if (streamType === 1) {
-            logger.info(`demuxStream: stdout: ${payload.substring(0, 50)}`);
-            stdout += payload;
-          } else if (streamType === 2) {
-            logger.info(`demuxStream: stderr: ${payload.substring(0, 50)}`);
-            stderr += payload;
-          }
-        }
-        offset += 8 + payloadSize;
-      }
-    });
-
-    stream.on('end', () => {
-      logger.info(`demuxStream: stream ended. Received data: ${dataReceived}. stdout length: ${stdout.length}, stderr length: ${stderr.length}`);
-      resolve({ stdout, stderr });
-    });
-
-    stream.on('error', (err: Error) => {
-      logger.error('demuxStream: error', err);
-      reject(err);
-    });
-  });
-}
 
 // Start streaming execution
 streamExecutionRouter.post('/stream-start', async (req, res) => {
@@ -124,7 +37,7 @@ streamExecutionRouter.post('/stream-start', async (req, res) => {
     const isMultiFile = files && Array.isArray(files) && files.length > 0;
     const projectFiles: ProjectFile[] = isMultiFile
       ? files
-      : [{ name: getDefaultFileName(language, code), content: code }];
+      : [{ name: getDefaultFileName(language, 'stream', code), content: code }];
 
     // The file to run
     const fileToRun = isMultiFile ? (mainFile || projectFiles[0].name) : projectFiles[0].name;

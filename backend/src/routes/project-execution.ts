@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import Docker from 'dockerode';
 import { logger } from '../utils/logger.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 const docker = new Docker();
@@ -157,6 +158,9 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                 // Use bridge network if dependencies need to be installed, otherwise use 'none' for security
                 NetworkMode: needsNetwork ? 'bridge' : 'none',
                 Dns: needsNetwork ? ['8.8.8.8', '8.8.4.4'] : undefined, // Google DNS for better reliability
+                Binds: [
+                    `${language}-dependencies:/dependencies`
+                ],
                 Tmpfs: {
                     '/tmp': 'rw,exec,nosuid,size=50m'
                 }
@@ -301,10 +305,38 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                     });
                     logger.info('[project-execution] package.json content:', verifyOutput.substring(0, 200));
 
-                    // Run npm install and redirect output to file
-                    logger.info('[project-execution] Running npm install');
+                    // Generate dependency hash for caching
+                    const depsHash = crypto.createHash('md5').update(JSON.stringify(dependencies)).digest('hex');
+                    const cacheDir = `/dependencies/js-${depsHash}`;
+
+                    // Run npm install with caching logic
+                    logger.info('[project-execution] Checking dependency cache...');
                     const npmInstallExec = await container.exec({
-                        Cmd: ['sh', '-c', `cd ${baseDir} && npm install --legacy-peer-deps > npm-install.log 2>&1 && echo "npm_install_done" || echo "npm_install_failed"`],
+                        Cmd: ['sh', '-c', `
+                            set -e
+                            if [ -d "${cacheDir}/node_modules" ] && [ -f "${cacheDir}/.cache-complete" ]; then
+                                echo "✓ [dependency-cache] Using cached dependencies from ${cacheDir}"
+                                cp -r ${cacheDir}/node_modules ${baseDir}/ 2>&1 || echo "Cache copy failed, will install fresh"
+                                if [ -d "${baseDir}/node_modules" ]; then
+                                    echo "npm_install_done"
+                                    exit 0
+                                fi
+                            fi
+                            echo "⚙ [dependency-cache] Installing dependencies (first time for this combination)..."
+                            cd ${baseDir}
+                            npm install --legacy-peer-deps > npm-install.log 2>&1
+                            if [ $? -eq 0 ]; then
+                                echo "[dependency-cache] Caching dependencies to ${cacheDir}..."
+                                mkdir -p ${cacheDir}
+                                cp -r ${baseDir}/node_modules ${cacheDir}/ 2>&1 || echo "Warning: Failed to cache dependencies"
+                                touch ${cacheDir}/.cache-complete
+                                echo "✓ [dependency-cache] Dependencies cached successfully"
+                                echo "npm_install_done"
+                            else
+                                echo "npm_install_failed"
+                                exit 1
+                            fi
+                        `],
                         AttachStdout: true,
                         AttachStderr: true
                     });

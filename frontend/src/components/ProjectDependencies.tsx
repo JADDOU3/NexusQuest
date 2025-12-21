@@ -15,6 +15,7 @@ interface ProjectDependenciesProps {
   projectId: string;
   language: string;
   dependencies?: Record<string, string>;
+  theme?: 'dark' | 'light';
   onDependenciesChange?: (deps: Record<string, string>) => void;
 }
 
@@ -22,6 +23,7 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
   projectId,
   language,
   dependencies = {},
+  theme = 'dark',
   onDependenciesChange
 }) => {
   const [libraries, setLibraries] = useState<CustomLibrary[]>([]);
@@ -164,38 +166,66 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
   return (
     <div className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+        <div className={`flex items-start gap-3 p-4 border rounded-lg mb-4 ${
+          theme === 'dark'
+            ? 'bg-red-900/20 border-red-800 text-red-400'
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+            theme === 'dark' ? 'text-red-400' : 'text-red-600'
+          }`} />
           <div className="flex-1">
-            <p className="text-sm text-red-800">{error}</p>
+            <p className="text-sm">{error}</p>
           </div>
-          <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800">
+          <button onClick={() => setError(null)} className={`${
+            theme === 'dark' ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'
+          }`}>
             ×
           </button>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
-          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+        <div className={`flex items-start gap-3 p-4 border rounded-lg mb-4 ${
+          theme === 'dark'
+            ? 'bg-green-900/20 border-green-800 text-green-400'
+            : 'bg-green-50 border-green-200 text-green-800'
+        }`}>
+          <CheckCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+            theme === 'dark' ? 'text-green-400' : 'text-green-600'
+          }`} />
           <div className="flex-1">
-            <p className="text-sm text-green-800">{success}</p>
+            <p className="text-sm">{success}</p>
           </div>
-          <button onClick={() => setSuccess(null)} className="text-green-600 hover:text-green-800">
+          <button onClick={() => setSuccess(null)} className={`${
+            theme === 'dark' ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-800'
+          }`}>
             ×
           </button>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className={`rounded-lg shadow-sm border p-6 ${
+        theme === 'dark'
+          ? 'bg-gray-800/50 border-gray-700'
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-indigo-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Package Dependencies</h3>
+            <Package className={`w-5 h-5 ${
+              theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
+            }`} />
+            <h3 className={`text-lg font-semibold ${
+              theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+            }`}>Package Dependencies</h3>
           </div>
           <button
             onClick={handleClearCache}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              theme === 'dark'
+                ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
             title="Clear dependency cache and force reinstall"
           >
             <RefreshCw className="w-4 h-4" />
@@ -203,7 +233,9 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
           </button>
         </div>
 
-        <p className="text-sm text-gray-600 mb-4">
+        <p className={`text-sm mb-4 ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+        }`}>
           Manage {getPackageManagerName()} dependencies for your project. Dependencies are cached after first installation.
         </p>
 
@@ -214,7 +246,11 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
               placeholder="Package name"
               value={newDep.name}
               onChange={(e) => setNewDep({ ...newDep, name: e.target.value })}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
               onKeyPress={(e) => e.key === 'Enter' && handleAddDependency()}
             />
             <input
@@ -222,7 +258,11 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
               placeholder="Version (optional)"
               value={newDep.version}
               onChange={(e) => setNewDep({ ...newDep, version: e.target.value })}
-              className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
               onKeyPress={(e) => e.key === 'Enter' && handleAddDependency()}
             />
             <button
@@ -239,16 +279,30 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
               {Object.entries(dependencies).map(([name, version]) => (
                 <div
                   key={name}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    theme === 'dark'
+                      ? 'bg-gray-700/50 border-gray-600'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Package className="w-4 h-4 text-gray-400" />
-                    <span className="font-medium text-gray-900">{name}</span>
-                    <span className="text-sm text-gray-500">{version}</span>
+                    <Package className={`w-4 h-4 ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    }`} />
+                    <span className={`font-medium ${
+                      theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                    }`}>{name}</span>
+                    <span className={`text-sm ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    }`}>{version}</span>
                   </div>
                   <button
                     onClick={() => handleRemoveDependency(name)}
-                    className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                    className={`p-1.5 rounded transition-colors ${
+                      theme === 'dark'
+                        ? 'text-red-400 hover:bg-red-900/20'
+                        : 'text-red-600 hover:bg-red-50'
+                    }`}
                     title="Remove dependency"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -257,7 +311,9 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 text-center py-4">
+            <p className={`text-sm text-center py-4 ${
+              theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+            }`}>
               No dependencies added yet
             </p>
           )}
