@@ -20,8 +20,6 @@ import {
 } from '../services/teacherService';
 import BottomNavigation from '../components/BottomNavigation';
 
-type TabType = 'overview' | 'tasks' | 'quizzes' | 'students';
-
 export default function TeacherDashboardScreen({ navigation }: any) {
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<TeacherStats | null>(null);
@@ -29,7 +27,6 @@ export default function TeacherDashboardScreen({ navigation }: any) {
   const [pendingSubmissions, setPendingSubmissions] = useState<QuizSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const { theme, toggleTheme, colors } = useTheme();
 
   useEffect(() => {
@@ -91,225 +88,183 @@ export default function TeacherDashboardScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.title}>Teacher Dashboard</Text>
-          <Text style={styles.subtitle}>Welcome, {user?.name}!</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.userInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'T'}</Text>
+            </View>
+            <View>
+              <Text style={styles.greeting}>Welcome back,</Text>
+              <Text style={styles.userName}>{user?.name || 'Teacher'}</Text>
+            </View>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={toggleTheme} style={styles.iconButton}>
+              <Text style={styles.iconText}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.iconButton}>
+              <Text style={styles.iconText}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity onPress={toggleTheme} style={styles.themeButton}>
-            <Text style={styles.themeText}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
-          onPress={() => setActiveTab('overview')}
-        >
-          <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
-            Overview
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'tasks' && styles.tabActive]}
-          onPress={() => setActiveTab('tasks')}
-        >
-          <Text style={[styles.tabText, activeTab === 'tasks' && styles.tabTextActive]}>
-            Tasks
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'quizzes' && styles.tabActive]}
-          onPress={() => setActiveTab('quizzes')}
-        >
-          <Text style={[styles.tabText, activeTab === 'quizzes' && styles.tabTextActive]}>
-            Quizzes
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'students' && styles.tabActive]}
-          onPress={() => setActiveTab('students')}
-        >
-          <Text style={[styles.tabText, activeTab === 'students' && styles.tabTextActive]}>
-            Students
-          </Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView 
         style={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <>
+        {/* Stats Cards */}
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, { backgroundColor: colors.primary + '20' }]}>
+            <Text style={styles.statIcon}>👥</Text>
+            <Text style={[styles.statValue, { color: colors.primary }]}>{stats?.totalStudents || 0}</Text>
+            <Text style={styles.statLabel}>Students</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.success + '20' }]}>
+            <Text style={styles.statIcon}>✅</Text>
+            <Text style={[styles.statValue, { color: colors.success }]}>{stats?.activeStudents || 0}</Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.warning + '20' }]}>
+            <Text style={styles.statIcon}>📝</Text>
+            <Text style={[styles.statValue, { color: colors.warning }]}>{stats?.totalQuizzes || 0}</Text>
+            <Text style={styles.statLabel}>Quizzes</Text>
+          </View>
+        </View>
+
         {/* Quick Actions */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>🎯 Quick Actions</Text>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.actionsGrid}>
           <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Quizzes')}
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CreateQuiz')}
           >
-            <Text style={styles.actionIcon}>📝</Text>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionText}>Manage Quizzes</Text>
-              <Text style={styles.actionSubtext}>Create and edit quizzes</Text>
+            <View style={[styles.actionIconBg, { backgroundColor: colors.primary + '20' }]}>
+              <Text style={styles.actionIcon}>📝</Text>
             </View>
+            <Text style={styles.actionText}>Create Quiz</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Tutorials')}
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CreateTask')}
           >
-            <Text style={styles.actionIcon}>📚</Text>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionText}>Tutorials</Text>
-              <Text style={styles.actionSubtext}>View learning materials</Text>
+            <View style={[styles.actionIconBg, { backgroundColor: colors.success + '20' }]}>
+              <Text style={styles.actionIcon}>📚</Text>
             </View>
+            <Text style={styles.actionText}>Create Task</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Chat')}
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Quizzes')}
           >
-            <Text style={styles.actionIcon}>💬</Text>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionText}>Messages</Text>
-              <Text style={styles.actionSubtext}>Chat with students</Text>
+            <View style={[styles.actionIconBg, { backgroundColor: colors.warning + '20' }]}>
+              <Text style={styles.actionIcon}>🎯</Text>
             </View>
+            <Text style={styles.actionText}>My Quizzes</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Tutorials')}
+          >
+            <View style={[styles.actionIconBg, { backgroundColor: colors.error + '20' }]}>
+              <Text style={styles.actionIcon}>📖</Text>
+            </View>
+            <Text style={styles.actionText}>Tutorials</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Pending Submissions */}
-        {pendingSubmissions.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>⏳ Pending Submissions ({pendingSubmissions.length})</Text>
-            {pendingSubmissions.slice(0, 5).map((submission) => (
-              <TouchableOpacity 
-                key={submission.id}
-                style={styles.submissionItem}
-                onPress={() => navigation.navigate('QuizDetail', { 
-                  quizId: submission.quizId,
-                  submissionId: submission.id 
-                })}
-              >
-                <View style={styles.submissionInfo}>
-                  <Text style={styles.submissionStudent}>{submission.studentName}</Text>
-                  <Text style={styles.submissionQuiz}>{submission.quizTitle}</Text>
-                  <Text style={styles.submissionDate}>
-                    {new Date(submission.submittedAt).toLocaleDateString()}
-                  </Text>
-                </View>
-                <View style={styles.submissionScore}>
-                  <Text style={styles.scoreText}>
-                    {submission.score}/{submission.maxScore}
-                  </Text>
-                  {submission.needsGrading && (
-                    <Text style={styles.needsGradingBadge}>Needs Review</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-            {pendingSubmissions.length > 5 && (
-              <TouchableOpacity style={styles.viewAllButton}>
-                <Text style={styles.viewAllText}>View All Submissions →</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-          </>
-        )}
-
-        {/* Tasks Tab */}
-        {activeTab === 'tasks' && (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>📚 Your Tasks</Text>
-              <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateTask')}>
-                <Text style={styles.addButtonText}>+ Create</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>📝</Text>
-              <Text style={styles.emptyStateTitle}>No Tasks Yet</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Create tasks for your students to practice coding
-              </Text>
-              <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('CreateTask')}>
-                <Text style={styles.createButtonText}>Create Task</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Quizzes Tab */}
-        {activeTab === 'quizzes' && (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>📝 Your Quizzes</Text>
-              <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateQuiz')}>
-                <Text style={styles.addButtonText}>+ Create</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>🎯</Text>
-              <Text style={styles.emptyStateTitle}>No Quizzes Yet</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Create quizzes to assess your students' knowledge
-              </Text>
-              <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('Quizzes')}>
-                <Text style={styles.createButtonText}>Browse Quizzes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Students Tab */}
-        {activeTab === 'students' && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>👥 Your Students</Text>
+        {/* Top Students */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Top Students</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
+        
         {students.length > 0 ? (
-          <>
-            {students.map((student, index) => (
-              <TouchableOpacity 
-                key={student.id}
-                style={styles.studentItem}
-                onPress={() => {/* Navigate to student details */}}
-              >
-                <View style={styles.studentRank}>
-                  <Text style={styles.rankText}>#{index + 1}</Text>
-                </View>
-                <View style={styles.studentInfo}>
-                  <Text style={styles.studentName}>{student.name}</Text>
-                  <Text style={styles.studentStats}>
-                    {student.completedTutorials} tutorials • {student.completedQuizzes} quizzes
+          <View style={styles.studentsCard}>
+            {students.slice(0, 5).map((student, index) => (
+              <View key={student.id} style={styles.studentRow}>
+                <View style={[styles.rankBadge, index < 3 && styles.topRankBadge]}>
+                  <Text style={[styles.rankNumber, index < 3 && styles.topRankNumber]}>
+                    {index + 1}
                   </Text>
                 </View>
-                <View style={styles.studentScore}>
-                  <Text style={styles.scoreValue}>{student.averageScore.toFixed(0)}%</Text>
+                <View style={styles.studentAvatar}>
+                  <Text style={styles.studentAvatarText}>{student.name.charAt(0)}</Text>
                 </View>
-              </TouchableOpacity>
+                <View style={styles.studentDetails}>
+                  <Text style={styles.studentName}>{student.name}</Text>
+                  <Text style={styles.studentMeta}>
+                    {student.completedQuizzes} quizzes completed
+                  </Text>
+                </View>
+                <View style={styles.scoreContainer}>
+                  <Text style={styles.scoreValue}>{student.totalPoints || 0}</Text>
+                  <Text style={styles.scoreLabel}>pts</Text>
+                </View>
+              </View>
             ))}
-          </>
+          </View>
         ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>👥</Text>
-            <Text style={styles.emptyStateTitle}>No Students Yet</Text>
-            <Text style={styles.emptyStateSubtext}>
-              Students will appear here once they start taking your courses
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>👥</Text>
+            <Text style={styles.emptyTitle}>No Students Yet</Text>
+            <Text style={styles.emptySubtext}>
+              Students will appear here once they join
             </Text>
           </View>
         )}
-          </View>
+
+        {/* Pending Submissions */}
+        {pendingSubmissions.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Pending Reviews</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{pendingSubmissions.length}</Text>
+              </View>
+            </View>
+            <View style={styles.submissionsCard}>
+              {pendingSubmissions.slice(0, 3).map((submission) => (
+                <TouchableOpacity 
+                  key={submission.id}
+                  style={styles.submissionRow}
+                  onPress={() => navigation.navigate('QuizDetail', { 
+                    quizId: submission.quizId,
+                    submissionId: submission.id 
+                  })}
+                >
+                  <View style={styles.submissionLeft}>
+                    <Text style={styles.submissionStudent}>{submission.studentName}</Text>
+                    <Text style={styles.submissionQuiz}>{submission.quizTitle}</Text>
+                  </View>
+                  <View style={styles.submissionRight}>
+                    <Text style={styles.submissionScore}>
+                      {submission.score}/{submission.maxScore}
+                    </Text>
+                    <Text style={styles.reviewBadge}>Review</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
         )}
+
+        {/* Logout Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>🚪 Logout</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       <BottomNavigation navigation={navigation} activeRoute="TeacherDashboard" />
@@ -332,315 +287,312 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 16,
   },
   header: {
-    padding: 20,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: colors.primary,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerLeft: {
-    flex: 1,
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  title: {
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: colors.text,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  themeButton: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  themeText: {
-    fontSize: 20,
-  },
-  logoutButton: {
-    backgroundColor: colors.error,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  logoutText: {
     color: '#fff',
-    fontWeight: 'bold',
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomColor: colors.primary,
-  },
-  tabText: {
+  greeting: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
   },
-  tabTextActive: {
-    color: colors.primary,
+  userName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconText: {
+    fontSize: 18,
   },
   content: {
     flex: 1,
     padding: 20,
   },
-  card: {
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: -30,
+    marginBottom: 20,
+  },
+  statCard: {
+    flex: 1,
     backgroundColor: colors.card,
     borderRadius: 15,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    padding: 15,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  cardHeader: {
+  statIcon: {
+    fontSize: 24,
+    marginBottom: 5,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 15,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 15,
+    marginTop: 10,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  addButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  createButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  createButtonText: {
-    color: '#fff',
+  seeAllText: {
     fontSize: 14,
+    color: colors.primary,
     fontWeight: '600',
   },
-  statsGrid: {
+  actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 10,
   },
-  statBox: {
+  actionCard: {
     width: '48%',
-    backgroundColor: colors.surface,
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: colors.card,
+    borderRadius: 15,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 5,
-    textAlign: 'center',
-  },
-  averageScoreBox: {
-    backgroundColor: colors.primary + '20',
-    padding: 15,
-    borderRadius: 10,
+  actionIconBg: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.primary + '40',
-  },
-  averageScoreLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 5,
-  },
-  averageScoreValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: 15,
-    borderRadius: 10,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   actionIcon: {
-    fontSize: 32,
-    marginRight: 15,
-  },
-  actionContent: {
-    flex: 1,
+    fontSize: 24,
   },
   actionText: {
-    color: colors.text,
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
   },
-  actionSubtext: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  submissionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
+  studentsCard: {
+    backgroundColor: colors.card,
+    borderRadius: 15,
     padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  submissionInfo: {
-    flex: 1,
-  },
-  submissionStudent: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  submissionQuiz: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  submissionDate: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  submissionScore: {
-    alignItems: 'flex-end',
-  },
-  scoreText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  needsGradingBadge: {
-    backgroundColor: colors.warning + '30',
-    color: colors.warning,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 5,
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  viewAllButton: {
+  studentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 12,
-    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  viewAllText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  studentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: colors.surface,
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
-  studentRank: {
+  topRankBadge: {
+    backgroundColor: colors.primary,
+  },
+  rankNumber: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: colors.textSecondary,
+  },
+  topRankNumber: {
+    color: '#fff',
+  },
+  studentAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.primary + '20',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 12,
   },
-  rankText: {
-    fontSize: 14,
+  studentAvatarText: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: colors.primary,
   },
-  studentInfo: {
+  studentDetails: {
     flex: 1,
   },
   studentName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.text,
   },
-  studentStats: {
+  studentMeta: {
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 2,
   },
-  studentScore: {
+  scoreContainer: {
     alignItems: 'flex-end',
   },
   scoreValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.success,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyStateText: {
-    fontSize: 64,
-    marginBottom: 15,
-  },
-  emptyStateTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 8,
+    color: colors.primary,
   },
-  emptyStateSubtext: {
-    fontSize: 14,
+  scoreLabel: {
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  emptyCard: {
+    backgroundColor: colors.card,
+    borderRadius: 15,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 5,
+  },
+  emptySubtext: {
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: 30,
-    lineHeight: 20,
+  },
+  badge: {
+    backgroundColor: colors.error,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  submissionsCard: {
+    backgroundColor: colors.card,
+    borderRadius: 15,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  submissionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  submissionLeft: {
+    flex: 1,
+  },
+  submissionStudent: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  submissionQuiz: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  submissionRight: {
+    alignItems: 'flex-end',
+  },
+  submissionScore: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  reviewBadge: {
+    fontSize: 10,
+    color: colors.warning,
+    backgroundColor: colors.warning + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+    overflow: 'hidden',
+  },
+  logoutButton: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: colors.error + '40',
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.error,
   },
 });
