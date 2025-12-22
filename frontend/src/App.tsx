@@ -55,7 +55,7 @@ function App({ user, onLogout }: AppProps) {
   // UI state
   const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal' | 'versions' | 'dependencies'>('console');
-  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string; dependencies?: Record<string, string> } | null>(null);
+  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string; dependencies?: Record<string, string>; projectId?: string } | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [isAiAgentOpen, setIsAiAgentOpen] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
@@ -515,7 +515,8 @@ function App({ user, onLogout }: AppProps) {
         timestamp: Date.now(),
         files: filesForExecution,
         mainFile: mainFileName,
-        dependencies: currentProject.dependencies || {}
+        dependencies: currentProject.dependencies || {},
+        projectId: currentProject._id
       });
 
       addToConsole(` Running project with ${filesForExecution.length} file(s)...`, 'info');

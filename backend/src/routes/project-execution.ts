@@ -15,6 +15,7 @@ interface ProjectExecutionRequest extends Request {
         mainFile: string;
         language: 'python' | 'java' | 'javascript' | 'cpp';
         sessionId: string;
+        projectId?: string;
         dependencies?: Record<string, string>;
     };
 }
@@ -78,7 +79,7 @@ function getExecutionCommand(language: string, baseDir: string, files: Array<{ n
  * Execute project code (multi-file) with streaming output
  */
 router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
-    const { files, mainFile, language, sessionId, dependencies } = req.body;
+    const { files, mainFile, language, sessionId, dependencies, projectId } = req.body;
 
     if (!files || !Array.isArray(files) || files.length === 0) {
         return res.status(400).json({
@@ -159,7 +160,8 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                 NetworkMode: needsNetwork ? 'bridge' : 'none',
                 Dns: needsNetwork ? ['8.8.8.8', '8.8.4.4'] : undefined, // Google DNS for better reliability
                 Binds: [
-                    `${language}-dependencies:/dependencies:rw`
+                    `${language}-dependencies:/dependencies:rw`,
+                    `${language}-custom-libs:/custom-libs:rw`
                 ],
                 Tmpfs: {
                     '/tmp': 'rw,exec,nosuid,size=50m'
@@ -238,6 +240,37 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                 writeStream.on('end', resolve);
                 writeStream.on('error', resolve);
                 setTimeout(resolve, 1000); // Timeout after 1 second
+            });
+        }
+
+        // Extract JavaScript custom library tarballs into the session directory (so relative requires work)
+        if (language === 'javascript' && projectId) {
+            const extractExec = await container.exec({
+                Cmd: ['sh', '-c', `
+                    set -e
+                    CUSTOM_DIR="/custom-libs/${projectId}"
+                    if [ -d "$CUSTOM_DIR" ]; then
+                      echo "[custom-libs] Found $CUSTOM_DIR"
+                      cd ${baseDir}
+                      for f in "$CUSTOM_DIR"/*.tar.gz "$CUSTOM_DIR"/*.tgz; do
+                        if [ -f "$f" ]; then
+                          echo "[custom-libs] Extracting $(basename "$f")"
+                          tar -xzf "$f" -C ${baseDir} 2>/dev/null || tar -xzf "$f" -C ${baseDir}
+                        fi
+                      done
+                    else
+                      echo "[custom-libs] No custom lib dir for project"
+                    fi
+                `],
+                AttachStdout: true,
+                AttachStderr: true
+            });
+            const extractStream = await extractExec.start({ hijack: true });
+            extractStream.resume();
+            await new Promise((resolve) => {
+                extractStream.on('end', resolve);
+                extractStream.on('error', resolve);
+                setTimeout(resolve, 3000);
             });
         }
 
@@ -331,7 +364,7 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                     logger.info('[project-execution] package.json content:', verifyOutput.substring(0, 200));
 
                     // Generate dependency hash for caching (stable order)
-                    const sortedDepsObj = Object.keys(dependencies || {}).sort().reduce((acc: Record<string,string>, k) => { acc[k] = (dependencies as any)[k]; return acc; }, {} as Record<string,string>);
+                    const sortedDepsObj = Object.keys(dependencies || {}).sort().reduce((acc: Record<string, string>, k) => { acc[k] = (dependencies as any)[k]; return acc; }, {} as Record<string, string>);
                     const depsHash = crypto.createHash('md5').update(JSON.stringify(sortedDepsObj)).digest('hex');
                     const cacheDir = `/dependencies/js-${depsHash}`;
 
