@@ -48,7 +48,7 @@ const upload = multer({
 router.post('/:projectId/libraries', auth, upload.single('library'), async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -127,7 +127,7 @@ router.post('/:projectId/libraries', auth, upload.single('library'), async (req:
 router.get('/:projectId/libraries', auth, async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
@@ -147,7 +147,7 @@ router.get('/:projectId/libraries', auth, async (req: Request, res: Response) =>
 router.delete('/:projectId/libraries/:libraryId', auth, async (req: Request, res: Response) => {
     try {
         const { projectId, libraryId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
@@ -203,7 +203,7 @@ router.delete('/:projectId/libraries/:libraryId', auth, async (req: Request, res
 router.post('/:projectId/dependencies/clear-cache', auth, async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
@@ -263,7 +263,7 @@ function stableDepsString(dependencies: Record<string, string>): string {
 router.get('/:projectId/dependencies', auth, async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
@@ -357,7 +357,7 @@ router.get('/:projectId/dependencies', auth, async (req: Request, res: Response)
 router.post('/:projectId/dependencies/sync', auth, async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) return res.status(404).json({ success: false, error: 'Project not found' });
         if (project.language !== 'javascript') return res.status(400).json({ success: false, error: 'Only JavaScript dependencies are supported for now' });
