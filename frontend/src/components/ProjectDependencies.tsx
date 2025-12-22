@@ -50,7 +50,11 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
   const loadLibraries = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/projects/${projectId}/libraries`);
+      const response = await axios.get(`${getApiUrl()}/api/projects/${projectId}/libraries`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
       setLibraries(response.data.libraries || []);
     } catch (err: any) {
       console.error('Failed to load libraries:', err);
@@ -64,7 +68,6 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
     if (!file) return;
 
     const allowedExtensions = ['.jar', '.whl', '.so', '.dll', '.dylib', '.a', '.lib', '.tar.gz', '.zip'];
-    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     
     if (!allowedExtensions.some(allowed => file.name.toLowerCase().endsWith(allowed))) {
       setError(`File type not allowed. Allowed types: ${allowedExtensions.join(', ')}`);
@@ -84,11 +87,12 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
       const formData = new FormData();
       formData.append('library', file);
 
-      const response = await axios.post(
-        `/api/projects/${projectId}/libraries`,
+      await axios.post(
+        `${getApiUrl()}/api/projects/${projectId}/libraries`,
         formData,
         {
           headers: {
+            ...getAuthHeaders(),
             'Content-Type': 'multipart/form-data',
           },
         }
@@ -109,7 +113,11 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
 
     try {
       setError(null);
-      await axios.delete(`/api/projects/${projectId}/libraries/${libraryId}`);
+      await axios.delete(`${getApiUrl()}/api/projects/${projectId}/libraries/${libraryId}`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
       setSuccess(`Successfully deleted ${name}`);
       await loadLibraries();
     } catch (err: any) {
@@ -127,9 +135,21 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
           'Content-Type': 'application/json'
         }
       });
-      const data = await resp.json();
-      if (data.success) {
-        setInstalledDeps(data.installed || {});
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(text || `Failed to load installed dependencies (HTTP ${resp.status})`);
+      }
+      let data: any;
+      const ct = resp.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        data = await resp.json();
+      } else {
+        const text = await resp.text();
+        throw new Error(text || 'Unexpected non-JSON response when loading installed dependencies');
+      }
+      if (data && data.success) {
+        const installed = data.installed || data.dependencies || {};
+        setInstalledDeps(installed);
       } else {
         setInstalledDeps({});
       }
@@ -150,9 +170,21 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({})
       });
-      const data = await resp.json();
+      let data: any;
+      try {
+        const ct = resp.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          data = await resp.json();
+        } else {
+          const text = await resp.text();
+          throw new Error(text || 'Unexpected non-JSON response from server');
+        }
+      } catch (e: any) {
+        throw new Error(e?.message || 'Failed to parse server response');
+      }
       if (data.success) {
         setInstalledDeps(data.installed || {});
         setSuccess(data.usedCache ? 'Using cached dependencies' : 'Dependencies installed');
@@ -171,8 +203,14 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
 
     try {
       setError(null);
-      await axios.post(`/api/projects/${projectId}/dependencies/clear-cache`);
+      await axios.post(`${getApiUrl()}/api/projects/${projectId}/dependencies/clear-cache`, {}, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
       setSuccess('Dependency cache cleared successfully');
+      // Refresh installed dependencies view after clearing cache
+      setInstalledDeps({});
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to clear cache');
     }
@@ -353,7 +391,7 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
           </div>
 
           {Object.keys(dependencies).length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {Object.entries(dependencies).map(([name, version]) => (
                 <div
                   key={name}
@@ -430,7 +468,7 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({
             <p className={theme === 'dark' ? 'text-gray-400 mt-2' : 'text-gray-600 mt-2'}>Loading installed dependencies…</p>
           </div>
         ) : Object.keys(installedDeps).length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
             {Object.entries(installedDeps).sort(([a],[b]) => a.localeCompare(b)).map(([name, version]) => {
               const declaredVersion = dependencies[name];
               const mismatch = declaredVersion && declaredVersion !== version;
