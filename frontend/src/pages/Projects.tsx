@@ -165,7 +165,7 @@ export function Projects({ user, onLogout }: ProjectsProps) {
                 </div>
             </header>
 
-            <main className="max-w-6xl mx-auto px-4 py-8">
+            <main className="max-w-6xl mx-auto px-4 py-8 scroll-smooth">
                 {/* New Project Modal */}
                 {showNewProject && (
                     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -237,7 +237,7 @@ export function Projects({ user, onLogout }: ProjectsProps) {
                     </div>
                 ) : (
                     /* Projects Grid */
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
                         {projects.map((project) => (
                             <div
                                 key={project._id}
@@ -270,14 +270,14 @@ export function Projects({ user, onLogout }: ProjectsProps) {
                                     </div>
 
                                     <div className={`flex items-center gap-4 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'} mb-4`}>
-                    <span className="flex items-center gap-1">
-                      <FileCode className="w-3 h-3" />
-                        {project.files.length} file{project.files.length !== 1 ? 's' : ''}
-                    </span>
                                         <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
+                                            <FileCode className="w-3 h-3" />
+                                            {project.files.length} file{project.files.length !== 1 ? 's' : ''}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <Calendar className="w-3 h-3" />
                                             {formatDate(project.updatedAt)}
-                    </span>
+                                        </span>
                                     </div>
 
                                     <Button

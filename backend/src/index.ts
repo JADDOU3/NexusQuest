@@ -27,6 +27,7 @@ import { streamExecutionRouter } from './routes/stream-execution.js';
 import { playgroundExecutionRouter } from './routes/playground-execution.js';
 import simplePlaygroundRouter from './routes/simple-playground.js';
 import { projectExecutionRouter } from './routes/project-execution.js';
+import projectLibrariesRouter from './routes/project-libraries.js';
 import { taskExecutionRouter } from './routes/task-execution.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
@@ -90,6 +91,8 @@ app.use('/api/stream', streamExecutionRouter);
 app.use('/api/playground', playgroundExecutionRouter);
 app.use('/api/simple-playground', simplePlaygroundRouter);
 app.use('/api/projects', projectExecutionRouter);
+// Mount dependency and libraries routes (install/sync, clear-cache, libraries CRUD)
+app.use('/api/projects', projectLibrariesRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/tasks', taskExecutionRouter);
 app.use('/api/tasks', tasksRouter);

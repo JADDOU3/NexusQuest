@@ -9,7 +9,7 @@ interface TerminalProps {
   height?: string;
   theme?: 'dark' | 'light';
   language: 'python' | 'java' | 'javascript' | 'cpp' | 'go';
-  codeToExecute?: { code: string; timestamp: number; files?: ProjectFileForExecution[]; mainFile?: string; dependencies?: Record<string, string> } | null;
+  codeToExecute?: { code: string; timestamp: number; files?: ProjectFileForExecution[]; mainFile?: string; dependencies?: Record<string, string>; projectId?: string } | null;
 }
 
 interface TerminalLine {
@@ -101,6 +101,9 @@ export function Terminal({ height = '400px', theme = 'dark', language, codeToExe
         endpoint = 'http://localhost:3001/api/projects/execute';
         requestBody.files = files;
         requestBody.mainFile = mainFile || files[0].name;
+        if (codeToExecute?.projectId) {
+          requestBody.projectId = codeToExecute.projectId;
+        }
         // Pass dependencies if they exist
         if (dependencies && Object.keys(dependencies).length > 0) {
           requestBody.dependencies = dependencies;

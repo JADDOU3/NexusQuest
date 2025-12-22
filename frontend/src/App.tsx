@@ -55,7 +55,7 @@ function App({ user, onLogout }: AppProps) {
   // UI state
   const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'console' | 'terminal' | 'versions' | 'dependencies'>('console');
-  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string; dependencies?: Record<string, string> } | null>(null);
+  const [codeToExecute, setCodeToExecute] = useState<{ code: string; timestamp: number; files?: { name: string; content: string }[]; mainFile?: string; dependencies?: Record<string, string>; projectId?: string } | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [isAiAgentOpen, setIsAiAgentOpen] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
@@ -515,7 +515,8 @@ function App({ user, onLogout }: AppProps) {
         timestamp: Date.now(),
         files: filesForExecution,
         mainFile: mainFileName,
-        dependencies: currentProject.dependencies || {}
+        dependencies: currentProject.dependencies || {},
+        projectId: currentProject._id
       });
 
       addToConsole(` Running project with ${filesForExecution.length} file(s)...`, 'info');
@@ -705,7 +706,7 @@ function App({ user, onLogout }: AppProps) {
       />
 
       {/* Main Layout: editor + right project panel, console at bottom */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden">
         {/* Top area: editor + side panel */}
         <div className="flex-1 flex overflow-hidden px-4 pt-3 pb-2">
           {/* Code Editor */}
@@ -752,8 +753,8 @@ function App({ user, onLogout }: AppProps) {
         </div>
 
         {/* Bottom area: tabs (Console / Terminal / Versions) */}
-        <div className="h-[30vh] min-h-[170px] px-4 pb-3">
-          <div className="h-full flex flex-col">
+        <div className={`${activeBottomTab === 'dependencies' ? 'px-4 pb-3' : 'h-[30vh] min-h-[170px] px-4 pb-3'}`}>
+          <div className={`${activeBottomTab === 'dependencies' ? 'flex flex-col' : 'h-full flex flex-col'}`}>
             <div className="mb-1 flex items-center justify-between">
               <div className="flex items-center gap-1 text-[11px]">
                 <button

@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { Project } from '../models/Project.js';
-import { auth } from '../middleware/auth.js';
+import { authMiddleware as auth } from '../middleware/auth';
 import { logger } from '../utils/logger.js';
 import Docker from 'dockerode';
 
@@ -48,7 +48,7 @@ const upload = multer({
 router.post('/:projectId/libraries', auth, upload.single('library'), async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -127,7 +127,7 @@ router.post('/:projectId/libraries', auth, upload.single('library'), async (req:
 router.get('/:projectId/libraries', auth, async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
@@ -147,7 +147,7 @@ router.get('/:projectId/libraries', auth, async (req: Request, res: Response) =>
 router.delete('/:projectId/libraries/:libraryId', auth, async (req: Request, res: Response) => {
     try {
         const { projectId, libraryId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
@@ -203,7 +203,7 @@ router.delete('/:projectId/libraries/:libraryId', auth, async (req: Request, res
 router.post('/:projectId/dependencies/clear-cache', auth, async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
@@ -263,7 +263,7 @@ function stableDepsString(dependencies: Record<string, string>): string {
 router.get('/:projectId/dependencies', auth, async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
 
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) {
@@ -345,7 +345,7 @@ router.get('/:projectId/dependencies', auth, async (req: Request, res: Response)
 
             res.json({ success: true, declared, installed, metadata: project.dependencyMetadata || {} });
         } finally {
-            try { await docker.getContainer(containerName).remove({ force: true }); } catch {}
+            try { await docker.getContainer(containerName).remove({ force: true }); } catch { }
         }
     } catch (error: any) {
         logger.error('[dependencies] List installed error:', error);
@@ -357,12 +357,25 @@ router.get('/:projectId/dependencies', auth, async (req: Request, res: Response)
 router.post('/:projectId/dependencies/sync', auth, async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = (req as any).user.userId;
+        const userId = (req as any).userId;
         const project = await Project.findOne({ _id: projectId, owner: userId });
         if (!project) return res.status(404).json({ success: false, error: 'Project not found' });
         if (project.language !== 'javascript') return res.status(400).json({ success: false, error: 'Only JavaScript dependencies are supported for now' });
 
-        const declared: Record<string, string> = Object.fromEntries(Object.entries(project.dependencies || {}));
+        const rawDeps: Record<string, unknown> = (() => {
+            const deps: any = (project as any).dependencies || {};
+            if (deps && typeof deps.entries === 'function') {
+                return Object.fromEntries(deps.entries());
+            }
+            return deps;
+        })();
+        const declared: Record<string, string> = {};
+        for (const [name, version] of Object.entries(rawDeps || {})) {
+            const depName = String(name || '').trim();
+            if (!depName) continue;
+            const depVersion = typeof version === 'string' && version.trim() ? version.trim() : '*';
+            declared[depName] = depVersion;
+        }
         const depsHash = crypto.createHash('md5').update(stableDepsString(declared)).digest('hex');
         const cacheDir = `/dependencies/js-${depsHash}`;
         const language = project.language;
@@ -377,8 +390,8 @@ router.post('/:projectId/dependencies/sync', auth, async (req: Request, res: Res
             OpenStdin: false,
             HostConfig: {
                 NetworkMode: 'bridge',
-                Dns: ['8.8.8.8','8.8.4.4'],
-                Binds: [ `${language}-dependencies:/dependencies:rw` ],
+                Dns: ['8.8.8.8', '8.8.4.4'],
+                Binds: [`${language}-dependencies:/dependencies:rw`],
                 Tmpfs: { '/tmp': 'rw,exec,nosuid,size=50m' }
             }
         });
@@ -388,44 +401,49 @@ router.post('/:projectId/dependencies/sync', auth, async (req: Request, res: Res
         let usedCache = false;
         try {
             // Fix perms on /dependencies
-            await (await container.exec({ User: 'root', Cmd: ['sh','-c','mkdir -p /dependencies && chown -R 1001:1001 /dependencies && chmod 0775 /dependencies'], AttachStdout: true, AttachStderr: true })).start({});
+            await (await container.exec({ User: 'root', Cmd: ['sh', '-c', 'mkdir -p /dependencies && chown -R 1001:1001 /dependencies && chmod 0775 /dependencies'], AttachStdout: true, AttachStderr: true })).start({});
             // Write package.json
-            await (await container.exec({ Cmd: ['sh','-c',`mkdir -p ${baseDir}`], AttachStdout: true, AttachStderr: true })).start({});
+            await (await container.exec({ Cmd: ['sh', '-c', `mkdir -p ${baseDir}`], AttachStdout: true, AttachStderr: true })).start({});
             const pkgJson = JSON.stringify({ name: 'nexusquest-project', version: '1.0.0', dependencies: declared });
             const pkg64 = Buffer.from(pkgJson).toString('base64');
-            await (await container.exec({ Cmd: ['sh','-c',`echo "${pkg64}" | base64 -d > ${baseDir}/package.json`], AttachStdout: true, AttachStderr: true })).start({});
+            await (await container.exec({ Cmd: ['sh', '-c', `echo "${pkg64}" | base64 -d > ${baseDir}/package.json`], AttachStdout: true, AttachStderr: true })).start({});
 
             // Try cache
-            const checkExec = await container.exec({ Cmd: ['sh','-c',`[ -d "${cacheDir}/node_modules" ] && [ -f "${cacheDir}/.cache-complete" ] && echo cache_exists || echo cache_missing`], AttachStdout: true, AttachStderr: true });
+            const checkExec = await container.exec({ Cmd: ['sh', '-c', `[ -d "${cacheDir}/node_modules" ] && [ -f "${cacheDir}/.cache-complete" ] && echo cache_exists || echo cache_missing`], AttachStdout: true, AttachStderr: true });
             const checkStream = await checkExec.start({});
             let checkOut = '';
-            await new Promise((resolve) => { checkStream.on('data',(c:Buffer)=>checkOut+=c.toString()); checkStream.on('end',resolve); checkStream.on('error',resolve); setTimeout(resolve, 1000); });
+            await new Promise((resolve) => { checkStream.on('data', (c: Buffer) => checkOut += c.toString()); checkStream.on('end', resolve); checkStream.on('error', resolve); setTimeout(resolve, 1000); });
             if (checkOut.includes('cache_exists')) {
                 usedCache = true;
-                await (await container.exec({ Cmd: ['sh','-c',`cp -r ${cacheDir}/node_modules ${baseDir}/ 2>/dev/null || true`], AttachStdout: true, AttachStderr: true })).start({});
+                await (await container.exec({ Cmd: ['sh', '-c', `cp -r ${cacheDir}/node_modules ${baseDir}/ 2>/dev/null || true`], AttachStdout: true, AttachStderr: true })).start({});
             } else {
                 // Install and cache
-                const installExec = await container.exec({ Cmd: ['sh','-c',`cd ${baseDir} && npm install --legacy-peer-deps > npm-install.log 2>&1; ec=$?; if [ $ec -eq 0 ]; then mkdir -p ${cacheDir} && cp -r ${baseDir}/node_modules ${cacheDir}/ 2>/dev/null || true; touch ${cacheDir}/.cache-complete; echo ok; else echo fail; fi`], AttachStdout: true, AttachStderr: true });
+                const installExec = await container.exec({
+                    Cmd: ['sh', '-c', `cd ${baseDir} && npm install --legacy-peer-deps --no-audit --no-fund > npm-install.log 2>&1; ec=$?; if [ $ec -eq 0 ]; then mkdir -p ${cacheDir} && cp -r ${baseDir}/node_modules ${cacheDir}/ 2>/dev/null || true; touch ${cacheDir}/.cache-complete; echo ok; else echo fail; echo "---- package.json ----"; cat ${baseDir}/package.json 2>/dev/null || true; echo "---- npm-install.log (tail) ----"; tail -n 400 npm-install.log 2>/dev/null || true; fi`],
+                    AttachStdout: true,
+                    AttachStderr: true
+                });
                 const installStream = await installExec.start({});
                 let instOut = '';
-                await new Promise((resolve)=>{ installStream.on('data',(c:Buffer)=>instOut+=c.toString()); installStream.on('end',resolve); installStream.on('error',resolve); setTimeout(resolve, 300000); });
+                await new Promise((resolve) => { installStream.on('data', (c: Buffer) => instOut += c.toString()); installStream.on('end', resolve); installStream.on('error', resolve); setTimeout(resolve, 300000); });
                 if (!instOut.includes('ok')) {
-                    return res.status(500).json({ success: false, error: 'npm install failed' });
+                    const details = instOut.length > 12000 ? instOut.slice(-12000) : instOut;
+                    return res.status(500).json({ success: false, error: 'npm install failed', details });
                 }
             }
 
             // npm ls to extract installed
-            const lsExec = await container.exec({ Cmd: ['sh','-c',`cd ${baseDir} && npm ls --depth=0 --json 2>/dev/null || true`], AttachStdout: true, AttachStderr: true });
+            const lsExec = await container.exec({ Cmd: ['sh', '-c', `cd ${baseDir} && npm ls --depth=0 --json 2>/dev/null || true`], AttachStdout: true, AttachStderr: true });
             const lsStream = await lsExec.start({});
             let out = '';
-            await new Promise((resolve)=>{ lsStream.on('data',(c:Buffer)=>out+=c.toString()); lsStream.on('end',resolve); lsStream.on('error',resolve); setTimeout(resolve, 1500); });
+            await new Promise((resolve) => { lsStream.on('data', (c: Buffer) => out += c.toString()); lsStream.on('end', resolve); lsStream.on('error', resolve); setTimeout(resolve, 1500); });
             try {
                 const json = JSON.parse(out || '{}');
                 const deps = json.dependencies || {};
                 for (const [name, info] of Object.entries<any>(deps)) {
                     if (info && info.version) installed[name] = info.version;
                 }
-            } catch {}
+            } catch { }
 
             // Update project metadata
             project.dependencyMetadata = {
@@ -437,7 +455,7 @@ router.post('/:projectId/dependencies/sync', auth, async (req: Request, res: Res
 
             res.json({ success: true, declared, installed, usedCache });
         } finally {
-            try { await docker.getContainer(containerName).remove({ force: true }); } catch {}
+            try { await docker.getContainer(containerName).remove({ force: true }); } catch { }
         }
     } catch (error: any) {
         logger.error('[dependencies] Sync error:', error);
