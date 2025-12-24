@@ -11,7 +11,6 @@ import { logger } from '../utils/logger.js';
 
 const router = Router();
 
-
 // Middleware to check if user is a teacher
 const teacherMiddleware = async (req: AuthRequest, res: Response, next: () => void) => {
     try {
@@ -38,7 +37,7 @@ function getQuizStatus(quiz: { startTime: Date; endTime: Date }): 'scheduled' | 
 
 // Public endpoint for mobile - Get all quizzes without auth
 router.get('/public', async (req: AuthRequest, res: Response) => {
-    console.log('👉 GET /api/quizzes/public hit');
+    logger.info('GET /api/quizzes/public hit');
     try {
         const { language, difficulty } = req.query;
 
@@ -64,14 +63,14 @@ router.get('/public', async (req: AuthRequest, res: Response) => {
 
         res.json(quizzesWithStatus);
     } catch (error: any) {
-        console.error('❌ Error fetching public quizzes:', error);
+        logger.error('Error fetching public quizzes:', error);
         res.status(500).json({ error: 'Failed to fetch quizzes' });
     }
 });
 
 // Public endpoint to get single quiz by ID (no auth required)
 router.get('/public/:id', async (req: AuthRequest, res: Response) => {
-    console.log('👉 GET /api/quizzes/public/:id hit');
+    logger.info('GET /api/quizzes/public/:id hit');
     try {
         const quiz = await Quiz.findById(req.params.id)
             .populate('createdBy', 'name email');
@@ -87,7 +86,7 @@ router.get('/public/:id', async (req: AuthRequest, res: Response) => {
             status,
         });
     } catch (error: any) {
-        console.error('❌ Error fetching quiz:', error);
+        logger.error('Error fetching quiz:', error);
         res.status(500).json({ error: 'Failed to fetch quiz' });
     }
 });
@@ -320,7 +319,7 @@ router.post('/', teacherMiddleware, async (req: AuthRequest, res: Response) => {
             try {
                 await Notification.insertMany(notifications);
             } catch (notifyError) {
-                console.error('Failed to create NEW_QUIZ notifications:', notifyError);
+                logger.error('Failed to create NEW_QUIZ notifications:', notifyError);
             }
         }
 
@@ -344,7 +343,7 @@ router.post('/', teacherMiddleware, async (req: AuthRequest, res: Response) => {
                 read: false,
             });
         } catch (notifyError) {
-            console.error('Failed to create quiz creation notification:', notifyError);
+            logger.error('Failed to create quiz creation notification:', notifyError);
         }
 
         res.status(201).json({ success: true, data: quiz });
@@ -470,7 +469,7 @@ router.post('/:id/start', async (req: AuthRequest, res: Response) => {
     }
 });
 
-// Run code against test cases (without submitting)
+// Run code against test cases (without submitting) - IMPROVED WITH PARALLEL EXECUTION
 router.post('/:id/run', async (req: AuthRequest, res: Response) => {
     try {
         const { code } = req.body as { code?: string };
@@ -518,18 +517,29 @@ router.post('/:id/run', async (req: AuthRequest, res: Response) => {
             error?: string;
         }>;
 
-        for (let i = 0; i < visibleTestCases.length; i++) {
-            const test = visibleTestCases[i];
-
+        // Execute all test cases in parallel
+        const testPromises = visibleTestCases.map(async (test, i) => {
             try {
+                const timeoutMs = 10000;
+                let timeoutId: NodeJS.Timeout;
+
+                const execPromise = executeCodeInTempContainer(code, quiz.language, test.input, {
+                    sessionIdPrefix: 'quiz-test',
+                    timeoutMs: timeoutMs
+                });
+
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    timeoutId = setTimeout(() => {
+                        reject(new Error(`Test execution timeout (${timeoutMs / 1000} seconds)`));
+                    }, timeoutMs);
+                });
+
                 const execResult = await Promise.race([
-                    executeCodeInTempContainer(code, quiz.language, test.input, {
-                        sessionIdPrefix: 'quiz-test'
-                    }),
-                    new Promise<never>((_, reject) => {
-                        setTimeout(() => reject(new Error('Test execution timeout (10 seconds)')), 10000);
-                    }),
-                ]);
+                    execPromise,
+                    timeoutPromise
+                ]).finally(() => {
+                    if (timeoutId!) clearTimeout(timeoutId);
+                });
 
                 const actual = (execResult as any).error
                     ? (execResult as any).error
@@ -537,25 +547,48 @@ router.post('/:id/run', async (req: AuthRequest, res: Response) => {
 
                 const passed = !(execResult as any).error && normalize(actual) === normalize(test.expectedOutput);
 
-                results.push({
+                return {
                     index: i,
                     passed,
                     input: test.input,
                     expectedOutput: test.expectedOutput,
                     actualOutput: actual,
                     error: (execResult as any).error || undefined,
-                });
+                };
             } catch (error: any) {
-                results.push({
+                logger.error(`Quiz test case ${i} failed:`, error.message);
+                return {
                     index: i,
                     passed: false,
                     input: test.input,
                     expectedOutput: test.expectedOutput,
                     actualOutput: '',
                     error: error?.message || 'Execution failed',
+                };
+            }
+        });
+
+        // Wait for all tests to complete
+        const settledResults = await Promise.allSettled(testPromises);
+
+        // Process results
+        settledResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                results.push(result.value);
+            } else {
+                results.push({
+                    index,
+                    passed: false,
+                    input: visibleTestCases[index].input,
+                    expectedOutput: visibleTestCases[index].expectedOutput,
+                    actualOutput: '',
+                    error: result.reason?.message || 'Test execution failed',
                 });
             }
-        }
+        });
+
+        // Sort results by index
+        results.sort((a, b) => a.index - b.index);
 
         const passed = results.filter(r => r.passed).length;
 
@@ -569,11 +602,12 @@ router.post('/:id/run', async (req: AuthRequest, res: Response) => {
         });
     } catch (error: unknown) {
         const err = error as Error;
+        logger.error('Failed to run quiz code:', err);
         res.status(500).json({ success: false, error: err.message || 'Failed to run code' });
     }
 });
 
-// Submit quiz solution
+// Submit quiz solution - IMPROVED WITH PARALLEL EXECUTION
 router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
     try {
         const { code, forceSubmit, violations } = req.body as { code?: string; forceSubmit?: boolean; violations?: number };
@@ -610,7 +644,6 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
         }
 
         // Allow resubmission if not all tests passed (until timer ends)
-        // Only block if already passed all tests
         if (submission.status === 'passed') {
             return res.status(400).json({ success: false, error: 'You have already passed this quiz!' });
         }
@@ -628,18 +661,29 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
             error?: string;
         }>;
 
-        for (let i = 0; i < testCases.length; i++) {
-            const test = testCases[i];
-
+        // Execute all test cases in parallel
+        const testPromises = testCases.map(async (test, i) => {
             try {
+                const timeoutMs = 10000;
+                let timeoutId: NodeJS.Timeout;
+
+                const execPromise = executeCodeInTempContainer(submittedCode, quiz.language, test.input, {
+                    sessionIdPrefix: 'quiz-submit',
+                    timeoutMs: timeoutMs
+                });
+
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    timeoutId = setTimeout(() => {
+                        reject(new Error(`Test execution timeout (${timeoutMs / 1000} seconds)`));
+                    }, timeoutMs);
+                });
+
                 const execResult = await Promise.race([
-                    executeCodeInTempContainer(submittedCode, quiz.language, test.input, {
-                        sessionIdPrefix: 'quiz-test'
-                    }),
-                    new Promise<never>((_, reject) => {
-                        setTimeout(() => reject(new Error('Test execution timeout (10 seconds)')), 10000);
-                    }),
-                ]);
+                    execPromise,
+                    timeoutPromise
+                ]).finally(() => {
+                    if (timeoutId!) clearTimeout(timeoutId);
+                });
 
                 const actual = (execResult as any).error
                     ? (execResult as any).error
@@ -647,23 +691,45 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
 
                 const passed = !(execResult as any).error && normalize(actual) === normalize(test.expectedOutput);
 
-                results.push({
+                return {
                     index: i,
                     passed,
                     input: test.isHidden ? '(hidden)' : test.input,
                     actualOutput: test.isHidden ? (passed ? '(correct)' : '(incorrect)') : actual,
                     error: (execResult as any).error || undefined,
-                });
+                };
             } catch (error: any) {
-                results.push({
+                logger.error(`Quiz submit test case ${i} failed:`, error.message);
+                return {
                     index: i,
                     passed: false,
                     input: test.isHidden ? '(hidden)' : test.input,
                     actualOutput: '',
                     error: error?.message || 'Execution failed',
+                };
+            }
+        });
+
+        // Wait for all tests to complete
+        const settledResults = await Promise.allSettled(testPromises);
+
+        // Process results
+        settledResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                results.push(result.value);
+            } else {
+                results.push({
+                    index,
+                    passed: false,
+                    input: testCases[index].isHidden ? '(hidden)' : testCases[index].input,
+                    actualOutput: '',
+                    error: result.reason?.message || 'Test execution failed',
                 });
             }
-        }
+        });
+
+        // Sort results by index
+        results.sort((a, b) => a.index - b.index);
 
         const passed = results.filter(r => r.passed).length;
         const allPassed = passed === results.length;
@@ -715,7 +781,7 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
                     read: false,
                 });
             } catch (notifyError) {
-                console.error('Failed to create POINTS_EARNED notification (quiz submit):', notifyError);
+                logger.error('Failed to create POINTS_EARNED notification (quiz submit):', notifyError);
             }
         }
 
@@ -744,9 +810,9 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
                     },
                     read: false,
                 });
-                console.log(`🚨 Quiz violation notification sent to teacher for student: ${student?.name}`);
+                logger.info(`Quiz violation notification sent to teacher for student: ${student?.name}`);
             } catch (notifyError) {
-                console.error('Failed to create QUIZ_VIOLATION notification:', notifyError);
+                logger.error('Failed to create QUIZ_VIOLATION notification:', notifyError);
             }
         }
 
@@ -755,14 +821,14 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
             if (req.userId) {
                 const newAchievements = await checkQuizAchievements(req.userId.toString());
                 if (newAchievements.length > 0) {
-                    console.log(`🏆 Unlocked ${newAchievements.length} new achievements:`);
+                    logger.info(`Unlocked ${newAchievements.length} new achievements`);
                     newAchievements.forEach((ach: any) => {
-                        console.log(`   - ${ach.icon} ${ach.title}`);
+                        logger.info(`   - ${ach.icon} ${ach.title}`);
                     });
                 }
             }
         } catch (achievementError) {
-            console.error('Failed to check quiz achievements:', achievementError);
+            logger.error('Failed to check quiz achievements:', achievementError);
         }
 
         res.json({
@@ -784,6 +850,7 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
             },
         });
     } catch (error: any) {
+        logger.error('Failed to submit quiz:', error);
         res.status(500).json({
             success: false,
             error: error?.message || 'Failed to submit quiz',
@@ -1000,7 +1067,7 @@ router.post('/:id/submission/:submissionId/grade', teacherMiddleware, async (req
                         read: false,
                     });
                 } catch (notifyError) {
-                    console.error('Failed to create POINTS_EARNED notification (teacher grade):', notifyError);
+                    logger.error('Failed to create POINTS_EARNED notification (teacher grade):', notifyError);
                 }
             }
         }
@@ -1020,7 +1087,7 @@ router.post('/:id/submission/:submissionId/grade', teacherMiddleware, async (req
                 read: false,
             });
         } catch (notifyError) {
-            console.error('Failed to create GRADE_UPDATED notification:', notifyError);
+            logger.error('Failed to create GRADE_UPDATED notification:', notifyError);
         }
 
         res.json({
@@ -1039,6 +1106,7 @@ router.post('/:id/submission/:submissionId/grade', teacherMiddleware, async (req
             },
         });
     } catch (error: any) {
+        logger.error('Failed to grade submission:', error);
         res.status(500).json({ success: false, error: error?.message || 'Failed to grade submission' });
     }
 });
@@ -1141,7 +1209,7 @@ router.post('/:id/grade-student/:userId', teacherMiddleware, async (req: AuthReq
                 });
             }
         } catch (notifyError) {
-            console.error('Failed to create notifications for grade-student:', notifyError);
+            logger.error('Failed to create notifications for grade-student:', notifyError);
         }
 
         res.json({
@@ -1158,6 +1226,7 @@ router.post('/:id/grade-student/:userId', teacherMiddleware, async (req: AuthReq
             },
         });
     } catch (error: any) {
+        logger.error('Failed to grade student:', error);
         res.status(500).json({ success: false, error: error?.message || 'Failed to grade student' });
     }
 });
