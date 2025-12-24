@@ -86,23 +86,32 @@ export async function executeCodeInTempContainer(
             AttachStdout: true,
             AttachStderr: true
         });
-
-        // Wait for the write operation to complete
-        const writeStream = await writeExec.start({});
-        await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('File write timeout')), 5000);
-            writeStream.on('end', () => {
-                clearTimeout(timeout);
-                resolve();
-            });
-            writeStream.on('error', (err) => {
-                clearTimeout(timeout);
-                reject(err);
-            });
-        });
+        
+        // Start the write operation (but don't wait for stream)
+        await writeExec.start({});
+        
+        // Poll the exec to see when it's done
+        let writeComplete = false;
+        const writeTimeout = Date.now() + 5000;
+        while (!writeComplete && Date.now() < writeTimeout) {
+            try {
+                const inspectData = await writeExec.inspect();
+                if (!inspectData.Running) {
+                    writeComplete = true;
+                    break;
+                }
+            } catch {
+                // Ignore inspect errors
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        if (!writeComplete) {
+            throw new Error('File write timeout');
+        }
 
         // Small delay for filesystem sync
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         // Prepare execution command
         let execCommand: string;
