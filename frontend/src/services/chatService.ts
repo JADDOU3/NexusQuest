@@ -22,7 +22,7 @@ export function connectChat(): Socket | null {
     if (socket) return socket;
 
     socket = io(API_URL, {
-        path: '/socket.io',
+        path: '/nexusquest/socket.io',
         auth: { token },
         withCredentials: true,
         transports: ['polling', 'websocket'], // polling first for better compatibility
