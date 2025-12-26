@@ -9,7 +9,7 @@ import {
   CursorPosition,
   JoinSessionData,
 } from '../types/collaboration';
-import { getApiUrl } from '../utils/apiHelpers';
+import { API_URL } from '../utils/apiHelpers';
 
 interface CollaborationContextType {
   socket: Socket | null;
@@ -58,7 +58,8 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
   // Initialize socket connection
   useEffect(() => {
     // Connect to the /collaboration namespace with /nexusquest/socket.io path
-    const newSocket = io(getApiUrl() + '/collaboration', {
+    const SOCKET_ORIGIN = new URL(API_URL).origin;
+    const newSocket = io(SOCKET_ORIGIN + '/collaboration', {
       path: '/nexusquest/socket.io',
       transports: ['polling', 'websocket'],
       autoConnect: false,
