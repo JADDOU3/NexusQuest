@@ -32,7 +32,7 @@ function getTokenFromSocket(socket: Socket): string | null {
 }
 
 export function setupChat(io: Server) {
-    const chatNamespace = io.of('/');
+    const chatNamespace = io.of('/chat');
     chatNamespace.on('connection', async (socket: Socket) => {
         try {
             const rawToken = getTokenFromSocket(socket);
