@@ -168,7 +168,7 @@ export function ChatPage() {
   );
 
   return (
-    <div className={`h-screen flex flex-col relative overflow-hidden ${
+    <div className={`min-h-screen flex flex-col relative ${
       theme === 'dark'
         ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white'
         : 'bg-gradient-to-br from-gray-50 via-white to-gray-50 text-gray-900'
@@ -212,8 +212,8 @@ export function ChatPage() {
       </header>
 
       {/* Messages Area - Scrollable */}
-      <main className="flex-1 overflow-hidden flex flex-col w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex-1 overflow-y-auto py-6">
+      <main className="flex flex-col w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="py-6">
           {renderedMessages}
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center px-4 py-20">
