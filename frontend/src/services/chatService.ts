@@ -19,7 +19,13 @@ export function connectChat(): Socket | null {
     const token = getStoredToken();
     if (!token) return null;
 
-    if (socket) return socket;
+    // Reuse existing socket if present; ensure it's connected
+    if (socket) {
+        if (!socket.connected) {
+            try { socket.connect(); } catch {}
+        }
+        return socket;
+    }
 
     const SOCKET_ORIGIN = new URL(API_URL).origin;
     socket = io(SOCKET_ORIGIN + '/chat', {
@@ -30,7 +36,11 @@ export function connectChat(): Socket | null {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
+        autoConnect: false, // explicitly control connection
     });
+
+    // Explicitly connect only when ChatPage mounts
+    socket.connect();
 
     // Add connection logging
     socket.on('connect', () => {
@@ -54,8 +64,26 @@ export function getChatSocket(): Socket | null {
 
 export function disconnectChat(): void {
     if (socket) {
-        socket.disconnect();
-        socket = null;
+        try {
+            // prevent reconnection attempts and clear listeners
+            // @ts-ignore - opts property exists on Manager instance
+            if ((socket as any).io && (socket as any).io.opts) {
+                (socket as any).io.opts.reconnection = false;
+            }
+            socket.off();
+            // removeAllListeners for compatibility with event emitter
+            // @ts-ignore
+            if (typeof (socket as any).removeAllListeners === 'function') {
+                (socket as any).removeAllListeners();
+            }
+            socket.disconnect(); // ensures transport closes and no reconnection
+            // Some environments prefer close alias
+            if (typeof (socket as any).close === 'function') {
+                (socket as any).close();
+            }
+        } finally {
+            socket = null;
+        }
     }
 }
 
