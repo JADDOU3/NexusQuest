@@ -111,8 +111,12 @@ router.post('/:projectId/libraries', auth, upload.single('library'), async (req:
         res.json({
             success: true,
             library: {
-                id: project.customLibraries[project.customLibraries.length - 1]._id,
-                ...library,
+                _id: project.customLibraries[project.customLibraries.length - 1]._id,
+                fileName: library.fileName,
+                originalName: library.originalName,
+                fileType: library.fileType,
+                size: library.size,
+                uploadedAt: library.uploadedAt,
                 path: `/uploads/libraries/${projectId}/${library.fileName}`
             }
         });
@@ -135,8 +139,15 @@ router.get('/:projectId/libraries', auth, async (req: Request, res: Response) =>
             return res.status(404).json({ error: 'Project not found' });
         }
 
-        const librariesWithPaths = (project.customLibraries || []).map(lib => ({
-            ...lib,
+        // Convert Mongoose documents to plain objects
+        const projectObj = project.toObject();
+        const librariesWithPaths = (projectObj.customLibraries || []).map((lib: any) => ({
+            _id: lib._id,
+            fileName: lib.fileName,
+            originalName: lib.originalName,
+            fileType: lib.fileType,
+            size: lib.size,
+            uploadedAt: lib.uploadedAt,
             path: `/uploads/libraries/${projectId}/${lib.fileName}`
         }));
 
