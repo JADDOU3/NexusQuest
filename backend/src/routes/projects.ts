@@ -63,19 +63,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
             .select('name description language files dependencies createdAt updatedAt')
             .sort({ updatedAt: -1 });
 
-        // Convert Map types to plain objects for JSON serialization
-        const projectsData = projects.map(project => {
-            const projectObj = project.toObject();
-            // Convert dependencies Map to plain object if it exists
-            if (projectObj.dependencies && projectObj.dependencies instanceof Map) {
-                projectObj.dependencies = Object.fromEntries(projectObj.dependencies);
-            }
-            return projectObj;
-        });
-
         res.json({
             success: true,
-            data: projectsData,
+            data: projects,
         });
     } catch (error) {
         res.status(500).json({
@@ -101,16 +91,9 @@ router.get('/:projectId', async (req: AuthRequest, res: Response) => {
             return;
         }
 
-        // Convert Map types to plain objects for JSON serialization
-        const projectObj = project.toObject();
-        // Convert dependencies Map to plain object if it exists
-        if (projectObj.dependencies && projectObj.dependencies instanceof Map) {
-            projectObj.dependencies = Object.fromEntries(projectObj.dependencies);
-        }
-
         res.json({
             success: true,
-            data: projectObj,
+            data: project,
         });
     } catch (error) {
         res.status(500).json({
@@ -217,62 +200,62 @@ endif()`;
 
         // For Java projects, create a pom.xml file
         if (projectLanguage === 'java') {
-            const pomXml = `<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.nexusquest</groupId>
-    <artifactId>${name.toLowerCase().replace(/\s+/g, '-')}</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
-
-    <name>${name}</name>
-    <description>${description || 'A NexusQuest Java project'}</description>
-
-    <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
-    <dependencies>
-        <!-- Add your dependencies here -->
-        <!-- Example: -->
-        <!--
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.10.1</version>
-        </dependency>
-        -->
-    </dependencies>
-
-    <build>
-        <sourceDirectory>.</sourceDirectory>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>17</source>
-                    <target>17</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <configuration>
-                    <mainClass>Main</mainClass>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-</project>`;
+            const pomXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+'<project xmlns="http://maven.apache.org/POM/4.0.0"\n' +
+'         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n' +
+'         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 \n' +
+'         http://maven.apache.org/xsd/maven-4.0.0.xsd">\n' +
+'    <modelVersion>4.0.0</modelVersion>\n' +
+'\n' +
+'    <groupId>com.nexusquest</groupId>\n' +
+'    <artifactId>' + name.toLowerCase().replace(/\s+/g, '-') + '</artifactId>\n' +
+'    <version>1.0.0</version>\n' +
+'    <packaging>jar</packaging>\n' +
+'\n' +
+'    <name>' + name + '</name>\n' +
+'    <description>' + (description || 'A NexusQuest Java project') + '</description>\n' +
+'\n' +
+'    <properties>\n' +
+'        <maven.compiler.source>17</maven.compiler.source>\n' +
+'        <maven.compiler.target>17</maven.compiler.target>\n' +
+'        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>\n' +
+'    </properties>\n' +
+'\n' +
+'    <dependencies>\n' +
+'        <!-- Add your dependencies here -->\n' +
+'        <!-- Example: -->\n' +
+'        <!--\n' +
+'        <dependency>\n' +
+'            <groupId>com.google.code.gson</groupId>\n' +
+'            <artifactId>gson</artifactId>\n' +
+'            <version>2.10.1</version>\n' +
+'        </dependency>\n' +
+'        -->\n' +
+'    </dependencies>\n' +
+'\n' +
+'    <build>\n' +
+'        <sourceDirectory>.</sourceDirectory>\n' +
+'        <plugins>\n' +
+'            <plugin>\n' +
+'                <groupId>org.apache.maven.plugins</groupId>\n' +
+'                <artifactId>maven-compiler-plugin</artifactId>\n' +
+'                <version>3.11.0</version>\n' +
+'                <configuration>\n' +
+'                    <source>17</source>\n' +
+'                    <target>17</target>\n' +
+'                </configuration>\n' +
+'            </plugin>\n' +
+'            <plugin>\n' +
+'                <groupId>org.codehaus.mojo</groupId>\n' +
+'                <artifactId>exec-maven-plugin</artifactId>\n' +
+'                <version>3.1.0</version>\n' +
+'                <configuration>\n' +
+'                    <mainClass>Main</mainClass>\n' +
+'                </configuration>\n' +
+'            </plugin>\n' +
+'        </plugins>\n' +
+'    </build>\n' +
+'</project>';
 
             files.push({
                 _id: new mongoose.Types.ObjectId(),
@@ -313,18 +296,17 @@ endif()`;
         });
     } catch (error: unknown) {
         const mongoError = error as { code?: number };
-        if (mongoError?.code === 11000) {
-            // Duplicate key error
+        if (mongoError.code === 11000) {
             res.status(400).json({
                 success: false,
                 error: 'Project with this name already exists',
             });
-        } else {
-            res.status(400).json({
-                success: false,
-                error: 'Invalid project data',
-            });
+            return;
         }
+        res.status(500).json({
+            success: false,
+            error: 'Failed to create project',
+        });
     }
 });
 
@@ -364,10 +346,6 @@ router.put('/:projectId', async (req: AuthRequest, res: Response) => {
 
         // Convert response data properly
         const projectObj = project.toObject();
-        // Convert dependencies Map to plain object if it exists
-        if (projectObj.dependencies && projectObj.dependencies instanceof Map) {
-            projectObj.dependencies = Object.fromEntries(projectObj.dependencies);
-        }
 
         res.json({
             success: true,
@@ -615,14 +593,9 @@ router.post('/:projectId/dependencies', async (req: AuthRequest, res: Response) 
         project.dependencies[name] = version || '*';
         await project.save();
 
-        // Convert Map to plain object for response
-        const depsObj = project.dependencies instanceof Map
-            ? Object.fromEntries(project.dependencies)
-            : project.dependencies || {};
-
         res.status(201).json({
             success: true,
-            dependencies: depsObj,
+            dependencies: project.dependencies,
         });
     } catch (error) {
         res.status(500).json({
@@ -651,23 +624,25 @@ router.put('/:projectId/dependencies', async (req: AuthRequest, res: Response) =
             owner: req.userId,
         });
 
+        if (!project) {
+            res.status(404).json({
+                success: false,
+                error: 'Project not found',
+            });
+            return;
+        }
+
         // Update dependencies as plain object
         if (typeof dependencies === 'object' && dependencies !== null) {
             project.dependencies = dependencies;
         } else {
             project.dependencies = {};
         }
-
         await project.save();
-
-        // Convert Map back to plain object for response
-        const depsObj = project.dependencies instanceof Map
-            ? Object.fromEntries(project.dependencies)
-            : project.dependencies || {};
 
         res.json({
             success: true,
-            dependencies: depsObj,
+            dependencies: project.dependencies,
         });
     } catch (error: any) {
         console.error('Error updating dependencies:', error);
