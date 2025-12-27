@@ -65,12 +65,17 @@ router.get('/', async (req: AuthRequest, res: Response) => {
             .select('name description language files dependencies customLibraries createdAt updatedAt')
             .sort({ updatedAt: -1 });
 
-        // Add file paths to custom libraries
+        // Add file paths to custom libraries and clean data
         const projectsData = projects.map(project => {
             const projectObj = project.toObject();
             if (projectObj.customLibraries && projectObj.customLibraries.length > 0) {
                 projectObj.customLibraries = projectObj.customLibraries.map((lib: any) => ({
-                    ...lib,
+                    _id: lib._id,
+                    fileName: lib.fileName,
+                    originalName: lib.originalName,
+                    fileType: lib.fileType,
+                    size: lib.size,
+                    uploadedAt: lib.uploadedAt,
                     path: `/uploads/libraries/${project._id}/${lib.fileName}`
                 }));
             }
@@ -107,10 +112,15 @@ router.get('/:projectId', async (req: AuthRequest, res: Response) => {
 
         const projectObj = project.toObject();
 
-        // Add file paths to custom libraries
+        // Add file paths to custom libraries and clean data
         if (projectObj.customLibraries && projectObj.customLibraries.length > 0) {
             projectObj.customLibraries = projectObj.customLibraries.map((lib: any) => ({
-                ...lib,
+                _id: lib._id,
+                fileName: lib.fileName,
+                originalName: lib.originalName,
+                fileType: lib.fileType,
+                size: lib.size,
+                uploadedAt: lib.uploadedAt,
                 path: `/uploads/libraries/${project._id}/${lib.fileName}`
             }));
         }
