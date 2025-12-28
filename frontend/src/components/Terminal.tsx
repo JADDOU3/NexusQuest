@@ -93,13 +93,14 @@ export function Terminal({ height = '400px', theme = 'dark', language, codeToExe
 
     try {
       // Determine which endpoint to use based on execution type
-      let endpoint: string;
-      let requestBody: Record<string, unknown> = { language, sessionId };
+      let endpoint = `${getApiUrl()}/api/simple-run`;
+      let requestBody: Record<string, unknown> = { language, sessionId, code };
 
       // If we have files (project execution), use the streaming projects endpoint
       if (files && files.length > 0) {
         console.log('[Terminal] Using streaming container endpoint');
         endpoint = `${getApiUrl()}/api/projects/execute`;
+        requestBody = { language, sessionId };
         requestBody.files = files;
         requestBody.mainFile = mainFile || files[0].name;
         if (codeToExecute?.projectId) {
