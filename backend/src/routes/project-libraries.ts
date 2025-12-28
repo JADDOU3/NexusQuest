@@ -10,14 +10,22 @@ import Docker from 'dockerode';
 const router = express.Router();
 const docker = new Docker();
 
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'libraries');
-if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const UPLOAD_BASE_DIR = path.join(process.cwd(), 'uploads', 'libraries');
+if (!fs.existsSync(UPLOAD_BASE_DIR)) {
+    fs.mkdirSync(UPLOAD_BASE_DIR, { recursive: true });
 }
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, UPLOAD_DIR);
+    destination: (req: any, file, cb) => {
+        // Create a project-specific subdirectory
+        const projectId = req.params.projectId;
+        const projectLibDir = path.join(UPLOAD_BASE_DIR, projectId);
+
+        if (!fs.existsSync(projectLibDir)) {
+            fs.mkdirSync(projectLibDir, { recursive: true });
+        }
+
+        cb(null, projectLibDir);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;

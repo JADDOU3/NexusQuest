@@ -358,7 +358,39 @@ async function markDependenciesInstalled(
   }
 }
 
+// Helper to resolve library file on disk from multiple possible locations
+function resolveLibraryOnDisk(projectId: string, lib: CustomLibrary): string | null {
+  const candidates = [
+    // Try with exact fileName first
+    path.join(process.cwd(), 'uploads', 'libraries', projectId, lib.fileName),
+    // Try with originalName (might be more descriptive)
+    path.join(process.cwd(), 'uploads', 'libraries', projectId, lib.originalName || lib.fileName),
+    // Try from __dirname context (for different working directories)
+    path.resolve(__dirname, '..', '..', 'uploads', 'libraries', projectId, lib.fileName),
+    path.resolve(__dirname, '..', '..', 'uploads', 'libraries', projectId, lib.originalName || lib.fileName),
+    // Fallback: try appending extensions in case they're missing
+    path.join(process.cwd(), 'uploads', 'libraries', projectId, `${lib.fileName}.gz`),
+    path.join(process.cwd(), 'uploads', 'libraries', projectId, `${lib.fileName}.tar.gz`),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) {
+        logger.info(`[resolveLibraryOnDisk] Found library at: ${candidate}`);
+        return candidate;
+      }
+    } catch (err) {
+      logger.debug(`[resolveLibraryOnDisk] fs.existsSync check failed for ${candidate}:`, err);
+    }
+  }
+
+  logger.error(`[resolveLibraryOnDisk] Library not found for project ${projectId}. Tried ${candidates.length} candidates. fileName="${lib.fileName}", originalName="${lib.originalName}"`);
+  logger.debug(`[resolveLibraryOnDisk] Candidates: ${JSON.stringify(candidates)}`);
+  return null;
+}
+
 // Helper to install dependencies for JavaScript projects
+
 async function installJavaScriptDependencies(
   container: Docker.Container,
   baseDir: string,
@@ -618,19 +650,24 @@ export async function executeProject(request: ProjectExecutionRequest): Promise<
 
       // Copy each custom library
       for (const lib of customLibraries) {
-        const libPath = path.join(process.cwd(), 'uploads', 'libraries', projectId, lib.fileName);
-        logger.info(`[executeProject] Copying library: ${libPath} to ${customLibDir}/${lib.fileName}`);
-
         try {
-          const libContent = fs.readFileSync(libPath);
+          const diskPath = resolveLibraryOnDisk(projectId, lib);
+          if (!diskPath) {
+            logger.warn(`[executeProject] Skipping missing library: ${lib.fileName}`);
+            continue;
+          }
+
+          const libContent = fs.readFileSync(diskPath);
           const base64LibContent = libContent.toString('base64');
 
-          // Check if file is compressed and needs extraction
-          const isCompressed = lib.fileName.endsWith('.tar.gz') || lib.fileName.endsWith('.zip');
+          // Use originalName when possible so extraction commands match the file extension
+          const targetName = lib.originalName || lib.fileName;
+          const targetPathInContainer = `${customLibDir}/${targetName}`;
 
-          // Copy file to container
+          logger.info(`[executeProject] Copying library to container: ${targetPathInContainer}`);
+
           const copyLibExec = await container.exec({
-            Cmd: ['sh', '-c', `echo "${base64LibContent}" | base64 -d > ${customLibDir}/${lib.fileName}`],
+            Cmd: ['sh', '-c', `echo "${base64LibContent}" | base64 -d > ${targetPathInContainer}`],
             AttachStdout: true,
             AttachStderr: true,
           });
@@ -638,42 +675,52 @@ export async function executeProject(request: ProjectExecutionRequest): Promise<
           await new Promise((resolve) => {
             copyLibStream.on('end', resolve);
             copyLibStream.on('error', (err: any) => {
-              logger.error(`[executeProject] Error copying library ${lib.fileName}:`, err);
+              logger.error(`[executeProject] Error copying library ${targetName}:`, err);
               resolve(null);
             });
           });
 
-          logger.info(`[executeProject] Successfully copied library: ${lib.fileName}`);
+          logger.info(`[executeProject] Successfully copied library: ${targetName}`);
 
-          // If file is compressed, extract it
+          // Detect compressed archives robustly (tar.gz, .tgz, .zip, .gz)
+          const lower = targetName.toLowerCase();
+          const isTarGz = /\.tar\.gz$/.test(lower) || /\.tgz$/.test(lower) || /\.gz$/.test(lower);
+          const isZip = /\.zip$/.test(lower);
+          const isCompressed = isTarGz || isZip;
+
           if (isCompressed) {
-            logger.info(`[executeProject] Extracting compressed library: ${lib.fileName}`);
+            logger.info(`[executeProject] Extracting compressed library: ${targetName}`);
 
             let extractCmd = '';
-            if (lib.fileName.endsWith('.tar.gz')) {
-              extractCmd = `cd ${customLibDir} && tar -xzf ${lib.fileName} && rm ${lib.fileName}`;
-            } else if (lib.fileName.endsWith('.zip')) {
-              extractCmd = `cd ${customLibDir} && unzip -q ${lib.fileName} && rm ${lib.fileName}`;
+            if (isTarGz) {
+              // tar -xzf works for .tar.gz and many .gz tarballs
+              extractCmd = `cd ${customLibDir} && tar -xzf ${targetName} && rm -f ${targetName}`;
+            } else if (isZip) {
+              extractCmd = `cd ${customLibDir} && unzip -q ${targetName} && rm -f ${targetName}`;
             }
 
-            const extractExec = await container.exec({
-              Cmd: ['sh', '-c', extractCmd],
-              AttachStdout: true,
-              AttachStderr: true,
-            });
-            const extractStream = await extractExec.start({ hijack: true });
-            await new Promise((resolve) => {
-              extractStream.on('end', resolve);
-              extractStream.on('error', (err: any) => {
-                logger.error(`[executeProject] Error extracting library ${lib.fileName}:`, err);
-                resolve(null);
+            if (extractCmd) {
+              const extractExec = await container.exec({
+                Cmd: ['sh', '-c', extractCmd],
+                AttachStdout: true,
+                AttachStderr: true,
               });
-            });
+              const extractStream = await extractExec.start({ hijack: true });
+              await new Promise((resolve) => {
+                extractStream.on('end', resolve);
+                extractStream.on('error', (err: any) => {
+                  logger.error(`[executeProject] Error extracting library ${targetName}:`, err);
+                  resolve(null);
+                });
+              });
 
-            logger.info(`[executeProject] Successfully extracted library: ${lib.fileName}`);
+              logger.info(`[executeProject] Successfully extracted library: ${targetName}`);
+            } else {
+              logger.warn(`[executeProject] No extraction command for: ${targetName}`);
+            }
           }
         } catch (error: any) {
-          logger.error(`[executeProject] Error reading library file ${libPath}:`, error);
+          logger.error(`[executeProject] Error processing library ${lib.fileName}:`, error);
         }
       }
     }
