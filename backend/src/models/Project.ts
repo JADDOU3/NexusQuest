@@ -14,12 +14,13 @@ export interface IDependencies {
 }
 
 export interface ICustomLibrary {
-  _id: mongoose.Types.ObjectId;
-  fileName: string;
-  originalName: string;
-  fileType: string;
-  size: number;
-  uploadedAt: Date;
+    _id: mongoose.Types.ObjectId;
+    fileName: string;
+    originalName: string;
+    fileType: string;
+    size: number;
+    uploadedAt: Date;
+    fileContent?: Buffer;
 }
 
 export interface IDependencyMetadata {
@@ -64,28 +65,32 @@ const fileSchema = new Schema<IFile>(
 );
 
 const customLibrarySchema = new Schema<ICustomLibrary>(
-  {
-    fileName: {
-      type: String,
-      required: true,
-    },
-    originalName: {
-      type: String,
-      required: true,
-    },
-    fileType: {
-      type: String,
-      required: true,
-    },
-    size: {
-      type: Number,
-      required: true,
-    },
-    uploadedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  }
+    {
+        fileName: {
+            type: String,
+            required: true,
+        },
+        originalName: {
+            type: String,
+            required: true,
+        },
+        fileType: {
+            type: String,
+            required: true,
+        },
+        size: {
+            type: Number,
+            required: true,
+        },
+        uploadedAt: {
+            type: Date,
+            default: Date.now,
+        },
+        fileContent: {
+            type: Buffer,
+            required: false,
+        },
+    }
 );
 
 const dependencyMetadataSchema = new Schema<IDependencyMetadata>(

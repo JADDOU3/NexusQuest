@@ -72,23 +72,15 @@ router.post('/:projectId/libraries', auth, upload.single('library'), async (req:
 
         const fileExtWithoutDot = path.extname(req.file.originalname).substring(1);
 
-        // Also save a copy under originalName to guarantee resolver can find it without manual steps
-        try {
-            const projectLibDir = path.join(UPLOAD_BASE_DIR, projectId);
-            const originalPath = path.join(projectLibDir, req.file.originalname);
-            if (!fs.existsSync(originalPath)) {
-                fs.copyFileSync(req.file.path, originalPath);
-            }
-        } catch (e: any) {
-            logger.warn(`[libraries] Could not create copy under originalName: ${e?.message || e}`);
-        }
+        const fileContent = fs.readFileSync(req.file.path);
 
         const library = {
             fileName: req.file.filename,
             originalName: req.file.originalname,
             fileType: fileExtWithoutDot,
             size: req.file.size,
-            uploadedAt: new Date()
+            uploadedAt: new Date(),
+            fileContent: fileContent
         };
 
         if (!project.customLibraries) {
@@ -102,7 +94,11 @@ router.post('/:projectId/libraries', auth, upload.single('library'), async (req:
             success: true,
             library: {
                 _id: project.customLibraries[project.customLibraries.length - 1]._id,
-                ...library
+                fileName: library.fileName,
+                originalName: library.originalName,
+                fileType: library.fileType,
+                size: library.size,
+                uploadedAt: library.uploadedAt
             }
         });
     } catch (error: any) {
