@@ -276,21 +276,41 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
             if (!project) {
                 logger.error(`[project-execution] Project ${projectId} not found in database`);
             } else {
+                logger.info(`[project-execution] Found project with ${(project.customLibraries as any[] || []).length} libraries in database`);
+
                 // Process each library - READ FROM DATABASE ONLY
                 for (const lib of customLibraries) {
                     try {
                         const libAny: any = lib;
 
+                        logger.info(`[project-execution] Looking for library: originalName="${lib.originalName}", fileName="${lib.fileName}", _id="${libAny?._id}"`);
+
                         // Find library in project's customLibraries array
                         const dbLib = (project.customLibraries as any[] || []).find((d: any) => {
+                            // Try matching by _id first
                             if (libAny?._id && d?._id) {
-                                return d._id.toString() === libAny._id.toString();
+                                const libId = libAny._id.toString();
+                                const dbId = d._id.toString();
+                                if (libId === dbId) {
+                                    logger.info(`[project-execution] Matched library by _id: ${libId}`);
+                                    return true;
+                                }
                             }
-                            return d.originalName === lib.originalName || d.fileName === lib.fileName;
+                            // Fallback to name matching
+                            if (d.originalName === lib.originalName) {
+                                logger.info(`[project-execution] Matched library by originalName: ${lib.originalName}`);
+                                return true;
+                            }
+                            if (d.fileName === lib.fileName) {
+                                logger.info(`[project-execution] Matched library by fileName: ${lib.fileName}`);
+                                return true;
+                            }
+                            return false;
                         });
 
                         if (!dbLib) {
                             logger.warn(`[project-execution] Library not found in database: ${lib.originalName}`);
+                            logger.warn(`[project-execution] Available libraries: ${(project.customLibraries as any[] || []).map((l: any) => l.originalName).join(', ')}`);
                             continue;
                         }
 
@@ -337,6 +357,7 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
 
                         if (!copyOutput.includes('COPY_SUCCESS')) {
                             logger.error(`[project-execution] Failed to copy: ${targetName}`);
+                            logger.error(`[project-execution] Copy output: ${copyOutput}`);
                         } else {
                             logger.info(`[project-execution] ✓ Successfully copied: ${targetName}`);
                         }
@@ -716,6 +737,7 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
     }
 });
 
+/**
 /**
  * POST /api/projects/input
  * Send input to running container
