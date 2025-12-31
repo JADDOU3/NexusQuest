@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import Docker from 'dockerode';
+import * as tar from 'tar-stream';
 import { logger } from '../utils/logger.js';
 import { Project } from '../models/Project.js';
 
@@ -336,30 +337,48 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
 
                         logger.info(`[project-execution] Loaded ${libContent.length} bytes from database for ${dbLib.originalName}`);
 
-                        // Copy to container
+                        // Copy to container using Docker's putArchive API (avoids argument list too long error)
                         const targetName = dbLib.originalName;
-                        const targetPathInContainer = `${customLibDir}/${targetName}`;
-                        const base64LibContent = libContent.toString('base64');
 
-                        const copyLibExec = await container.exec({
-                            Cmd: ['sh', '-c', `echo "${base64LibContent}" | base64 -d > ${targetPathInContainer} && ls -lh ${targetPathInContainer} && echo "COPY_SUCCESS"`],
-                            AttachStdout: true,
-                            AttachStderr: true
-                        });
-                        const copyStream = await copyLibExec.start({ hijack: true });
-                        let copyOutput = '';
-                        await new Promise((resolve) => {
-                            copyStream.on('data', (chunk: Buffer) => { copyOutput += chunk.toString(); });
-                            copyStream.on('end', resolve);
-                            copyStream.on('error', resolve);
-                            setTimeout(resolve, 2000);
-                        });
+                        try {
+                            // Create a tar archive containing the file
+                            const pack = tar.pack();
+                            pack.entry({ name: targetName }, libContent);
+                            pack.finalize();
 
-                        if (!copyOutput.includes('COPY_SUCCESS')) {
-                            logger.error(`[project-execution] Failed to copy: ${targetName}`);
-                            logger.error(`[project-execution] Copy output: ${copyOutput}`);
-                        } else {
-                            logger.info(`[project-execution] ✓ Successfully copied: ${targetName}`);
+                            // Collect the tar stream into a buffer
+                            const chunks: Buffer[] = [];
+                            for await (const chunk of pack) {
+                                chunks.push(chunk);
+                            }
+                            const tarBuffer = Buffer.concat(chunks);
+
+                            // Use Docker's putArchive to copy the file
+                            await container.putArchive(tarBuffer, { path: customLibDir });
+
+                            // Verify the file was copied
+                            const verifyExec = await container.exec({
+                                Cmd: ['sh', '-c', `ls -lh "${customLibDir}/${targetName}" && echo "COPY_SUCCESS"`],
+                                AttachStdout: true,
+                                AttachStderr: true
+                            });
+                            const verifyStream = await verifyExec.start({ hijack: true });
+                            let verifyOutput = '';
+                            await new Promise((resolve) => {
+                                verifyStream.on('data', (chunk: Buffer) => { verifyOutput += chunk.toString(); });
+                                verifyStream.on('end', resolve);
+                                verifyStream.on('error', resolve);
+                                setTimeout(resolve, 2000);
+                            });
+
+                            if (!verifyOutput.includes('COPY_SUCCESS')) {
+                                logger.error(`[project-execution] Failed to verify copy: ${targetName}`);
+                                logger.error(`[project-execution] Verify output: ${verifyOutput}`);
+                            } else {
+                                logger.info(`[project-execution] ✓ Successfully copied: ${targetName} (${libContent.length} bytes)`);
+                            }
+                        } catch (copyError: any) {
+                            logger.error(`[project-execution] putArchive failed for ${targetName}: ${copyError?.message || copyError}`);
                         }
                     } catch (error: any) {
                         logger.error(`[project-execution] Error copying library ${lib.originalName}:`, error);
