@@ -45,7 +45,8 @@ function getExecutionCommand(language: string, baseDir: string, files: Array<{ n
         case 'cpp':
             const cppFiles = files.filter(f => f.name.endsWith('.cpp')).map(f => f.name).join(' ');
             // Include custom libraries: headers from include/, libraries from lib/
-            return `cd ${baseDir} && g++ -std=c++20 -I${baseDir} -I${baseDir}/include -L${baseDir}/lib ${cppFiles} -o a.out && ./a.out`;
+            // Set LD_LIBRARY_PATH for dynamic libraries at runtime
+            return `cd ${baseDir} && g++ -std=c++20 -I. -Iinclude -Llib ${cppFiles} -o a.out 2>&1 && LD_LIBRARY_PATH="./lib:\$LD_LIBRARY_PATH" ./a.out`;
         default:
             throw new Error(`Unsupported language: ${language}`);
     }
@@ -770,13 +771,18 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                 INCLUDE_DIR="$BASE_DIR/include"
                 
                 echo "[custom-libs-cpp] Starting C++ library installation"
+                echo "[custom-libs-cpp] Looking in: \$CUSTOM_DIR"
                 
                 if [ ! -d "$CUSTOM_DIR" ]; then
                     echo "[custom-libs-cpp] Custom libs directory does not exist"
                     exit 0
                 fi
                 
+                echo "[custom-libs-cpp] Contents of custom libs dir:"
+                ls -la "$CUSTOM_DIR" 2>/dev/null || echo "(empty)"
+                
                 mkdir -p "\$LIB_DIR" "\$INCLUDE_DIR"
+                echo "[custom-libs-cpp] Created lib and include directories"
                 
                 # Copy .so and .a files
                 for lib in "$CUSTOM_DIR"/*.so "$CUSTOM_DIR"/*.so.* "$CUSTOM_DIR"/*.a; do
@@ -787,7 +793,7 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                 done
                 
                 # Copy headers
-                for hdr in "$CUSTOM_DIR"/*.h "$CUSTOM_DIR"/*.hpp; do
+                for hdr in "$CUSTOM_DIR"/*.h "$CUSTOM_DIR"/*.hpp "$CUSTOM_DIR"/*.hxx; do
                     if [ -f "\$hdr" ]; then
                         cp "\$hdr" "\$INCLUDE_DIR/"
                         echo "[custom-libs-cpp] ✓ Copied header: \$(basename \$hdr)"
@@ -811,14 +817,23 @@ router.post('/execute', async (req: ProjectExecutionRequest, res: Response) => {
                         unzip -q -o "\$archive" -d "\$tmpdir" 2>&1 || true
                     fi
                     
-                    find "\$tmpdir" -name "*.so" -o -name "*.so.*" -o -name "*.a" | xargs -I{} cp {} "\$LIB_DIR/" 2>/dev/null || true
-                    find "\$tmpdir" -name "*.h" -o -name "*.hpp" | xargs -I{} cp {} "\$INCLUDE_DIR/" 2>/dev/null || true
+                    # Copy libraries
+                    find "\$tmpdir" \\( -name "*.so" -o -name "*.so.*" -o -name "*.a" \\) -exec cp {} "\$LIB_DIR/" \\; 2>/dev/null || true
+                    
+                    # Copy headers
+                    find "\$tmpdir" \\( -name "*.h" -o -name "*.hpp" -o -name "*.hxx" \\) -exec cp {} "\$INCLUDE_DIR/" \\; 2>/dev/null || true
                     
                     rm -rf "\$tmpdir"
                     echo "[custom-libs-cpp] ✓ Extracted: \$filename"
                 done
                 
-                echo "[custom-libs-cpp] ✓ Complete"
+                echo "[custom-libs-cpp] Contents of lib/:"
+                ls -la "\$LIB_DIR" 2>/dev/null || echo "(empty)"
+                
+                echo "[custom-libs-cpp] Contents of include/:"
+                ls -la "\$INCLUDE_DIR" 2>/dev/null || echo "(empty)"
+                
+                echo "[custom-libs-cpp] ✓ Complete - Use -I include/ -L lib/ -l<libname> to link"
                 `;
             }
 
