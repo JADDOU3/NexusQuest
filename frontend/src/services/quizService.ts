@@ -126,7 +126,7 @@ export async function getQuiz(id: string): Promise<Quiz> {
 }
 
 export async function createQuiz(input: CreateQuizInput): Promise<Quiz> {
-    const res = await authFetch(`${getApiUrl()}/api/quizzes`, {
+    const res = await authFetch(`${getApiUrl()}/api/quizzes/teacher`, {
         method: 'POST',
         body: JSON.stringify(input),
     });
@@ -136,7 +136,7 @@ export async function createQuiz(input: CreateQuizInput): Promise<Quiz> {
 }
 
 export async function updateQuiz(id: string, input: Partial<CreateQuizInput>): Promise<Quiz> {
-    const res = await authFetch(`${getApiUrl()}/api/quizzes/${id}`, {
+    const res = await authFetch(`${getApiUrl()}/api/quizzes/teacher/${id}`, {
         method: 'PUT',
         body: JSON.stringify(input),
     });
@@ -146,7 +146,7 @@ export async function updateQuiz(id: string, input: Partial<CreateQuizInput>): P
 }
 
 export async function deleteQuiz(id: string): Promise<void> {
-    const res = await authFetch(`${getApiUrl()}/api/quizzes/${id}`, {
+    const res = await authFetch(`${getApiUrl()}/api/quizzes/teacher/${id}`, {
         method: 'DELETE',
     });
     const data = await res.json();
