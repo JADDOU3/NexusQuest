@@ -105,14 +105,14 @@ export async function getQuizzes(): Promise<Quiz[]> {
 }
 
 export async function getMyQuizzes(): Promise<Quiz[]> {
-    const res = await authFetch(`${getApiUrl()}/api/quizzes/my-quizzes`);
+    const res = await authFetch(`${getApiUrl()}/api/quizzes/teacher/my-quizzes`);
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
     return data.data;
 }
 
 export async function getStudentsList(): Promise<StudentInfo[]> {
-    const res = await authFetch(`${getApiUrl()}/api/quizzes/students/list`);
+    const res = await authFetch(`${getApiUrl()}/api/quizzes/teacher/students/list`);
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
     return data.data;
