@@ -227,7 +227,7 @@ export interface QuizResultsResponse {
 }
 
 export async function getQuizResults(id: string): Promise<QuizResultsResponse> {
-    const res = await authFetch(`${getApiUrl()}/api/quizzes/${id}/results`);
+    const res = await authFetch(`${getApiUrl()}/api/quizzes/teacher/${id}/results`);
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
     return data.data;
@@ -250,7 +250,7 @@ export async function gradeSubmission(
     };
     message: string;
 }> {
-    const res = await authFetch(`${getApiUrl()}/api/quizzes/${quizId}/submission/${submissionId}/grade`, {
+    const res = await authFetch(`${getApiUrl()}/api/quizzes/teacher/${quizId}/submission/${submissionId}/grade`, {
         method: 'POST',
         body: JSON.stringify({ grade, feedback }),
     });
@@ -275,7 +275,7 @@ export async function gradeStudentByUserId(
     };
     message: string;
 }> {
-    const res = await authFetch(`${getApiUrl()}/api/quizzes/${quizId}/grade-student/${userId}`, {
+    const res = await authFetch(`${getApiUrl()}/api/quizzes/teacher/${quizId}/grade-student/${userId}`, {
         method: 'POST',
         body: JSON.stringify({ grade, feedback }),
     });
